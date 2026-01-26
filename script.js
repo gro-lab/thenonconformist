@@ -1,6 +1,5 @@
 // ============================================
-// THE NONCONFORMIST - Script with Fallback
-// Works with OR without images.json manifest
+// THE NONCONFORMIST - Pinterest Style Script
 // ============================================
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js';
@@ -134,7 +133,7 @@ const tryImageExtensions = async (dir, index) => {
                 return { url, ext };
             }
         } catch (e) {
-            // Continue to next extension
+            continue;
         }
     }
     return null;
@@ -189,7 +188,7 @@ const updateLike = async (url, increment_value) => {
 };
 
 // ============================================
-// IMAGE GRID GENERATION (WITH FALLBACK)
+// IMAGE GRID GENERATION (PINTEREST STYLE)
 // ============================================
 
 const generateImageGrid = async (galleryKey) => {
@@ -212,7 +211,7 @@ const generateImageGrid = async (galleryKey) => {
         }));
         console.log(`   Using manifest: ${images.length} images`);
     }
-    // MODE 2: Fallback - try all extensions for each index
+    // MODE 2: Fallback - try extensions
     else {
         console.log('   Using fallback mode (slower)...');
         const BATCH_SIZE = 5;
@@ -233,18 +232,18 @@ const generateImageGrid = async (galleryKey) => {
         console.log(`   Found ${images.length} images`);
     }
     
-    // Sort by likes
+    // Sort by likes (most popular first)
     images.sort((a, b) => {
         const likesA = likesCache[getDocIdFromUrl(a.url)] || 0;
         const likesB = likesCache[getDocIdFromUrl(b.url)] || 0;
         return likesB - likesA;
     });
     
-    // Create and append image elements
-    images.forEach(({ url }) => {
+    // Create image elements with Pinterest-style masonry
+    images.forEach(({ url }, index) => {
         const img = document.createElement('img');
         img.src = url;
-        img.alt = `${gallery.title}`;
+        img.alt = `${gallery.title} - Image ${index + 1}`;
         img.dataset.url = url;
         img.loading = 'lazy';
         
@@ -262,52 +261,94 @@ const generateImageGrid = async (galleryKey) => {
 };
 
 // ============================================
-// CAROUSEL FUNCTIONALITY
+// PINTEREST CAROUSEL FUNCTIONALITY
 // ============================================
 
-const setupCarousel = () => {
-    document.querySelectorAll('.carousel-container').forEach(container => {
-        const grid = container.querySelector('.gallery-grid');
-        const prevBtn = container.querySelector('.carousel-btn.prev');
-        const nextBtn = container.querySelector('.carousel-btn.next');
+const setupPinterestCarousel = () => {
+    document.querySelectorAll('.pinterest-carousel').forEach(carousel => {
+        const grid = carousel.querySelector('.pinterest-grid');
+        const prevBtn = carousel.querySelector('.carousel-nav.prev');
+        const nextBtn = carousel.querySelector('.carousel-nav.next');
         
         if (!grid) return;
         
-        const itemWidth = grid.offsetWidth;
+        // Scroll by grid width
+        const scrollAmount = () => grid.offsetWidth;
         
         prevBtn.addEventListener('click', () => {
-            grid.scrollBy({ left: -itemWidth, behavior: 'smooth' });
+            grid.scrollBy({ left: -scrollAmount(), behavior: 'smooth' });
         });
         
         nextBtn.addEventListener('click', () => {
-            grid.scrollBy({ left: itemWidth, behavior: 'smooth' });
+            grid.scrollBy({ left: scrollAmount(), behavior: 'smooth' });
         });
+        
+        // Show/hide navigation buttons based on scroll position
+        const updateNavButtons = () => {
+            const isAtStart = grid.scrollLeft <= 10;
+            const isAtEnd = grid.scrollLeft + grid.offsetWidth >= grid.scrollWidth - 10;
+            
+            prevBtn.style.opacity = isAtStart ? '0.3' : '0.9';
+            nextBtn.style.opacity = isAtEnd ? '0.3' : '0.9';
+            prevBtn.disabled = isAtStart;
+            nextBtn.disabled = isAtEnd;
+        };
+        
+        grid.addEventListener('scroll', debounce(updateNavButtons, 100));
+        updateNavButtons();
     });
     
+    // Touch swipe support
     setupTouchSwipe();
 };
 
 const setupTouchSwipe = () => {
     let startX = 0;
-    let currentX = 0;
-    const threshold = 50;
+    let scrollLeft = 0;
+    let isDown = false;
     
-    document.querySelectorAll('.gallery-grid').forEach(grid => {
+    document.querySelectorAll('.pinterest-grid').forEach(grid => {
         grid.addEventListener('touchstart', (e) => {
-            startX = e.touches[0].clientX;
-        }, false);
+            startX = e.touches[0].pageX - grid.offsetLeft;
+            scrollLeft = grid.scrollLeft;
+        }, { passive: true });
         
         grid.addEventListener('touchmove', (e) => {
-            currentX = e.touches[0].clientX;
-        }, false);
+            if (!startX) return;
+            const x = e.touches[0].pageX - grid.offsetLeft;
+            const walk = (x - startX) * 2;
+            grid.scrollLeft = scrollLeft - walk;
+        }, { passive: true });
         
         grid.addEventListener('touchend', () => {
-            const diff = startX - currentX;
-            if (Math.abs(diff) > threshold) {
-                const distance = diff > 0 ? grid.offsetWidth : -grid.offsetWidth;
-                grid.scrollBy({ left: distance, behavior: 'smooth' });
-            }
-        }, false);
+            startX = 0;
+        });
+        
+        // Mouse drag support for desktop
+        grid.addEventListener('mousedown', (e) => {
+            isDown = true;
+            startX = e.pageX - grid.offsetLeft;
+            scrollLeft = grid.scrollLeft;
+            grid.style.cursor = 'grabbing';
+        });
+        
+        grid.addEventListener('mouseleave', () => {
+            isDown = false;
+            grid.style.cursor = 'grab';
+        });
+        
+        grid.addEventListener('mouseup', () => {
+            isDown = false;
+            grid.style.cursor = 'grab';
+        });
+        
+        grid.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - grid.offsetLeft;
+            const walk = (x - startX) * 2;
+            grid.scrollLeft = scrollLeft - walk;
+        });
     });
 };
 
@@ -349,8 +390,10 @@ const updateLikeButton = () => {
     
     if (isLiked) {
         heart.classList.add('liked');
+        heart.textContent = '♥';
     } else {
         heart.classList.remove('liked');
+        heart.textContent = '♡';
     }
 };
 
@@ -423,12 +466,8 @@ modal.addEventListener('click', (e) => {
 likeBtn.addEventListener('click', toggleLike);
 
 window.addEventListener('resize', debounce(() => {
-    setupCarousel();
+    setupPinterestCarousel();
 }, 150));
-
-window.addEventListener('orientationchange', () => {
-    setupCarousel();
-});
 
 // ============================================
 // INITIALIZATION
@@ -445,12 +484,13 @@ const init = async () => {
         await fetchAllLikes();
         console.log('✅ Loaded likes from Firestore');
         
-        // Generate grids (with or without manifest)
+        // Generate grids for all galleries
         for (const key of Object.keys(galleries)) {
             await generateImageGrid(key);
         }
         
-        setupCarousel();
+        // Setup Pinterest-style carousel
+        setupPinterestCarousel();
         
         console.log('✅ The Nonconformist initialized successfully');
     } catch (error) {
