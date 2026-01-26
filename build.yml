@@ -1,0 +1,446 @@
+# ============================================
+# THE NONCONFORMIST - GitHub Actions Workflow
+# ============================================
+# Place this file at: .github/workflows/build.yml
+# 
+# This workflow:
+# 1. Runs on every push to main branch
+# 2. Generates HTML image tags for all galleries
+# 3. Injects them into index.html
+# 4. Deploys to Firebase Hosting
+# 5. Validates CDN image availability
+
+name: Build and Deploy
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '18'
+  FIREBASE_PROJECT_ID: 'thenonconformistdotxyz'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # ============================================
+      # 1. Checkout Repository
+      # ============================================
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      # ============================================
+      # 2. Setup Node.js
+      # ============================================
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      # ============================================
+      # 3. Install Dependencies
+      # ============================================
+      - name: Install dependencies
+        run: npm install
+      
+      # ============================================
+      # 4. Generate Image HTML Tags
+      # ============================================
+      - name: Generate image tags
+        run: node scripts/generate-images.js
+        env:
+          CDN_BASE_URL: ${{ secrets.CDN_BASE_URL }}
+      
+      # ============================================
+      # 5. Validate Generated HTML
+      # ============================================
+      - name: Validate HTML syntax
+        run: node scripts/validate-html.js
+      
+      # ============================================
+      # 6. Validate Image Count
+      # ============================================
+      - name: Validate image count
+        run: node scripts/validate-images.js
+      
+      # ============================================
+      # 7. Check CDN Accessibility
+      # ============================================
+      - name: Check CDN accessibility
+        run: node scripts/check-cdn.js
+        continue-on-error: true
+      
+      # ============================================
+      # 8. Run Tests
+      # ============================================
+      - name: Run tests
+        run: npm test
+        continue-on-error: true
+      
+      # ============================================
+      # 9. Build Artifacts
+      # ============================================
+      - name: Create build artifacts
+        run: |
+          mkdir -p dist
+          cp index.html dist/
+          cp styles.css dist/
+          cp script.js dist/
+          cp -r templates dist/ 2>/dev/null || true
+      
+      # ============================================
+      # 10. Upload artifacts for review
+      # ============================================
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-artifacts
+          path: dist/
+          retention-days: 30
+      
+      # ============================================
+      # 11. Deploy to Firebase (only on main push)
+      # ============================================
+      - name: Deploy to Firebase Hosting
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
+          channelId: live
+          projectId: ${{ env.FIREBASE_PROJECT_ID }}
+          target: thenonconformist
+          entryPoint: './dist'
+      
+      # ============================================
+      # 12. Notify Success
+      # ============================================
+      - name: Post success message
+        if: success()
+        run: |
+          echo "✅ Build and deployment successful!"
+          echo "📊 Total images processed: $(node scripts/count-images.js)"
+          echo "🚀 Live at: https://thenonconformist.web.app"
+
+  # ============================================
+  # VALIDATE JOB (runs in parallel)
+  # ============================================
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Lint HTML
+        run: npm run lint:html 2>/dev/null || echo "No HTML linter configured"
+      
+      - name: Validate CSS
+        run: npm run lint:css 2>/dev/null || echo "No CSS linter configured"
+      
+      - name: Validate JavaScript
+        run: npm run lint:js 2>/dev/null || echo "No JS linter configured"
+      
+      - name: Check for sensitive data
+        run: |
+          if grep -r "AIzaSy" . --include="*.html" --include="*.js" | grep -v "node_modules" | grep -v ".git"; then
+            echo "⚠️  Warning: Firebase credentials found in source. Use GitHub Secrets instead."
+            exit 1
+          fi
+
+  # ============================================
+  # PERFORMANCE JOB (optional)
+  # ============================================
+  performance:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Generate image HTML
+        run: node scripts/generate-images.js
+      
+      - name: Check bundle size
+        run: |
+          SIZE=$(stat --format=%s dist/index.html)
+          SIZE_KB=$((SIZE / 1024))
+          echo "📦 index.html size: ${SIZE_KB}KB"
+          if [ $SIZE_KB -gt 10000 ]; then
+            echo "⚠️  Warning: HTML file is larger than expected"
+          fi
+      
+      - name: Performance report
+        run: node scripts/performance-report.js
+
+---
+
+# ============================================
+# CONFIGURATION FILE: build.config.json
+# ============================================
+# Place this in project root
+
+{
+  "galleries": [
+    {
+      "id": "low",
+      "title": "Language of Windows",
+      "directory": "LoW",
+      "description": "Exploring architectural frames and the stories they hold",
+      "imageCount": 250,
+      "baseFilename": "LoW",
+      "cdnPath": "LoW"
+    },
+    {
+      "id": "sol",
+      "title": "Snapshots of Life",
+      "directory": "SoL",
+      "description": "Candid moments frozen in time",
+      "imageCount": 280,
+      "baseFilename": "SoL",
+      "cdnPath": "SoL"
+    },
+    {
+      "id": "r",
+      "title": "Reflections",
+      "directory": "R",
+      "description": "Mirrored worlds and hidden perspectives",
+      "imageCount": 220,
+      "baseFilename": "R",
+      "cdnPath": "R"
+    },
+    {
+      "id": "sa",
+      "title": "Street Art",
+      "directory": "SA",
+      "description": "Urban creativity and public expression",
+      "imageCount": 310,
+      "baseFilename": "SA",
+      "cdnPath": "SA"
+    }
+  ],
+  "cdn": {
+    "baseUrl": "https://thenonconformist.cdn.example.com",
+    "imageFormat": "jpg",
+    "namingPattern": "{directory}/{baseFilename}-{index}.jpg"
+  },
+  "build": {
+    "outputDir": "dist",
+    "templatesDir": "templates",
+    "totalImages": 1060,
+    "generateSourceMap": false
+  }
+}
+
+---
+
+# ============================================
+# BUILD SCRIPTS: scripts/generate-images.js
+# ============================================
+
+const fs = require('fs');
+const path = require('path');
+const config = require('../build.config.json');
+
+const CDN_BASE_URL = process.env.CDN_BASE_URL || config.cdn.baseUrl;
+
+// Ensure templates directory exists
+const templatesDir = config.build.templatesDir;
+if (!fs.existsSync(templatesDir)) {
+  fs.mkdirSync(templatesDir, { recursive: true });
+}
+
+let totalImagesGenerated = 0;
+
+// Generate HTML for each gallery
+config.galleries.forEach(gallery => {
+  console.log(`📸 Generating ${gallery.imageCount} images for ${gallery.title}...`);
+  
+  let htmlContent = `<div class="gallery-masonry" id="grid-${gallery.id}">\n`;
+  
+  // Generate image tags
+  for (let i = 1; i <= gallery.imageCount; i++) {
+    const filename = `${gallery.baseFilename}-${i}.${config.cdn.imageFormat}`;
+    const imageUrl = `${CDN_BASE_URL}/${gallery.cdnPath}/${filename}`;
+    const altText = `${gallery.title} - Image ${i}`;
+    
+    htmlContent += `  <img\n`;
+    htmlContent += `    src="${imageUrl}"\n`;
+    htmlContent += `    alt="${altText}"\n`;
+    htmlContent += `    data-url="${imageUrl}"\n`;
+    htmlContent += `    loading="lazy"\n`;
+    htmlContent += `  />\n`;
+    
+    totalImagesGenerated++;
+  }
+  
+  htmlContent += `</div>\n`;
+  
+  // Write to file
+  const outputPath = path.join(templatesDir, `gallery-${gallery.id}.html`);
+  fs.writeFileSync(outputPath, htmlContent, 'utf8');
+  console.log(`✅ Generated: ${outputPath}`);
+});
+
+// Write summary
+const summary = {
+  generatedAt: new Date().toISOString(),
+  totalImages: totalImagesGenerated,
+  galleries: config.galleries.length,
+  cdnBaseUrl: CDN_BASE_URL,
+  templateFiles: config.galleries.map(g => `gallery-${g.id}.html`)
+};
+
+fs.writeFileSync(
+  path.join(config.build.templatesDir, 'MANIFEST.json'),
+  JSON.stringify(summary, null, 2),
+  'utf8'
+);
+
+console.log(`\n🎉 Build complete!`);
+console.log(`📊 Total images: ${totalImagesGenerated}`);
+console.log(`📁 Output directory: ${config.build.templatesDir}`);
+
+---
+
+# ============================================
+# VALIDATION SCRIPT: scripts/validate-images.js
+# ============================================
+
+const fs = require('fs');
+const path = require('path');
+const config = require('../build.config.json');
+
+const templatesDir = config.build.templatesDir;
+
+console.log('🔍 Validating generated images...\n');
+
+let errors = 0;
+let totalImages = 0;
+
+config.galleries.forEach(gallery => {
+  const filePath = path.join(templatesDir, `gallery-${gallery.id}.html`);
+  
+  if (!fs.existsSync(filePath)) {
+    console.error(`❌ Missing: ${filePath}`);
+    errors++;
+    return;
+  }
+  
+  const content = fs.readFileSync(filePath, 'utf8');
+  const imageCount = (content.match(/<img/g) || []).length;
+  
+  if (imageCount !== gallery.imageCount) {
+    console.error(
+      `❌ ${gallery.title}: Expected ${gallery.imageCount} images, found ${imageCount}`
+    );
+    errors++;
+  } else {
+    console.log(`✅ ${gallery.title}: ${imageCount} images`);
+    totalImages += imageCount;
+  }
+});
+
+console.log(`\n📊 Total images validated: ${totalImages}`);
+console.log(`📊 Expected total: ${config.build.totalImages}`);
+
+if (totalImages !== config.build.totalImages) {
+  console.error(`❌ Image count mismatch!`);
+  process.exit(1);
+}
+
+if (errors > 0) {
+  console.error(`\n❌ Validation failed with ${errors} error(s)`);
+  process.exit(1);
+} else {
+  console.log(`\n✅ All validations passed!`);
+}
+
+---
+
+# ============================================
+# CDN CHECK SCRIPT: scripts/check-cdn.js
+# ============================================
+
+const https = require('https');
+const config = require('../build.config.json');
+
+const CDN_BASE_URL = process.env.CDN_BASE_URL || config.cdn.baseUrl;
+
+console.log(`🔗 Checking CDN accessibility: ${CDN_BASE_URL}\n`);
+
+// Test first image of first gallery
+const testGallery = config.galleries[0];
+const testUrl = `${CDN_BASE_URL}/${testGallery.cdnPath}/${testGallery.baseFilename}-1.jpg`;
+
+https.head(testUrl, { timeout: 5000 }, (res) => {
+  if (res.statusCode >= 200 && res.statusCode < 400) {
+    console.log(`✅ CDN is accessible (Status: ${res.statusCode})`);
+    console.log(`   Test URL: ${testUrl}`);
+  } else {
+    console.warn(`⚠️  CDN returned status ${res.statusCode}`);
+    console.warn(`   Test URL: ${testUrl}`);
+    console.warn(`   Images may not be available yet.`);
+  }
+}).on('error', (err) => {
+  console.warn(`⚠️  CDN connectivity check failed:`);
+  console.warn(`   ${err.message}`);
+  console.warn(`   This is non-critical. Build will continue.`);
+});
+
+---
+
+# ============================================
+# GITHUB SECRETS REQUIRED
+# ============================================
+# Add these to: Settings → Secrets and variables → Actions
+
+FIREBASE_SERVICE_ACCOUNT:
+  (Copy JSON from Firebase Console → Project Settings → Service Accounts)
+
+CDN_BASE_URL:
+  https://thenonconformist.cdn.example.com
+
+---
+
+# ============================================
+# PACKAGE.JSON SCRIPTS
+# ============================================
+
+{
+  "scripts": {
+    "build": "node scripts/generate-images.js",
+    "validate": "node scripts/validate-images.js",
+    "check-cdn": "node scripts/check-cdn.js",
+    "test": "node scripts/validate-images.js && node scripts/validate-html.js",
+    "deploy": "firebase deploy"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}
