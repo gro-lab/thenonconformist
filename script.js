@@ -85,7 +85,11 @@ const debounce = (fn, delay) => {
 };
 
 const createImageUrl = (dir, index) => {
-    return `https://thenonconformist.cdn.example.com/${dir}/${dir}-${index}.jpg`;
+    // Load images from GitHub repository
+    const owner = 'gro-lab'; // Replace with your GitHub username
+    const repo = 'thenonconformist'; // Replace with your repo name
+    const branch = 'main'; // Replace with your branch name
+    return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/${dir}/${dir}-${index}.jpg`;
 };
 
 const getDocIdFromUrl = (url) => {
