@@ -86,25 +86,35 @@ const debounce = (fn, delay) => {
 
 const createImageUrl = (dir, index) => {
     // Load images from GitHub repository
-    const owner = 'gro-lab'; // Replace with your GitHub username
-    const repo = 'thenonconformist'; // Replace with your repo name
-    const branch = 'main'; // Replace with your branch name
+    const owner = 'gro-lab'; // Your GitHub username
+    const repo = 'thenonconformist'; // Your repo name
+    const branch = 'main'; // Your branch name
     
-    // Try multiple extensions (case-insensitive)
-    const extensions = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
-    return { dir, index, owner, repo, branch, extensions };
+    // Map of directories to their actual names (handle case-sensitivity)
+    const dirMap = {
+        'low': 'images/LoW',
+        'sol': 'images/SoL',
+        'r': 'images/R',
+        'sa': 'images/SA'
+    };
+    
+    const actualDir = dirMap[dir] || `images/${dir}`;
+    const extensions = ['JPEG', 'JPG', 'jpeg', 'jpg', 'png', 'webp', 'gif'];
+    
+    return { owner, repo, branch, actualDir, dir, index, extensions };
 };
 
 // Helper function to get image URL with extension fallback
 const getImageUrlWithFallback = async (imageConfig) => {
-    const { dir, index, owner, repo, branch, extensions } = imageConfig;
+    const { owner, repo, branch, actualDir, dir, index, extensions } = imageConfig;
     
+    // Try extensions in order
     for (const ext of extensions) {
-        const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/${dir}/${dir}-${index}.${ext}`;
+        const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${actualDir}/${dir}-${index}.${ext}`;
         try {
-            // Try to fetch the image to verify it exists
-            const response = await fetch(url, { method: 'HEAD' });
-            if (response.ok) {
+            const response = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+            if (response.ok || response.status === 200) {
+                console.log(`✅ Found: ${url}`);
                 return url;
             }
         } catch (e) {
@@ -112,8 +122,10 @@ const getImageUrlWithFallback = async (imageConfig) => {
         }
     }
     
-    // If no extension works, return a default (will show error)
-    return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/${dir}/${dir}-${index}.jpg`;
+    // If no extension works, return first try (will show error)
+    const fallbackUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${actualDir}/${dir}-${index}.${extensions[0]}`;
+    console.warn(`⚠️ Could not verify: ${fallbackUrl}`);
+    return fallbackUrl;
 };
 
 const getDocIdFromUrl = (url) => {
@@ -448,4 +460,4 @@ const init = async () => {
 };
 
 // Start when DOM is ready
-document.addEventListener('DOMContentLoaded', init);    
+document.addEventListener('DOMContentLoaded', init);
