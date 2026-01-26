@@ -1,5 +1,6 @@
 // ============================================
-// THE NONCONFORMIST - FIXED Script
+// THE NONCONFORMIST - Script with Fallback
+// Works with OR without images.json manifest
 // ============================================
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js';
@@ -35,7 +36,7 @@ const db = getFirestore(app);
 const analytics = getAnalytics(app);
 
 // ============================================
-// IMAGE MANIFEST - NO MORE HEAD REQUESTS!
+// IMAGE MANIFEST
 // ============================================
 let IMAGE_MANIFEST = null;
 
@@ -46,19 +47,23 @@ let IMAGE_MANIFEST = null;
 const galleries = {
     'low': {
         title: 'Language of Windows',
-        dir: 'LoW'
+        dir: 'LoW',
+        count: 50
     },
     'sol': {
         title: 'Snapshots of Life',
-        dir: 'SoL'
+        dir: 'SoL',
+        count: 50
     },
     'r': {
         title: 'Reflections',
-        dir: 'R'
+        dir: 'R',
+        count: 50
     },
     'sa': {
         title: 'Street Art',
-        dir: 'SA'
+        dir: 'SA',
+        count: 50
     }
 };
 
@@ -82,13 +87,11 @@ const debounce = (fn, delay) => {
     };
 };
 
-// CRITICAL FIX: Use correct case-sensitive filename
 const createImageUrl = (dir, index, extension) => {
     const owner = 'gro-lab';
     const repo = 'thenonconformist';
     const branch = 'main';
     
-    // Use the actual directory name (case-sensitive)
     return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/${dir}/${dir}-${index}.${extension}`;
 };
 
@@ -97,23 +100,44 @@ const getDocIdFromUrl = (url) => {
 };
 
 // ============================================
-// LOAD IMAGE MANIFEST
+// LOAD IMAGE MANIFEST (OPTIONAL)
 // ============================================
 
 const loadImageManifest = async () => {
     try {
         const response = await fetch('images.json');
         if (!response.ok) {
-            console.warn('⚠️ images.json not found, images may not load');
+            console.warn('⚠️ images.json not found, using fallback mode');
             return null;
         }
         IMAGE_MANIFEST = await response.json();
-        console.log('✅ Loaded image manifest:', IMAGE_MANIFEST);
+        console.log('✅ Loaded image manifest');
         return IMAGE_MANIFEST;
     } catch (error) {
-        console.error('Error loading manifest:', error);
+        console.warn('⚠️ Could not load manifest, using fallback mode');
         return null;
     }
+};
+
+// ============================================
+// FALLBACK: Try common extensions
+// ============================================
+
+const tryImageExtensions = async (dir, index) => {
+    const extensions = ['JPEG', 'JPG', 'jpg', 'jpeg', 'png', 'PNG'];
+    
+    for (const ext of extensions) {
+        const url = createImageUrl(dir, index, ext);
+        try {
+            const response = await fetch(url, { method: 'HEAD', cache: 'force-cache' });
+            if (response.ok) {
+                return { url, ext };
+            }
+        } catch (e) {
+            // Continue to next extension
+        }
+    }
+    return null;
 };
 
 // ============================================
@@ -165,29 +189,49 @@ const updateLike = async (url, increment_value) => {
 };
 
 // ============================================
-// INSTANT IMAGE GRID GENERATION
+// IMAGE GRID GENERATION (WITH FALLBACK)
 // ============================================
 
-const generateImageGrid = (galleryKey) => {
+const generateImageGrid = async (galleryKey) => {
     const gallery = galleries[galleryKey];
     const gridId = `grid-${galleryKey}`;
     const grid = document.getElementById(gridId);
     
-    if (!grid || !IMAGE_MANIFEST) return;
-    
-    const manifestImages = IMAGE_MANIFEST[gallery.dir];
-    if (!manifestImages || manifestImages.length === 0) {
-        console.log(`📸 No images in manifest for ${gallery.title}`);
-        return;
-    }
+    if (!grid) return;
     
     console.log(`📸 Loading ${gallery.title}...`);
     
-    // Create image objects with URLs
-    const images = manifestImages.map(item => {
-        const url = createImageUrl(gallery.dir, item.index, item.ext);
-        return { url, index: item.index };
-    });
+    let images = [];
+    
+    // MODE 1: Use manifest if available
+    if (IMAGE_MANIFEST && IMAGE_MANIFEST[gallery.dir]) {
+        const manifestImages = IMAGE_MANIFEST[gallery.dir];
+        images = manifestImages.map(item => ({
+            url: createImageUrl(gallery.dir, item.index, item.ext),
+            index: item.index
+        }));
+        console.log(`   Using manifest: ${images.length} images`);
+    }
+    // MODE 2: Fallback - try all extensions for each index
+    else {
+        console.log('   Using fallback mode (slower)...');
+        const BATCH_SIZE = 5;
+        
+        for (let i = 1; i <= gallery.count; i += BATCH_SIZE) {
+            const batch = [];
+            
+            for (let j = i; j < Math.min(i + BATCH_SIZE, gallery.count + 1); j++) {
+                batch.push(
+                    tryImageExtensions(gallery.dir, j)
+                        .then(result => result ? { url: result.url, index: j } : null)
+                );
+            }
+            
+            const results = await Promise.all(batch);
+            images.push(...results.filter(Boolean));
+        }
+        console.log(`   Found ${images.length} images`);
+    }
     
     // Sort by likes
     images.sort((a, b) => {
@@ -204,7 +248,7 @@ const generateImageGrid = (galleryKey) => {
         img.dataset.url = url;
         img.loading = 'lazy';
         
-        img.addEventListener('error', (e) => {
+        img.addEventListener('error', () => {
             console.warn(`Failed to load: ${url}`);
             img.remove();
         });
@@ -394,20 +438,17 @@ const init = async () => {
     try {
         console.log('🚀 Initializing The Nonconformist...');
         
-        // Load manifest first (INSTANT - no network requests)
+        // Try to load manifest (optional)
         await loadImageManifest();
-        
-        if (!IMAGE_MANIFEST) {
-            console.error('❌ Cannot load without images.json manifest');
-            return;
-        }
         
         // Fetch likes from Firestore
         await fetchAllLikes();
         console.log('✅ Loaded likes from Firestore');
         
-        // Generate grids instantly (no HEAD requests!)
-        Object.keys(galleries).forEach(key => generateImageGrid(key));
+        // Generate grids (with or without manifest)
+        for (const key of Object.keys(galleries)) {
+            await generateImageGrid(key);
+        }
         
         setupCarousel();
         
