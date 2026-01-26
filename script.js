@@ -1,5 +1,5 @@
 // ============================================
-// THE NONCONFORMIST - Script
+// THE NONCONFORMIST - OPTIMIZED Script
 // ============================================
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js';
@@ -12,8 +12,6 @@ import {
     updateDoc,
     increment,
     getDocs,
-    query,
-    orderBy,
     serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js';
 import { getAnalytics } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-analytics.js';
@@ -32,35 +30,41 @@ const firebaseConfig = {
     measurementId: "G-5MGS0G4CDY"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const analytics = getAnalytics(app);
 
 // ============================================
-// GALLERY CONFIGURATION
+// OPTIMIZED IMAGE CONFIGURATION
 // ============================================
+
+// Pre-define known extensions to try (most common first)
+const EXTENSION_PRIORITY = ['JPG', 'JPEG', 'jpg', 'jpeg'];
 
 const galleries = {
     'low': {
         title: 'Language of Windows',
         dir: 'LoW',
-        count: 50  // Will check which images exist
+        count: 50,
+        primaryExt: 'JPEG'  // Set based on your actual files
     },
     'sol': {
         title: 'Snapshots of Life',
         dir: 'SoL',
-        count: 50
+        count: 50,
+        primaryExt: 'JPG'
     },
     'r': {
         title: 'Reflections',
         dir: 'R',
-        count: 50
+        count: 50,
+        primaryExt: 'JPG'
     },
     'sa': {
         title: 'Street Art',
         dir: 'SA',
-        count: 50
+        count: 50,
+        primaryExt: 'JPG'
     }
 };
 
@@ -71,6 +75,7 @@ const galleries = {
 let likesCache = {};
 let currentModalImageUrl = null;
 let isProcessing = false;
+let imageCache = new Map(); // Cache verified image URLs
 
 // ============================================
 // UTILITIES
@@ -84,13 +89,12 @@ const debounce = (fn, delay) => {
     };
 };
 
-const createImageUrl = (dir, index) => {
-    // Load images from GitHub repository
-    const owner = 'gro-lab'; // Your GitHub username
-    const repo = 'thenonconformist'; // Your repo name
-    const branch = 'main'; // Your branch name
+// Optimized: Try primary extension first, then fallbacks
+const createImageUrl = (dir, index, extension = null) => {
+    const owner = 'gro-lab';
+    const repo = 'thenonconformist';
+    const branch = 'main';
     
-    // Map of directories to their actual names (handle case-sensitivity)
     const dirMap = {
         'low': 'images/LoW',
         'sol': 'images/SoL',
@@ -99,33 +103,61 @@ const createImageUrl = (dir, index) => {
     };
     
     const actualDir = dirMap[dir] || `images/${dir}`;
-    const extensions = ['JPEG', 'JPG', 'jpeg', 'jpg', 'png', 'webp', 'gif'];
+    const ext = extension || galleries[dir].primaryExt;
     
-    return { owner, repo, branch, actualDir, dir, index, extensions };
+    return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${actualDir}/${dir.toUpperCase()}-${index}.${ext}`;
 };
 
-// Helper function to get image URL with extension fallback
-const getImageUrlWithFallback = async (imageConfig) => {
-    const { owner, repo, branch, actualDir, dir, index, extensions } = imageConfig;
-    
-    // Try extensions in order
-    for (const ext of extensions) {
-        const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${actualDir}/${dir}-${index}.${ext}`;
-        try {
-            const response = await fetch(url, { method: 'HEAD', cache: 'no-store' });
-            if (response.ok || response.status === 200) {
-                console.log(`✅ Found: ${url}`);
-                return url;
-            }
-        } catch (e) {
-            // Continue to next extension
-        }
+// CRITICAL OPTIMIZATION: Check image existence WITHOUT downloading
+const verifyImageExists = async (url) => {
+    // Check cache first
+    if (imageCache.has(url)) {
+        return imageCache.get(url);
     }
     
-    // If no extension works, return first try (will show error)
-    const fallbackUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${actualDir}/${dir}-${index}.${extensions[0]}`;
-    console.warn(`⚠️ Could not verify: ${fallbackUrl}`);
-    return fallbackUrl;
+    try {
+        const response = await fetch(url, { 
+            method: 'HEAD',
+            cache: 'force-cache' // Use browser cache
+        });
+        const exists = response.ok;
+        imageCache.set(url, exists);
+        return exists;
+    } catch (e) {
+        imageCache.set(url, false);
+        return false;
+    }
+};
+
+// Optimized: Try extensions in parallel, not sequential
+const findImageUrl = async (dir, index) => {
+    const cacheKey = `${dir}-${index}`;
+    if (imageCache.has(cacheKey)) {
+        return imageCache.get(cacheKey);
+    }
+    
+    // Try primary extension first
+    const primaryUrl = createImageUrl(dir, index);
+    if (await verifyImageExists(primaryUrl)) {
+        imageCache.set(cacheKey, primaryUrl);
+        return primaryUrl;
+    }
+    
+    // Try other extensions in parallel
+    const extensionsToTry = EXTENSION_PRIORITY.filter(ext => 
+        ext.toUpperCase() !== galleries[dir].primaryExt.toUpperCase()
+    );
+    
+    const promises = extensionsToTry.map(ext => 
+        verifyImageExists(createImageUrl(dir, index, ext))
+            .then(exists => exists ? createImageUrl(dir, index, ext) : null)
+    );
+    
+    const results = await Promise.all(promises);
+    const foundUrl = results.find(url => url !== null);
+    
+    imageCache.set(cacheKey, foundUrl || null);
+    return foundUrl;
 };
 
 const getDocIdFromUrl = (url) => {
@@ -159,13 +191,11 @@ const updateLike = async (url, increment_value) => {
         const docSnap = await getDoc(docRef);
         
         if (docSnap.exists()) {
-            // Update existing document
             await updateDoc(docRef, {
                 likes: increment(increment_value),
                 lastUpdated: serverTimestamp()
             });
         } else {
-            // Create new document
             await setDoc(docRef, {
                 url: url,
                 likes: Math.max(0, increment_value),
@@ -174,7 +204,6 @@ const updateLike = async (url, increment_value) => {
             });
         }
         
-        // Update local cache
         likesCache[docId] = (likesCache[docId] || 0) + increment_value;
         return likesCache[docId];
     } catch (error) {
@@ -184,7 +213,7 @@ const updateLike = async (url, increment_value) => {
 };
 
 // ============================================
-// IMAGE GRID GENERATION
+// OPTIMIZED IMAGE GRID GENERATION
 // ============================================
 
 const generateImageGrid = async (galleryKey) => {
@@ -194,50 +223,32 @@ const generateImageGrid = async (galleryKey) => {
     
     if (!grid) return;
     
-    // Create image elements - only add successfully loaded ones
+    console.log(`📸 Loading ${gallery.title}...`);
+    
+    // Batch process images in chunks to avoid overwhelming the browser
+    const BATCH_SIZE = 10;
     const images = [];
     
-    for (let i = 1; i <= gallery.count; i++) {
-        const imageConfig = createImageUrl(gallery.dir, i);
+    for (let i = 1; i <= gallery.count; i += BATCH_SIZE) {
+        const batch = [];
         
-        try {
-            const url = await getImageUrlWithFallback(imageConfig);
-            
-            // Verify the URL actually works before creating the image element
-            const response = await fetch(url, { method: 'HEAD' });
-            if (!response.ok) {
-                console.log(`❌ Skipping ${gallery.dir}-${i}: Not found`);
-                continue; // Skip this image
-            }
-            
-            const img = document.createElement('img');
-            img.src = url;
-            img.alt = `${gallery.title} - Image ${i}`;
-            img.dataset.url = url;
-            img.loading = 'lazy';
-            
-            // Add error handling
-            img.addEventListener('error', (e) => {
-                console.warn(`Failed to load image: ${url}`);
-                img.remove(); // Remove broken images from DOM
-            });
-            
-            img.addEventListener('load', () => {
-                console.log(`✅ Loaded: ${url}`);
-            });
-            
-            img.addEventListener('click', () => openModal(url));
-            
-            // Lazy loading with Intersection Observer
-            setupLazyLoading(img);
-            
-            images.push({ element: img, url: url });
-            
-        } catch (error) {
-            console.log(`❌ Skipping ${gallery.dir}-${i}: ${error.message}`);
-            continue;
+        // Process batch in parallel
+        for (let j = i; j < Math.min(i + BATCH_SIZE, gallery.count + 1); j++) {
+            batch.push(
+                findImageUrl(galleryKey, j)
+                    .then(url => url ? { index: j, url } : null)
+                    .catch(() => null)
+            );
         }
+        
+        const results = await Promise.all(batch);
+        images.push(...results.filter(Boolean));
+        
+        // Show progress
+        console.log(`  Loaded ${images.length} images...`);
     }
+    
+    console.log(`✅ Found ${images.length} images for ${gallery.title}`);
     
     // Sort by likes
     images.sort((a, b) => {
@@ -246,31 +257,23 @@ const generateImageGrid = async (galleryKey) => {
         return likesB - likesA;
     });
     
-    // Append to grid
-    images.forEach(({ element }) => {
-        grid.appendChild(element);
-    });
-    
-    console.log(`📸 Generated ${images.length} images for ${gallery.title}`);
-};
-
-const setupLazyLoading = (img) => {
-    const options = {
-        rootMargin: '200px',
-        threshold: 0.01
-    };
-    
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const image = entry.target;
-                image.src = image.dataset.src || image.src;
-                observer.unobserve(image);
-            }
+    // Create and append image elements
+    images.forEach(({ url }) => {
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = `${gallery.title}`;
+        img.dataset.url = url;
+        img.loading = 'lazy';
+        
+        img.addEventListener('error', (e) => {
+            console.warn(`Failed to load: ${url}`);
+            img.remove();
         });
-    }, options);
-    
-    observer.observe(img);
+        
+        img.addEventListener('click', () => openModal(url));
+        
+        grid.appendChild(img);
+    });
 };
 
 // ============================================
@@ -296,7 +299,6 @@ const setupCarousel = () => {
         });
     });
     
-    // Touch swipe support
     setupTouchSwipe();
 };
 
@@ -357,7 +359,6 @@ const updateLikeButton = () => {
     
     count.textContent = likes;
     
-    // Check if user has liked (using localStorage for session)
     const likedKey = `liked_${docId}`;
     const isLiked = localStorage.getItem(likedKey) === 'true';
     
@@ -436,7 +437,6 @@ modal.addEventListener('click', (e) => {
 
 likeBtn.addEventListener('click', toggleLike);
 
-// Handle resize and orientation changes
 window.addEventListener('resize', debounce(() => {
     setupCarousel();
 }, 150));
@@ -451,20 +451,17 @@ window.addEventListener('orientationchange', () => {
 
 const init = async () => {
     try {
-        // Fetch likes from Firestore
+        console.log('🚀 Initializing The Nonconformist...');
+        
+        // Fetch likes first
         await fetchAllLikes();
+        console.log('✅ Loaded likes from Firestore');
         
-        // Log a sample URL for debugging
-        const sampleConfig = createImageUrl('LoW', 1);
-        const sampleUrl = await getImageUrlWithFallback(sampleConfig);
-        console.log(`📸 Sample image URL: ${sampleUrl}`);
+        // Generate grids sequentially to avoid overwhelming GitHub
+        for (const key of Object.keys(galleries)) {
+            await generateImageGrid(key);
+        }
         
-        // Generate grids for all galleries (in parallel)
-        await Promise.all(
-            Object.keys(galleries).map(key => generateImageGrid(key))
-        );
-        
-        // Setup carousel functionality
         setupCarousel();
         
         console.log('✅ The Nonconformist initialized successfully');
@@ -473,5 +470,4 @@ const init = async () => {
     }
 };
 
-// Start when DOM is ready
 document.addEventListener('DOMContentLoaded', init);
