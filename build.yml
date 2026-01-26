@@ -5,8 +5,8 @@
 # 
 # This workflow:
 # 1. Runs on every push to main branch
-# 2. Deploys to Firebase Hosting
-# 3. Validates image availability
+# 2. Auto-generates images.json manifest
+# 3. Deploys to Firebase Hosting
 
 name: Build and Deploy
 
@@ -50,7 +50,62 @@ jobs:
         run: npm install
       
       # ============================================
-      # 4. Create build artifacts
+      # 4. AUTO-GENERATE images.json manifest
+      # ============================================
+      - name: Generate image manifest
+        run: |
+          echo "🔍 Scanning for images..."
+          
+          # Create Node.js script inline
+          cat > generate-manifest.js << 'EOF'
+          const fs = require('fs');
+          const path = require('path');
+          
+          const galleries = ['LoW', 'SoL', 'R', 'SA'];
+          const manifest = {};
+          
+          galleries.forEach(dir => {
+              const dirPath = path.join(process.cwd(), 'images', dir);
+              
+              if (!fs.existsSync(dirPath)) {
+                  console.warn(`⚠️  Directory not found: ${dirPath}`);
+                  manifest[dir] = [];
+                  return;
+              }
+              
+              const files = fs.readdirSync(dirPath);
+              
+              manifest[dir] = files
+                  .filter(file => /\.(jpe?g|png|gif|webp)$/i.test(file))
+                  .map(file => {
+                      const match = file.match(/^(\w+)-(\d+)\.(\w+)$/i);
+                      if (match) {
+                          return {
+                              index: parseInt(match[2]),
+                              ext: match[3]
+                          };
+                      }
+                      return null;
+                  })
+                  .filter(Boolean)
+                  .sort((a, b) => a.index - b.index);
+              
+              console.log(`📸 ${dir}: Found ${manifest[dir].length} images`);
+          });
+          
+          fs.writeFileSync('images.json', JSON.stringify(manifest, null, 2));
+          console.log('\n✅ Generated images.json');
+          EOF
+          
+          # Run the script
+          node generate-manifest.js
+          
+          # Show the generated manifest
+          echo "📄 Generated manifest:"
+          cat images.json
+      
+      # ============================================
+      # 5. Create build artifacts
       # ============================================
       - name: Create build artifacts
         run: |
@@ -58,10 +113,14 @@ jobs:
           cp index.html dist/
           cp styles.css dist/
           cp script.js dist/
+          cp images.json dist/
           cp -r images dist/ 2>/dev/null || true
+          
+          echo "✅ Build artifacts created"
+          ls -lah dist/
       
       # ============================================
-      # 5. Upload artifacts for review
+      # 6. Upload artifacts for review
       # ============================================
       - name: Upload build artifacts
         uses: actions/upload-artifact@v3
@@ -71,7 +130,7 @@ jobs:
           retention-days: 30
       
       # ============================================
-      # 6. Deploy to Firebase (only on main push)
+      # 7. Deploy to Firebase (only on main push)
       # ============================================
       - name: Deploy to Firebase Hosting
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -85,13 +144,14 @@ jobs:
           entryPoint: './dist'
       
       # ============================================
-      # 7. Notify Success
+      # 8. Notify Success
       # ============================================
       - name: Post success message
         if: success()
         run: |
           echo "✅ Build and deployment successful!"
           echo "🚀 Live at: https://thenonconformist.web.app"
+          echo "📸 Manifest included with $(cat images.json | grep -o '"index"' | wc -l) total images"
 
   # ============================================
   # VALIDATE JOB (runs in parallel)
@@ -133,14 +193,17 @@ jobs:
       
       - name: Check image directories
         run: |
+          total=0
           for dir in LoW SoL R SA; do
             if [ -d "images/$dir" ]; then
-              count=$(ls -1 images/$dir/*.{jpg,jpeg,JPG,JPEG,png,webp,gif} 2>/dev/null | wc -l)
+              count=$(find images/$dir -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" -o -iname "*.gif" \) | wc -l)
               echo "📸 Found $count images in $dir"
+              total=$((total + count))
             else
               echo "⚠️ Directory images/$dir not found"
             fi
           done
+          echo "📊 Total images across all galleries: $total"
 
 ---
 
@@ -163,7 +226,8 @@ jobs:
 #   "version": "1.0.0",
 #   "description": "The Nonconformist - Photography Portfolio",
 #   "scripts": {
-#     "deploy": "firebase deploy"
+#     "deploy": "firebase deploy",
+#     "generate-manifest": "node generate-manifest.js"
 #   },
 #   "dependencies": {},
 #   "devDependencies": {}
@@ -187,6 +251,17 @@ jobs:
 #       {
 #         "source": "**",
 #         "destination": "/index.html"
+#       }
+#     ],
+#     "headers": [
+#       {
+#         "source": "images.json",
+#         "headers": [
+#           {
+#             "key": "Cache-Control",
+#             "value": "public, max-age=300"
+#           }
+#         ]
 #       }
 #     ]
 #   }

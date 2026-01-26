@@ -1,5 +1,5 @@
 // ============================================
-// THE NONCONFORMIST - OPTIMIZED Script
+// THE NONCONFORMIST - FIXED Script
 // ============================================
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js';
@@ -35,36 +35,30 @@ const db = getFirestore(app);
 const analytics = getAnalytics(app);
 
 // ============================================
-// OPTIMIZED IMAGE CONFIGURATION
+// IMAGE MANIFEST - NO MORE HEAD REQUESTS!
 // ============================================
+let IMAGE_MANIFEST = null;
 
-// Pre-define known extensions to try (most common first)
-const EXTENSION_PRIORITY = ['JPG', 'JPEG', 'jpg', 'jpeg'];
+// ============================================
+// GALLERY CONFIGURATION
+// ============================================
 
 const galleries = {
     'low': {
         title: 'Language of Windows',
-        dir: 'LoW',
-        count: 50,
-        primaryExt: 'JPEG'  // Set based on your actual files
+        dir: 'LoW'
     },
     'sol': {
         title: 'Snapshots of Life',
-        dir: 'SoL',
-        count: 50,
-        primaryExt: 'JPG'
+        dir: 'SoL'
     },
     'r': {
         title: 'Reflections',
-        dir: 'R',
-        count: 50,
-        primaryExt: 'JPG'
+        dir: 'R'
     },
     'sa': {
         title: 'Street Art',
-        dir: 'SA',
-        count: 50,
-        primaryExt: 'JPG'
+        dir: 'SA'
     }
 };
 
@@ -75,7 +69,6 @@ const galleries = {
 let likesCache = {};
 let currentModalImageUrl = null;
 let isProcessing = false;
-let imageCache = new Map(); // Cache verified image URLs
 
 // ============================================
 // UTILITIES
@@ -89,79 +82,38 @@ const debounce = (fn, delay) => {
     };
 };
 
-// Optimized: Try primary extension first, then fallbacks
-const createImageUrl = (dir, index, extension = null) => {
+// CRITICAL FIX: Use correct case-sensitive filename
+const createImageUrl = (dir, index, extension) => {
     const owner = 'gro-lab';
     const repo = 'thenonconformist';
     const branch = 'main';
     
-    const dirMap = {
-        'low': 'images/LoW',
-        'sol': 'images/SoL',
-        'r': 'images/R',
-        'sa': 'images/SA'
-    };
-    
-    const actualDir = dirMap[dir] || `images/${dir}`;
-    const ext = extension || galleries[dir].primaryExt;
-    
-    return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${actualDir}/${dir.toUpperCase()}-${index}.${ext}`;
-};
-
-// CRITICAL OPTIMIZATION: Check image existence WITHOUT downloading
-const verifyImageExists = async (url) => {
-    // Check cache first
-    if (imageCache.has(url)) {
-        return imageCache.get(url);
-    }
-    
-    try {
-        const response = await fetch(url, { 
-            method: 'HEAD',
-            cache: 'force-cache' // Use browser cache
-        });
-        const exists = response.ok;
-        imageCache.set(url, exists);
-        return exists;
-    } catch (e) {
-        imageCache.set(url, false);
-        return false;
-    }
-};
-
-// Optimized: Try extensions in parallel, not sequential
-const findImageUrl = async (dir, index) => {
-    const cacheKey = `${dir}-${index}`;
-    if (imageCache.has(cacheKey)) {
-        return imageCache.get(cacheKey);
-    }
-    
-    // Try primary extension first
-    const primaryUrl = createImageUrl(dir, index);
-    if (await verifyImageExists(primaryUrl)) {
-        imageCache.set(cacheKey, primaryUrl);
-        return primaryUrl;
-    }
-    
-    // Try other extensions in parallel
-    const extensionsToTry = EXTENSION_PRIORITY.filter(ext => 
-        ext.toUpperCase() !== galleries[dir].primaryExt.toUpperCase()
-    );
-    
-    const promises = extensionsToTry.map(ext => 
-        verifyImageExists(createImageUrl(dir, index, ext))
-            .then(exists => exists ? createImageUrl(dir, index, ext) : null)
-    );
-    
-    const results = await Promise.all(promises);
-    const foundUrl = results.find(url => url !== null);
-    
-    imageCache.set(cacheKey, foundUrl || null);
-    return foundUrl;
+    // Use the actual directory name (case-sensitive)
+    return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/${dir}/${dir}-${index}.${extension}`;
 };
 
 const getDocIdFromUrl = (url) => {
     return btoa(url).replace(/[^a-zA-Z0-9]/g, '');
+};
+
+// ============================================
+// LOAD IMAGE MANIFEST
+// ============================================
+
+const loadImageManifest = async () => {
+    try {
+        const response = await fetch('images.json');
+        if (!response.ok) {
+            console.warn('⚠️ images.json not found, images may not load');
+            return null;
+        }
+        IMAGE_MANIFEST = await response.json();
+        console.log('✅ Loaded image manifest:', IMAGE_MANIFEST);
+        return IMAGE_MANIFEST;
+    } catch (error) {
+        console.error('Error loading manifest:', error);
+        return null;
+    }
 };
 
 // ============================================
@@ -213,42 +165,29 @@ const updateLike = async (url, increment_value) => {
 };
 
 // ============================================
-// OPTIMIZED IMAGE GRID GENERATION
+// INSTANT IMAGE GRID GENERATION
 // ============================================
 
-const generateImageGrid = async (galleryKey) => {
+const generateImageGrid = (galleryKey) => {
     const gallery = galleries[galleryKey];
     const gridId = `grid-${galleryKey}`;
     const grid = document.getElementById(gridId);
     
-    if (!grid) return;
+    if (!grid || !IMAGE_MANIFEST) return;
+    
+    const manifestImages = IMAGE_MANIFEST[gallery.dir];
+    if (!manifestImages || manifestImages.length === 0) {
+        console.log(`📸 No images in manifest for ${gallery.title}`);
+        return;
+    }
     
     console.log(`📸 Loading ${gallery.title}...`);
     
-    // Batch process images in chunks to avoid overwhelming the browser
-    const BATCH_SIZE = 10;
-    const images = [];
-    
-    for (let i = 1; i <= gallery.count; i += BATCH_SIZE) {
-        const batch = [];
-        
-        // Process batch in parallel
-        for (let j = i; j < Math.min(i + BATCH_SIZE, gallery.count + 1); j++) {
-            batch.push(
-                findImageUrl(galleryKey, j)
-                    .then(url => url ? { index: j, url } : null)
-                    .catch(() => null)
-            );
-        }
-        
-        const results = await Promise.all(batch);
-        images.push(...results.filter(Boolean));
-        
-        // Show progress
-        console.log(`  Loaded ${images.length} images...`);
-    }
-    
-    console.log(`✅ Found ${images.length} images for ${gallery.title}`);
+    // Create image objects with URLs
+    const images = manifestImages.map(item => {
+        const url = createImageUrl(gallery.dir, item.index, item.ext);
+        return { url, index: item.index };
+    });
     
     // Sort by likes
     images.sort((a, b) => {
@@ -274,6 +213,8 @@ const generateImageGrid = async (galleryKey) => {
         
         grid.appendChild(img);
     });
+    
+    console.log(`✅ Loaded ${images.length} images for ${gallery.title}`);
 };
 
 // ============================================
@@ -453,14 +394,20 @@ const init = async () => {
     try {
         console.log('🚀 Initializing The Nonconformist...');
         
-        // Fetch likes first
+        // Load manifest first (INSTANT - no network requests)
+        await loadImageManifest();
+        
+        if (!IMAGE_MANIFEST) {
+            console.error('❌ Cannot load without images.json manifest');
+            return;
+        }
+        
+        // Fetch likes from Firestore
         await fetchAllLikes();
         console.log('✅ Loaded likes from Firestore');
         
-        // Generate grids sequentially to avoid overwhelming GitHub
-        for (const key of Object.keys(galleries)) {
-            await generateImageGrid(key);
-        }
+        // Generate grids instantly (no HEAD requests!)
+        Object.keys(galleries).forEach(key => generateImageGrid(key));
         
         setupCarousel();
         
