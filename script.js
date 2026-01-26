@@ -89,6 +89,30 @@ const createImageUrl = (dir, index) => {
     const owner = 'gro-lab'; // Replace with your GitHub username
     const repo = 'thenonconformist'; // Replace with your repo name
     const branch = 'main'; // Replace with your branch name
+    
+    // Try multiple extensions (case-insensitive)
+    const extensions = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+    return { dir, index, owner, repo, branch, extensions };
+};
+
+// Helper function to get image URL with extension fallback
+const getImageUrlWithFallback = async (imageConfig) => {
+    const { dir, index, owner, repo, branch, extensions } = imageConfig;
+    
+    for (const ext of extensions) {
+        const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/${dir}/${dir}-${index}.${ext}`;
+        try {
+            // Try to fetch the image to verify it exists
+            const response = await fetch(url, { method: 'HEAD' });
+            if (response.ok) {
+                return url;
+            }
+        } catch (e) {
+            // Continue to next extension
+        }
+    }
+    
+    // If no extension works, return a default (will show error)
     return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/${dir}/${dir}-${index}.jpg`;
 };
 
@@ -151,7 +175,7 @@ const updateLike = async (url, increment_value) => {
 // IMAGE GRID GENERATION
 // ============================================
 
-const generateImageGrid = (galleryKey) => {
+const generateImageGrid = async (galleryKey) => {
     const gallery = galleries[galleryKey];
     const gridId = `grid-${galleryKey}`;
     const grid = document.getElementById(gridId);
@@ -161,12 +185,25 @@ const generateImageGrid = (galleryKey) => {
     // Create image elements
     const images = [];
     for (let i = 1; i <= gallery.count; i++) {
-        const url = createImageUrl(gallery.dir, i);
+        const imageConfig = createImageUrl(gallery.dir, i);
+        const url = await getImageUrlWithFallback(imageConfig);
+        
         const img = document.createElement('img');
         img.src = url;
         img.alt = `${gallery.title} - Image ${i}`;
         img.dataset.url = url;
         img.loading = 'lazy';
+        
+        // Add error handling
+        img.addEventListener('error', (e) => {
+            console.warn(`Failed to load image: ${url}`);
+            img.style.opacity = '0.5';
+            img.title = 'Image failed to load';
+        });
+        
+        img.addEventListener('load', () => {
+            console.log(`✅ Loaded: ${url}`);
+        });
         
         img.addEventListener('click', () => openModal(url));
         
@@ -187,6 +224,8 @@ const generateImageGrid = (galleryKey) => {
     images.forEach(({ element }) => {
         grid.appendChild(element);
     });
+    
+    console.log(`📸 Generated ${images.length} images for ${gallery.title}`);
 };
 
 const setupLazyLoading = (img) => {
@@ -389,19 +428,24 @@ const init = async () => {
         // Fetch likes from Firestore
         await fetchAllLikes();
         
-        // Generate grids for all galleries
-        Object.keys(galleries).forEach(key => {
-            generateImageGrid(key);
-        });
+        // Log a sample URL for debugging
+        const sampleConfig = createImageUrl('LoW', 1);
+        const sampleUrl = await getImageUrlWithFallback(sampleConfig);
+        console.log(`📸 Sample image URL: ${sampleUrl}`);
+        
+        // Generate grids for all galleries (in parallel)
+        await Promise.all(
+            Object.keys(galleries).map(key => generateImageGrid(key))
+        );
         
         // Setup carousel functionality
         setupCarousel();
         
-        console.log('The Nonconformist initialized successfully');
+        console.log('✅ The Nonconformist initialized successfully');
     } catch (error) {
         console.error('Initialization error:', error);
     }
 };
 
 // Start when DOM is ready
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', init);    
