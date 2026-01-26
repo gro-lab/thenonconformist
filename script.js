@@ -45,22 +45,22 @@ const galleries = {
     'low': {
         title: 'Language of Windows',
         dir: 'LoW',
-        count: 12
+        count: 50  // Will check which images exist
     },
     'sol': {
         title: 'Snapshots of Life',
         dir: 'SoL',
-        count: 12
+        count: 50
     },
     'r': {
         title: 'Reflections',
         dir: 'R',
-        count: 12
+        count: 50
     },
     'sa': {
         title: 'Street Art',
         dir: 'SA',
-        count: 12
+        count: 50
     }
 };
 
@@ -194,35 +194,49 @@ const generateImageGrid = async (galleryKey) => {
     
     if (!grid) return;
     
-    // Create image elements
+    // Create image elements - only add successfully loaded ones
     const images = [];
+    
     for (let i = 1; i <= gallery.count; i++) {
         const imageConfig = createImageUrl(gallery.dir, i);
-        const url = await getImageUrlWithFallback(imageConfig);
         
-        const img = document.createElement('img');
-        img.src = url;
-        img.alt = `${gallery.title} - Image ${i}`;
-        img.dataset.url = url;
-        img.loading = 'lazy';
-        
-        // Add error handling
-        img.addEventListener('error', (e) => {
-            console.warn(`Failed to load image: ${url}`);
-            img.style.opacity = '0.5';
-            img.title = 'Image failed to load';
-        });
-        
-        img.addEventListener('load', () => {
-            console.log(`✅ Loaded: ${url}`);
-        });
-        
-        img.addEventListener('click', () => openModal(url));
-        
-        // Lazy loading with Intersection Observer
-        setupLazyLoading(img);
-        
-        images.push({ element: img, url: url });
+        try {
+            const url = await getImageUrlWithFallback(imageConfig);
+            
+            // Verify the URL actually works before creating the image element
+            const response = await fetch(url, { method: 'HEAD' });
+            if (!response.ok) {
+                console.log(`❌ Skipping ${gallery.dir}-${i}: Not found`);
+                continue; // Skip this image
+            }
+            
+            const img = document.createElement('img');
+            img.src = url;
+            img.alt = `${gallery.title} - Image ${i}`;
+            img.dataset.url = url;
+            img.loading = 'lazy';
+            
+            // Add error handling
+            img.addEventListener('error', (e) => {
+                console.warn(`Failed to load image: ${url}`);
+                img.remove(); // Remove broken images from DOM
+            });
+            
+            img.addEventListener('load', () => {
+                console.log(`✅ Loaded: ${url}`);
+            });
+            
+            img.addEventListener('click', () => openModal(url));
+            
+            // Lazy loading with Intersection Observer
+            setupLazyLoading(img);
+            
+            images.push({ element: img, url: url });
+            
+        } catch (error) {
+            console.log(`❌ Skipping ${gallery.dir}-${i}: ${error.message}`);
+            continue;
+        }
     }
     
     // Sort by likes
