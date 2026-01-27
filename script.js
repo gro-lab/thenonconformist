@@ -353,6 +353,21 @@ const renderMasonryGrid = async (galleryKey) => {
 };
 
 // ============================================
+// GALLERY DESCRIPTION SWITCHER
+// ============================================
+
+const switchGalleryDescription = (galleryKey) => {
+    const descriptions = document.querySelectorAll('.gallery-description');
+    descriptions.forEach(desc => {
+        if (desc.dataset.gallery === galleryKey) {
+            desc.classList.remove('hidden');
+        } else {
+            desc.classList.add('hidden');
+        }
+    });
+};
+
+// ============================================
 // FILTER FUNCTIONALITY (Gallery Switcher)
 // ============================================
 
@@ -373,6 +388,9 @@ const setupFilters = () => {
             
             // Load and render the selected gallery
             await renderMasonryGrid(galleryKey);
+            
+            // Switch gallery description
+            switchGalleryDescription(galleryKey);
         });
     });
 };
@@ -479,6 +497,15 @@ const toggleLike = async () => {
         }
         
         updateLikeButton();
+        
+        // Update the like count in the grid for the current image
+        const imageCard = document.querySelector(`.image-card[data-url="${currentModalImageUrl}"]`);
+        if (imageCard) {
+            const likeCountSpan = imageCard.querySelector('.card-like-count span');
+            if (likeCountSpan) {
+                likeCountSpan.textContent = likesCache[docId];
+            }
+        }
     } catch (error) {
         console.error('Error toggling like:', error);
     } finally {
