@@ -1,47 +1,22 @@
 #!/usr/bin/env node
 
-/**
- * MANIFEST GENERATOR
- * 
- * This script scans your images folder and generates a manifest.json file
- * that lists all available images with their extensions.
- * 
- * Usage:
- *   node generate-manifest.js
- * 
- * Run this from your project root where the 'images' folder is located.
- */
-
 const fs = require('fs');
 const path = require('path');
 
-// Configuration
 const IMAGES_DIR = './images';
-const OUTPUT_FILE = './images/manifest.json';
+const OUTPUT_FILE = './images.json';
 const VALID_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'JPG', 'JPEG', 'PNG', 'GIF', 'WEBP'];
-
-// Gallery directories to scan
 const GALLERIES = ['LoW', 'SoL', 'R', 'SA'];
 
-/**
- * Extract index number from filename
- * e.g., "LoW-5.JPEG" -> 5
- */
-function extractIndex(filename, prefix) {
-    const match = filename.match(new RegExp(`^${prefix}-(\\d+)\\.`, 'i'));
-    return match ? parseInt(match[1], 10) : null;
-}
-
-/**
- * Get file extension from filename
- */
 function getExtension(filename) {
-    return path.extname(filename).slice(1); // Remove the dot
+    return path.extname(filename).slice(1);
 }
 
-/**
- * Scan a gallery directory and return image metadata
- */
+function isValidImage(filename) {
+    const ext = getExtension(filename);
+    return VALID_EXTENSIONS.includes(ext);
+}
+
 function scanGallery(galleryDir) {
     const fullPath = path.join(IMAGES_DIR, galleryDir);
     
@@ -54,38 +29,25 @@ function scanGallery(galleryDir) {
     const images = [];
     
     files.forEach(file => {
-        const ext = getExtension(file);
+        if (!isValidImage(file)) return;
         
-        // Check if it's a valid image file
-        if (!VALID_EXTENSIONS.includes(ext)) {
-            return;
-        }
-        
-        const index = extractIndex(file, galleryDir);
-        
-        if (index === null) {
-            console.warn(`⚠️  Skipping file with invalid naming: ${file}`);
-            return;
-        }
+        const filePath = path.join(fullPath, file);
+        const stats = fs.statSync(filePath);
         
         images.push({
-            index: index,
-            ext: ext
+            filename: file,
+            ext: getExtension(file),
+            path: `images/${galleryDir}/${file}`,
+            mtime: stats.mtime.getTime()
         });
     });
     
-    // Sort by index
-    images.sort((a, b) => a.index - b.index);
-    
+    images.sort((a, b) => a.filename.localeCompare(b.filename));
     return images;
 }
 
-/**
- * Generate the complete manifest
- */
 function generateManifest() {
-    console.log('📦 Generating manifest...\n');
-    
+    console.log('📦 Generating universal manifest...\n');
     const manifest = {};
     
     GALLERIES.forEach(gallery => {
@@ -98,21 +60,11 @@ function generateManifest() {
     return manifest;
 }
 
-/**
- * Write manifest to file
- */
 function writeManifest(manifest) {
     const json = JSON.stringify(manifest, null, 2);
-    
-    // Ensure images directory exists
-    if (!fs.existsSync(IMAGES_DIR)) {
-        fs.mkdirSync(IMAGES_DIR, { recursive: true });
-    }
-    
     fs.writeFileSync(OUTPUT_FILE, json, 'utf8');
     console.log(`✅ Manifest written to: ${OUTPUT_FILE}`);
     
-    // Print summary
     console.log('\n📊 Summary:');
     let totalImages = 0;
     Object.keys(manifest).forEach(gallery => {
@@ -123,9 +75,6 @@ function writeManifest(manifest) {
     console.log(`   Total: ${totalImages} images`);
 }
 
-/**
- * Main execution
- */
 function main() {
     try {
         const manifest = generateManifest();
@@ -137,7 +86,6 @@ function main() {
     }
 }
 
-// Run if executed directly
 if (require.main === module) {
     main();
 }

@@ -1,78 +1,112 @@
 {
   "LoW": [
     {
-      "index": 1,
-      "ext": "JPEG"
+      "filename": "LoW-1.JPEG",
+      "ext": "JPEG",
+      "path": "images/LoW/LoW-1.JPEG",
+      "mtime": 1769460477278
     },
     {
-      "index": 2,
-      "ext": "JPEG"
+      "filename": "LoW-2.JPEG",
+      "ext": "JPEG",
+      "path": "images/LoW/LoW-2.JPEG",
+      "mtime": 1769460477728
     },
     {
-      "index": 3,
-      "ext": "PNG"
+      "filename": "LoW-3.PNG",
+      "ext": "PNG",
+      "path": "images/LoW/LoW-3.PNG",
+      "mtime": 1769460477389
     },
     {
-      "index": 4,
-      "ext": "JPG"
+      "filename": "LoW-4.JPG",
+      "ext": "JPG",
+      "path": "images/LoW/LoW-4.JPG",
+      "mtime": 1769460477022
     },
     {
-      "index": 5,
-      "ext": "PNG"
+      "filename": "LoW-5.PNG",
+      "ext": "PNG",
+      "path": "images/LoW/LoW-5.PNG",
+      "mtime": 1769460477342
     }
   ],
   "SoL": [
     {
-      "index": 1,
-      "ext": "PNG"
+      "filename": "SoL-1.PNG",
+      "ext": "PNG",
+      "path": "images/SoL/SoL-1.PNG",
+      "mtime": 1769460477053
     },
     {
-      "index": 2,
-      "ext": "PNG"
+      "filename": "SoL-2.PNG",
+      "ext": "PNG",
+      "path": "images/SoL/SoL-2.PNG",
+      "mtime": 1769460477374
     },
     {
-      "index": 3,
-      "ext": "PNG"
+      "filename": "SoL-3.PNG",
+      "ext": "PNG",
+      "path": "images/SoL/SoL-3.PNG",
+      "mtime": 1769460477310
     }
   ],
   "R": [
     {
-      "index": 1,
-      "ext": "PNG"
+      "filename": "R-1.PNG",
+      "ext": "PNG",
+      "path": "images/R/R-1.PNG",
+      "mtime": 1769460477759
     },
     {
-      "index": 2,
-      "ext": "PNG"
+      "filename": "R-2.PNG",
+      "ext": "PNG",
+      "path": "images/R/R-2.PNG",
+      "mtime": 1769460477229
     },
     {
-      "index": 3,
-      "ext": "PNG"
+      "filename": "R-3.PNG",
+      "ext": "PNG",
+      "path": "images/R/R-3.PNG",
+      "mtime": 1769460477786
     }
   ],
   "SA": [
     {
-      "index": 1,
-      "ext": "JPG"
+      "filename": "SA-1.JPG",
+      "ext": "JPG",
+      "path": "images/SA/SA-1.JPG",
+      "mtime": 1769460476989
     },
     {
-      "index": 2,
-      "ext": "PNG"
+      "filename": "SA-2.PNG",
+      "ext": "PNG",
+      "path": "images/SA/SA-2.PNG",
+      "mtime": 1769460477117
     },
     {
-      "index": 3,
-      "ext": "PNG"
+      "filename": "SA-3.PNG",
+      "ext": "PNG",
+      "path": "images/SA/SA-3.PNG",
+      "mtime": 1769460476654
     },
     {
-      "index": 4,
-      "ext": "JPG"
+      "filename": "SA-4.JPG",
+      "ext": "JPG",
+      "path": "images/SA/SA-4.JPG",
+      "mtime": 1769460476621
     },
     {
-      "index": 5,
-      "ext": "JPG"
+      "filename": "SA-5.JPG",
+      "ext": "JPG",
+      "path": "images/SA/SA-5.JPG",
+      "mtime": 1769460476759
     },
     {
-      "index": 6,
-      "ext": "PNG"
+      "filename": "SA-6.PNG",
+      "ext": "PNG",
+      "path": "images/SA/SA-6.PNG",
+      "mtime": 1769460476814
     }
   ]
 }

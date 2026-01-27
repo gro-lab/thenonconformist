@@ -5,7 +5,7 @@
 # 
 # This workflow:
 # 1. Runs on every push to main branch
-# 2. Auto-generates images.json manifest
+# 2. Auto-generates images.json manifest (UNIVERSAL - ANY FILENAME)
 # 3. Deploys to Firebase Hosting
 
 name: Build and Deploy
@@ -51,6 +51,7 @@ jobs:
       
       # ============================================
       # 4. AUTO-GENERATE images.json manifest
+      # UPDATED: Now detects ALL images regardless of filename
       # ============================================
       - name: Generate image manifest
         run: |
@@ -63,6 +64,16 @@ jobs:
           
           const galleries = ['LoW', 'SoL', 'R', 'SA'];
           const manifest = {};
+          const validExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'JPG', 'JPEG', 'PNG', 'GIF', 'WEBP'];
+          
+          function getExtension(filename) {
+              return path.extname(filename).slice(1);
+          }
+          
+          function isValidImage(filename) {
+              const ext = getExtension(filename);
+              return validExtensions.includes(ext);
+          }
           
           galleries.forEach(dir => {
               const dirPath = path.join(process.cwd(), 'images', dir);
@@ -76,33 +87,41 @@ jobs:
               const files = fs.readdirSync(dirPath);
               
               manifest[dir] = files
-                  .filter(file => /\.(jpe?g|png|gif|webp)$/i.test(file))
+                  .filter(file => isValidImage(file))
                   .map(file => {
-                      const match = file.match(/^(\w+)-(\d+)\.(\w+)$/i);
-                      if (match) {
-                          return {
-                              index: parseInt(match[2]),
-                              ext: match[3]
-                          };
-                      }
-                      return null;
+                      const filePath = path.join(dirPath, file);
+                      const stats = fs.statSync(filePath);
+                      return {
+                          filename: file,
+                          ext: getExtension(file),
+                          path: `images/${dir}/${file}`,
+                          mtime: stats.mtime.getTime()
+                      };
                   })
-                  .filter(Boolean)
-                  .sort((a, b) => a.index - b.index);
+                  .sort((a, b) => a.filename.localeCompare(b.filename));
               
               console.log(`📸 ${dir}: Found ${manifest[dir].length} images`);
           });
           
           fs.writeFileSync('images.json', JSON.stringify(manifest, null, 2));
           console.log('\n✅ Generated images.json');
+          console.log('\n📊 Manifest Summary:');
+          let totalImages = 0;
+          Object.keys(manifest).forEach(gallery => {
+              const count = manifest[gallery].length;
+              totalImages += count;
+              console.log(`   ${gallery}: ${count} images`);
+          });
+          console.log(`   Total: ${totalImages} images`);
           EOF
           
           # Run the script
           node generate-manifest.js
           
-          # Show the generated manifest
-          echo "📄 Generated manifest:"
-          cat images.json
+          # Show the generated manifest (first 50 lines)
+          echo ""
+          echo "📄 Generated manifest (preview):"
+          head -n 50 images.json
       
       # ============================================
       # 5. Create build artifacts
@@ -151,7 +170,7 @@ jobs:
         run: |
           echo "✅ Build and deployment successful!"
           echo "🚀 Live at: https://thenonconformist.web.app"
-          echo "📸 Manifest included with $(cat images.json | grep -o '"index"' | wc -l) total images"
+          echo "📸 Manifest included with $(cat images.json | grep -o '"filename"' | wc -l) total images"
 
   # ============================================
   # VALIDATE JOB (runs in parallel)

@@ -1,4 +1,4 @@
-// THE NONCONFORMIST - Updated Script with Fixed Navigation
+// THE NONCONFORMIST - Updated Script with Universal Image Detection
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js';
 import {
@@ -37,6 +37,11 @@ const galleries = {
     'sa': { title: 'Street Art', dir: 'SA' }
 };
 
+// GITHUB REPOSITORY CONFIGURATION
+const GITHUB_OWNER = 'gro-lab';
+const GITHUB_REPO = 'thenonconformist';
+const GITHUB_BRANCH = 'main';
+
 // STATE
 let imageManifest = {};
 let likesCache = {};
@@ -59,10 +64,7 @@ const debounce = (fn, delay) => {
 // MANIFEST LOADING
 const loadManifest = async () => {
     try {
-        const owner = 'gro-lab';
-        const repo = 'thenonconformist';
-        const branch = 'main';
-        const manifestUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/manifest.json`;
+        const manifestUrl = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/images.json`;
         
         console.log('📦 Loading manifest...');
         const response = await fetch(manifestUrl);
@@ -95,7 +97,12 @@ const generateFallbackManifest = () => {
         const ext = defaultExtensions[dir] || 'JPEG';
         manifest[dir] = [];
         for (let i = 1; i <= 50; i++) {
-            manifest[dir].push({ index: i, ext: ext });
+            manifest[dir].push({ 
+                filename: `${dir}-${i}.${ext}`,
+                ext: ext,
+                path: `images/${dir}/${dir}-${i}.${ext}`,
+                mtime: Date.now()
+            });
         }
     });
     
@@ -104,12 +111,10 @@ const generateFallbackManifest = () => {
     return manifest;
 };
 
-// IMAGE URL
-const createImageUrl = (dir, index, ext) => {
-    const owner = 'gro-lab';
-    const repo = 'thenonconformist';
-    const branch = 'main';
-    return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/${dir}/${dir}-${index}.${ext}`;
+// IMAGE URL - UPDATED for universal filename support
+const createImageUrl = (imageData) => {
+    // Use the path from the manifest which includes the actual filename
+    return `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${imageData.path}`;
 };
 
 const getDocIdFromUrl = (url) => {
@@ -196,7 +201,7 @@ const setupLazyLoading = (img) => {
     observer.observe(img);
 };
 
-// GALLERY GENERATION
+// GALLERY GENERATION - UPDATED for universal filename support
 const generateImageGrid = async (galleryKey) => {
     if (galleryImages[galleryKey]) {
         console.log(`✅ Gallery ${galleryKey} from cache`);
@@ -215,7 +220,7 @@ const generateImageGrid = async (galleryKey) => {
     console.log(`📸 Loading ${imageList.length} images for ${gallery.title}`);
     
     const images = imageList.map(imageData => {
-        const url = createImageUrl(dir, imageData.index, imageData.ext);
+        const url = createImageUrl(imageData);
         const docId = getDocIdFromUrl(url);
         const likes = likesCache[docId] || 0;
         
@@ -224,11 +229,12 @@ const generateImageGrid = async (galleryKey) => {
         card.dataset.gallery = galleryKey;
         card.dataset.url = url;
         card.dataset.category = gallery.title;
+        card.dataset.filename = imageData.filename;
         
         const img = document.createElement('img');
         img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
         img.dataset.src = url;
-        img.alt = `${gallery.title} - Image ${imageData.index}`;
+        img.alt = `${gallery.title} - ${imageData.filename}`;
         img.style.opacity = '0';
         img.style.transition = 'opacity 0.3s ease';
         
@@ -248,7 +254,8 @@ const generateImageGrid = async (galleryKey) => {
             url: url, 
             likes: likes,
             gallery: galleryKey,
-            category: gallery.title
+            category: gallery.title,
+            imageData: imageData
         };
     });
     
