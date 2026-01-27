@@ -76,6 +76,22 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 let analytics = null; // ✅ Don't initialize yet - wait for consent
 
+// Optional: Floating cookie settings button (for users who already consented)
+function createCookieManageButton() {
+    if (!CookieConsent.hasConsent()) return;
+    
+    const btn = document.createElement('button');
+    btn.id = 'cookie-manage-floating';
+    btn.className = 'cookie-manage-btn';
+    btn.innerHTML = '<i class="fas fa-cookie-bite"></i>';
+    btn.title = 'Manage Cookie Preferences';
+    btn.setAttribute('aria-label', 'Manage Cookie Preferences');
+    
+    btn.addEventListener('click', openCookieSettings);
+    
+    document.body.appendChild(btn);
+}
+
 // ============================================
 // CONDITIONAL ANALYTICS INITIALIZATION
 // ============================================
