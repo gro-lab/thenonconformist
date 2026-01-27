@@ -5,31 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="The Nonconformist - A minimalist photography portfolio">
     <meta name="theme-color" content="#ffffff">
-    <meta property="og:title" content="The Nonconformist">
-    <meta property="og:description" content="Capturing moments that challenge the ordinary">
-    <meta property="og:type" content="website">
-    <!-- PERFORMANCE OPTIMIZATION: Preconnect to external resources -->
-    <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
-    <link rel="dns-prefetch" href="https://raw.githubusercontent.com">
-    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
-    <link rel="dns-prefetch" href="https://firestore.googleapis.com">
-    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
-    <link rel="dns-prefetch" href="https://www.gstatic.com">
-
-    <!-- Font preload for faster text rendering -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <title>The Nonconformist - Photography Portfolio</title>
     <link rel="stylesheet" href="styles.css">
-    <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <!-- Header -->
     <header class="header">
         <div class="header-content">
             <div class="logo">
@@ -51,9 +34,7 @@
         </div>
     </header>
 
-    <!-- Main Content -->
     <main>
-        <!-- Hero Section -->
         <section class="hero">
             <div class="hero-content">
                 <h2 class="hero-title">About The Nonconformist</h2>
@@ -61,7 +42,6 @@
             </div>
         </section>
 
-        <!-- Filter Tabs -->
         <div class="filter-tabs">
             <button class="filter-tab active" data-gallery="low">
                 <i class="fas fa-building"></i>
@@ -81,43 +61,35 @@
             </button>
         </div>
 
-        <!-- Gallery Description Section -->
         <div class="gallery-description-wrapper">
             <div class="gallery-description" data-gallery="low">
-                <p>Windows frame our perception of the world, creating boundaries between interior and exterior spaces. This collection explores the architectural poetry of windows—their patterns, reflections, and the stories they silently tell about the spaces they inhabit and the lives they witness.</p>
+                <p>Windows frame our perception of the world, creating boundaries between interior and exterior spaces.</p>
             </div>
             <div class="gallery-description hidden" data-gallery="sol">
-                <p>Life unfolds in fleeting moments that often pass unnoticed. These snapshots capture the essence of everyday existence—candid encounters, spontaneous gestures, and the beauty found in ordinary circumstances. Each image is a reminder that extraordinary moments hide within the mundane.</p>
+                <p>Life unfolds in fleeting moments that often pass unnoticed.</p>
             </div>
             <div class="gallery-description hidden" data-gallery="r">
-                <p>Reflections create parallel realities, distorting and reimagining the world around us. Water, glass, and polished surfaces become mirrors that challenge our perception, offering alternative perspectives on familiar scenes. This collection celebrates the dreamlike quality of reflected imagery.</p>
+                <p>Reflections create parallel realities, distorting and reimagining the world around us.</p>
             </div>
             <div class="gallery-description hidden" data-gallery="sa">
-                <p>Urban walls serve as canvases for voices that demand to be heard. Street art transforms public spaces into galleries of rebellion, creativity, and cultural commentary. These images document the raw energy and powerful messages embedded in the concrete landscapes of our cities.</p>
+                <p>Urban walls serve as canvases for voices that demand to be heard.</p>
             </div>
         </div>
 
-        <!-- Masonry Gallery Grid -->
         <div class="masonry-wrapper">
-            <div class="masonry-grid" id="masonry-grid">
-                <!-- Images will be dynamically inserted here -->
-                <!-- Each image will be wrapped in a card with hover effects -->
-            </div>
+            <div class="masonry-grid" id="masonry-grid"></div>
         </div>
 
-        <!-- Loading Indicator -->
         <div class="loading-indicator" id="loading-indicator">
             <div class="spinner"></div>
             <p>Loading beautiful moments...</p>
         </div>
 
-        <!-- Back to Top Button -->
         <button class="back-to-top" id="back-to-top" aria-label="Back to top">
             <i class="fas fa-arrow-up"></i>
         </button>
     </main>
 
-    <!-- Modal for Image View -->
     <div id="modal" class="modal" hidden aria-modal="true" role="dialog">
         <button class="modal-close" aria-label="Close image">
             <i class="fas fa-times"></i>
@@ -125,27 +97,14 @@
         <div class="modal-content">
             <div class="modal-image-wrapper">
                 <img id="modal-image" src="" alt="Full-size image view">
-            </div>
-            <div class="modal-sidebar">
-                <div class="modal-actions">
+                <div class="modal-like-overlay">
                     <button class="action-btn like-btn" id="like-btn" aria-label="Like this image">
                         <i class="far fa-heart heart"></i>
                         <span class="count">0</span>
                     </button>
-                    <button class="action-btn share-btn" id="share-btn" aria-label="Share image">
-                        <i class="fas fa-share-alt"></i>
-                    </button>
-                    <button class="action-btn download-btn" id="download-btn" aria-label="View full size">
-                        <i class="fas fa-expand"></i>
-                    </button>
-                </div>
-                <div class="modal-info">
-                    <h3 id="modal-title">Image Title</h3>
-                    <p id="modal-category">Category</p>
                 </div>
             </div>
         </div>
-        <!-- Navigation Arrows -->
         <button class="modal-nav modal-prev" id="modal-prev" aria-label="Previous image">
             <i class="fas fa-chevron-left"></i>
         </button>
@@ -154,79 +113,24 @@
         </button>
     </div>
 
-    <!-- Terms & Conditions Modal -->
-    <div id="terms-modal" class="modal terms-modal" hidden aria-modal="true" role="dialog" aria-labelledby="terms-modal-title">
-        <button class="modal-close" aria-label="Close terms and conditions">
+    <div id="terms-modal" class="modal terms-modal" hidden>
+        <button class="modal-close" aria-label="Close terms">
             <i class="fas fa-times"></i>
         </button>
         <div class="modal-content terms-content">
-            <h2 id="terms-modal-title">Terms & Conditions</h2>
+            <h2>Terms & Conditions</h2>
             <div class="terms-text">
                 <h3>1. Introduction</h3>
-                <p>Welcome to The Nonconformist. These Terms and Conditions govern your use of our website and services. By accessing and using this website, you accept and agree to be bound by the terms and provision of this agreement.</p>
-
-                <h3>2. Use License</h3>
-                <p>Permission is granted to temporarily download one copy of the materials (information or software) on The Nonconformist for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:</p>
-                <ul>
-                    <li>Modify or copy the materials</li>
-                    <li>Use the materials for any commercial purpose or for any public display</li>
-                    <li>Attempt to decompile or reverse engineer any software contained on the website</li>
-                    <li>Remove any copyright or other proprietary notations from the materials</li>
-                    <li>Transfer the materials to another person or "mirror" the materials on any other server</li>
-                    <li>Use the website in any way that infringes upon the rights of others or restricts or inhibits anyone's use and enjoyment of the website</li>
-                </ul>
-
-                <h3>3. Intellectual Property Rights</h3>
-                <p>All photography, design elements, and content on The Nonconformist are the exclusive property of the photographer and protected by international copyright laws and international treaty provisions. Unauthorized reproduction, publication, distribution, or transmission of copyrighted material is prohibited and will be prosecuted to the fullest extent of the law.</p>
-
-                <h3>4. User-Generated Content & Interactions</h3>
-                <p>By engaging with our content through likes, interactions, and other forms of engagement, you grant us the right to display your interactions in aggregate form. Individual user data is never shared or sold to third parties. We collect only essential interaction data necessary for the operation of the website.</p>
-
-                <h3>5. GDPR Compliance & Data Privacy</h3>
-                <p>We comply fully with the General Data Protection Regulation (GDPR) and other applicable data protection laws. Your data is processed transparently and securely using industry-standard encryption. We do not collect personal information without your explicit consent. Interaction data (likes) is stored securely on Firebase and you may request deletion at any time by contacting us. We do not sell, rent, lease, or share your data with any third party.</p>
-
-                <h3>6. Limitation of Liability</h3>
-                <p>The materials on The Nonconformist are provided on an 'as is' basis without warranties, express or implied. The Nonconformist makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, implied warranties of merchantability, fitness for a particular purpose, and non-infringement of intellectual property or other violation of rights.</p>
-
-                <h3>7. Accuracy of Materials</h3>
-                <p>The materials appearing on The Nonconformist could include technical, typographical, or photographic errors. The Nonconformist does not warrant that any of the materials on the website are accurate, complete, or current. The Nonconformist may make changes to the materials contained on its website at any time without notice.</p>
-
-                <h3>8. Materials and Content</h3>
-                <p>The documents, images, and resources accessible from The Nonconformist website are provided 'as is.' The Nonconformist makes no representations or warranties, expressed or implied, regarding the accuracy, completeness, timeliness, or reliability of any materials published on this website.</p>
-
-                <h3>9. Limitations on Linking</h3>
-                <p>Without prior written approval and except as noted below, you may not create links to this website without the express written consent of The Nonconformist. For questions about linking to The Nonconformist website, please contact us at the email address provided in the header.</p>
-
-                <h3>10. Modifications to Website Terms</h3>
-                <p>The Nonconformist may revise these Terms and Conditions for its website at any time without notice. By using this website you are agreeing to be bound by the then current version of these Terms and Conditions. We will post notice of significant changes on this website.</p>
-
-                <h3>11. Governing Law & Jurisdiction</h3>
-                <p>These Terms and Conditions are governed by and construed in accordance with the laws of applicable jurisdiction, and you irrevocably submit to the exclusive jurisdiction of the courts in that location. If you believe The Nonconformist has violated these Terms and Conditions, please notify us immediately.</p>
-
-                <h3>12. Acceptable Use Policy</h3>
-                <p>You agree not to use The Nonconformist website in any manner that could damage, disable, overburden, or impair the website. Prohibited behavior includes harassing or causing distress or inconvenience to any person, transmitting obscene or offensive content, or disrupting the normal flow of dialogue within The Nonconformist website.</p>
-
-                <h3>13. Third Party Links</h3>
-                <p>The Nonconformist is not responsible for the contents of any off-site pages referenced by a link on this website. The inclusion of any link does not imply endorsement by The Nonconformist of the website. Use of any such linked website is at the user's own risk.</p>
-
-                <h3>14. Disclaimer</h3>
-                <p>The information, software, products, and services published on this website may include inaccuracies or typographical errors. The Nonconformist does not warrant the accuracy or completeness of the information, software, products, and services published on this website.</p>
-
-                <h3>15. Contact & Support</h3>
-                <p>If you have questions about these Terms and Conditions, please contact us at then-onconformist@outlook.com. For privacy concerns or data deletion requests, please include "GDPR Request" in the subject line.</p>
-
-                <h3>16. Severability</h3>
-                <p>If any provision of these Terms and Conditions is found to be invalid or unenforceable, the remaining provisions shall continue in full force and effect.</p>
-
+                <p>Welcome to The Nonconformist. By accessing this website, you accept these terms.</p>
+                <h3>5. GDPR Compliance</h3>
+                <p>We comply with GDPR. Your data is secure and never sold to third parties.</p>
                 <p style="margin-top: 2rem; font-size: 0.85rem; color: #999;">
-                    <strong>Last Updated:</strong> January 2025<br>
-                    <strong>Effective Date:</strong> January 1, 2025
+                    <strong>Last Updated:</strong> January 2025
                 </p>
             </div>
         </div>
     </div>
 
-    <!-- Footer -->
     <footer class="footer">
         <div class="footer-content">
             <div class="footer-section">
@@ -236,10 +140,10 @@
             <div class="footer-section">
                 <h4>Connect</h4>
                 <div class="footer-social">
-                    <a href="https://www.instagram.com/then0nc0nformist/" target="_blank" rel="noopener noreferrer">
+                    <a href="https://www.instagram.com/then0nc0nformist/" target="_blank">
                         <i class="fab fa-instagram"></i>
                     </a>
-                    <a href="https://www.facebook.com/then0nc0nformist" target="_blank" rel="noopener noreferrer">
+                    <a href="https://www.facebook.com/then0nc0nformist" target="_blank">
                         <i class="fab fa-facebook"></i>
                     </a>
                 </div>

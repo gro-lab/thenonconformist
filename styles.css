@@ -1,6 +1,4 @@
-/* ============================================
-   THE NONCONFORMIST - Pinterest-Inspired Styles
-   ============================================ */
+/* THE NONCONFORMIST - Updated Styles */
 
 :root {
     --bg-white: #ffffff;
@@ -27,10 +25,6 @@
     --font-display: 'Playfair Display', Georgia, serif;
 }
 
-/* ============================================
-   GLOBAL STYLES
-   ============================================ */
-
 * {
     margin: 0;
     padding: 0;
@@ -47,7 +41,6 @@ body {
     color: var(--text-primary);
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
 }
 
 ::selection {
@@ -55,10 +48,7 @@ body {
     color: white;
 }
 
-/* ============================================
-   HEADER
-   ============================================ */
-
+/* HEADER */
 .header {
     position: sticky;
     top: 0;
@@ -88,7 +78,6 @@ body {
     background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-red) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    background-clip: text;
 }
 
 .tagline {
@@ -157,10 +146,7 @@ body {
     }
 }
 
-/* ============================================
-   HERO SECTION
-   ============================================ */
-
+/* HERO */
 .hero {
     padding: 4rem 2rem;
     text-align: center;
@@ -177,13 +163,11 @@ body {
     font-size: 3rem;
     font-weight: 600;
     margin-bottom: 1rem;
-    color: var(--text-primary);
 }
 
 .hero-subtitle {
     font-size: 1.125rem;
     color: var(--text-secondary);
-    font-weight: 400;
 }
 
 @media (max-width: 768px) {
@@ -194,16 +178,9 @@ body {
     .hero-title {
         font-size: 2rem;
     }
-    
-    .hero-subtitle {
-        font-size: 1rem;
-    }
 }
 
-/* ============================================
-   FILTER TABS
-   ============================================ */
-
+/* FILTER TABS */
 .filter-tabs {
     max-width: 1600px;
     margin: 0 auto 2rem;
@@ -211,11 +188,6 @@ body {
     display: flex;
     gap: 1rem;
     overflow-x: auto;
-    scrollbar-width: none;
-}
-
-.filter-tabs::-webkit-scrollbar {
-    display: none;
 }
 
 .filter-tab {
@@ -245,20 +217,7 @@ body {
     border-color: var(--text-primary);
 }
 
-.filter-tab i {
-    font-size: 1rem;
-}
-
-@media (max-width: 768px) {
-    .filter-tabs {
-        padding: 0 1rem;
-    }
-}
-
-/* ============================================
-   GALLERY DESCRIPTION
-   ============================================ */
-
+/* GALLERY DESCRIPTION */
 .gallery-description-wrapper {
     max-width: 1600px;
     margin: 0 auto 2rem;
@@ -271,7 +230,6 @@ body {
     border-radius: var(--border-radius-md);
     border-left: 4px solid var(--accent-red);
     transition: all var(--transition-normal);
-    animation: fadeIn var(--transition-normal);
 }
 
 .gallery-description.hidden {
@@ -282,39 +240,10 @@ body {
     font-size: 1rem;
     line-height: 1.8;
     color: var(--text-secondary);
-    margin: 0;
     font-style: italic;
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@media (max-width: 768px) {
-    .gallery-description-wrapper {
-        padding: 0 1rem;
-    }
-    
-    .gallery-description {
-        padding: 1rem 1.5rem;
-    }
-    
-    .gallery-description p {
-        font-size: 0.9375rem;
-    }
-}
-
-/* ============================================
-   MASONRY GRID (Pinterest-style)
-   ============================================ */
-
+/* MASONRY GRID */
 .masonry-wrapper {
     max-width: 1600px;
     margin: 0 auto;
@@ -436,10 +365,7 @@ body {
     }
 }
 
-/* ============================================
-   LOADING INDICATOR
-   ============================================ */
-
+/* LOADING */
 .loading-indicator {
     text-align: center;
     padding: 4rem 2rem;
@@ -465,15 +391,7 @@ body {
     }
 }
 
-.loading-indicator p {
-    color: var(--text-tertiary);
-    font-size: 0.9375rem;
-}
-
-/* ============================================
-   BACK TO TOP BUTTON
-   ============================================ */
-
+/* BACK TO TOP */
 .back-to-top {
     position: fixed;
     bottom: 2rem;
@@ -500,17 +418,9 @@ body {
 .back-to-top:hover {
     background: var(--accent-red);
     transform: translateY(-4px);
-    box-shadow: var(--shadow-xl);
 }
 
-.back-to-top i {
-    font-size: 1.25rem;
-}
-
-/* ============================================
-   MODAL
-   ============================================ */
-
+/* MODAL */
 .modal {
     position: fixed;
     top: 0;
@@ -522,7 +432,6 @@ body {
     align-items: center;
     justify-content: center;
     z-index: 1000;
-    animation: fadeIn var(--transition-normal);
     padding: 2rem;
 }
 
@@ -559,79 +468,57 @@ body {
     max-width: 90vw;
     max-height: 90vh;
     display: flex;
-    gap: 2rem;
     position: relative;
-    animation: slideUp var(--transition-normal);
-}
-
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
 }
 
 .modal-image-wrapper {
-    flex: 1;
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 .modal-image-wrapper img {
-    max-width: 100%;
+    max-width: 90vw;
     max-height: 85vh;
     object-fit: contain;
     border-radius: var(--border-radius-md);
     box-shadow: var(--shadow-xl);
 }
 
-.modal-sidebar {
-    width: 300px;
-    background: white;
-    border-radius: var(--border-radius-md);
-    padding: 2rem;
+/* LIKE OVERLAY ON MODAL IMAGE */
+.modal-like-overlay {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+}
+
+.like-btn {
     display: flex;
-    flex-direction: column;
-    gap: 2rem;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.5rem;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-size: 1rem;
+    color: var(--text-primary);
+    box-shadow: var(--shadow-lg);
+}
+
+.like-btn:hover {
+    background: white;
+    transform: translateY(-2px);
     box-shadow: var(--shadow-xl);
 }
 
-.modal-actions {
-    display: flex;
-    gap: 1rem;
-}
-
-.action-btn {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 1rem;
-    background: var(--bg-light);
-    border: none;
-    border-radius: var(--border-radius-sm);
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-}
-
-.action-btn:hover {
-    background: var(--bg-hover);
-    transform: translateY(-2px);
-}
-
-.action-btn i {
-    font-size: 1.5rem;
-}
-
 .like-btn .heart {
+    font-size: 1.5rem;
     transition: all var(--transition-fast);
 }
 
@@ -639,26 +526,17 @@ body {
     color: var(--accent-red);
 }
 
-.like-btn:hover {
-    background: rgba(230, 0, 35, 0.1);
-}
-
-.action-btn .count {
+.like-btn .count {
     font-weight: 600;
-    color: var(--text-primary);
+    font-size: 1rem;
 }
 
-.modal-info h3 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
+.like-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
-.modal-info p {
-    color: var(--text-tertiary);
-    font-size: 0.9375rem;
-}
-
+/* MODAL NAVIGATION */
 .modal-nav {
     position: absolute;
     top: 50%;
@@ -692,25 +570,36 @@ body {
     right: 2rem;
 }
 
-@media (max-width: 1024px) {
-    .modal-content {
-        flex-direction: column;
-        overflow-y: auto;
-    }
-    
-    .modal-sidebar {
-        width: 100%;
-    }
-    
+@media (max-width: 768px) {
     .modal-nav {
-        display: none;
+        width: 44px;
+        height: 44px;
+        font-size: 1rem;
+    }
+    
+    .modal-prev {
+        left: 1rem;
+    }
+    
+    .modal-next {
+        right: 1rem;
+    }
+    
+    .modal-like-overlay {
+        bottom: 10px;
+    }
+    
+    .like-btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+    }
+    
+    .like-btn .heart {
+        font-size: 1.25rem;
     }
 }
 
-/* ============================================
-   TERMS MODAL
-   ============================================ */
-
+/* TERMS MODAL */
 .terms-modal .modal-content {
     display: block;
 }
@@ -728,7 +617,6 @@ body {
     font-family: var(--font-display);
     font-size: 2rem;
     margin-bottom: 2rem;
-    color: var(--text-primary);
 }
 
 .terms-text h3 {
@@ -736,7 +624,6 @@ body {
     font-weight: 600;
     margin-top: 2rem;
     margin-bottom: 1rem;
-    color: var(--text-primary);
 }
 
 .terms-text p {
@@ -746,26 +633,7 @@ body {
     color: var(--text-secondary);
 }
 
-.terms-text ul {
-    margin: 1rem 0 1rem 1.5rem;
-}
-
-.terms-text ul li {
-    font-size: 0.9375rem;
-    margin-bottom: 0.5rem;
-    color: var(--text-secondary);
-}
-
-@media (max-width: 768px) {
-    .terms-content {
-        padding: 2rem 1.5rem;
-    }
-}
-
-/* ============================================
-   FOOTER
-   ============================================ */
-
+/* FOOTER */
 .footer {
     background: var(--bg-light);
     border-top: 1px solid var(--border-light);
@@ -784,19 +652,12 @@ body {
     font-family: var(--font-display);
     font-size: 1.25rem;
     margin-bottom: 0.5rem;
-    color: var(--text-primary);
 }
 
 .footer-section h4 {
     font-size: 0.9375rem;
     font-weight: 600;
     margin-bottom: 1rem;
-    color: var(--text-primary);
-}
-
-.footer-section p {
-    color: var(--text-secondary);
-    font-size: 0.9375rem;
 }
 
 .footer-social {
@@ -850,32 +711,6 @@ body {
     font-size: 0.875rem;
 }
 
-/* ============================================
-   UTILITY CLASSES
-   ============================================ */
-
 [hidden] {
     display: none !important;
-}
-
-.loading {
-    opacity: 0.6;
-    pointer-events: none;
-}
-
-::-webkit-scrollbar {
-    width: 12px;
-}
-
-::-webkit-scrollbar-track {
-    background: var(--bg-light);
-}
-
-::-webkit-scrollbar-thumb {
-    background: var(--border-medium);
-    border-radius: 6px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: var(--text-tertiary);
 }
