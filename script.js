@@ -1,4 +1,4 @@
-// THE NONCONFORMIST - Updated Script with Universal Image Detection
+// THE NONCONFORMIST - Updated Script with Cookie Consent
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js';
 import {
@@ -12,9 +12,56 @@ import {
     getDocs,
     serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js';
-import { getAnalytics } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-analytics.js';
 
+// ============================================
+// COOKIE CONSENT MANAGEMENT
+// ============================================
+
+const CookieConsent = {
+    STORAGE_KEY: 'cookie-consent',
+    
+    hasConsent() {
+        return localStorage.getItem(this.STORAGE_KEY) !== null;
+    },
+    
+    getConsent() {
+        const consent = localStorage.getItem(this.STORAGE_KEY);
+        if (!consent) return null;
+        
+        try {
+            return JSON.parse(consent);
+        } catch {
+            return null;
+        }
+    },
+    
+    setConsent(preferences) {
+        const consent = {
+            essential: true,
+            analytics: preferences.analytics || false,
+            timestamp: new Date().toISOString(),
+            version: '1.0'
+        };
+        
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(consent));
+        return consent;
+    },
+    
+    isGranted(type) {
+        const consent = this.getConsent();
+        if (!consent) return false;
+        return consent[type] === true;
+    },
+    
+    clearConsent() {
+        localStorage.removeItem(this.STORAGE_KEY);
+    }
+};
+
+// ============================================
 // FIREBASE CONFIG
+// ============================================
+
 const firebaseConfig = {
     apiKey: "AIzaSyBMt3p3OCOUcMb4mdpfaCEhzxhlsRSTej8",
     authDomain: "thenonconformistdotxyz.firebaseapp.com",
@@ -29,18 +76,168 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 let analytics = null; // ✅ Don't initialize yet - wait for consent
 
+// ============================================
+// CONDITIONAL ANALYTICS INITIALIZATION
+// ============================================
+
+async function initializeAnalytics() {
+    if (CookieConsent.isGranted('analytics') && !analytics) {
+        try {
+            const { getAnalytics } = await import('https://www.gstatic.com/firebasejs/12.8.0/firebase-analytics.js');
+            analytics = getAnalytics(app);
+            console.log('✓ Analytics initialized with user consent');
+        } catch (err) {
+            console.warn('Failed to initialize analytics:', err);
+        }
+    }
+}
+
+// ============================================
+// COOKIE BANNER UI
+// ============================================
+
+function showConsentMessage(message) {
+    const toast = document.createElement('div');
+    toast.className = 'cookie-toast';
+    toast.textContent = message;
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #111;
+        color: white;
+        padding: 1rem 2rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        z-index: 10000;
+        animation: slideUp 0.3s ease-out;
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(-50%) translateY(20px)';
+        toast.style.transition = 'all 0.3s ease-out';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+function initCookieBanner() {
+    const banner = document.getElementById('cookie-banner');
+    if (!banner) return;
+    
+    // Show banner if no consent exists
+    if (!CookieConsent.hasConsent()) {
+        banner.removeAttribute('hidden');
+    }
+    
+    // Accept All button
+    document.getElementById('cookie-accept')?.addEventListener('click', () => {
+        CookieConsent.setConsent({ analytics: true });
+        banner.setAttribute('hidden', '');
+        initializeAnalytics();
+        showConsentMessage('✓ Cookie preferences saved');
+    });
+    
+    // Reject Analytics button
+    document.getElementById('cookie-reject')?.addEventListener('click', () => {
+        CookieConsent.setConsent({ analytics: false });
+        banner.setAttribute('hidden', '');
+        showConsentMessage('✓ Only essential cookies will be used');
+    });
+    
+    // Settings button
+    document.getElementById('cookie-settings')?.addEventListener('click', () => {
+        banner.setAttribute('hidden', '');
+        openCookieSettings();
+    });
+    
+    // Learn more link
+    document.getElementById('cookie-learn-more')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        banner.setAttribute('hidden', '');
+        document.getElementById('terms-btn')?.click();
+    });
+}
+
+function openCookieSettings() {
+    const modal = document.getElementById('cookie-settings-modal');
+    if (!modal) return;
+    
+    // Pre-populate settings
+    const consent = CookieConsent.getConsent();
+    const analyticsCheckbox = document.getElementById('cookie-analytics');
+    
+    if (analyticsCheckbox && consent) {
+        analyticsCheckbox.checked = consent.analytics;
+    }
+    
+    modal.removeAttribute('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeCookieSettings() {
+    const modal = document.getElementById('cookie-settings-modal');
+    if (!modal) return;
+    
+    modal.setAttribute('hidden', '');
+    document.body.style.overflow = 'auto';
+}
+
+function initCookieSettingsModal() {
+    const modal = document.getElementById('cookie-settings-modal');
+    if (!modal) return;
+    
+    // Close button
+    modal.querySelector('.modal-close')?.addEventListener('click', closeCookieSettings);
+    
+    // Click outside to close
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeCookieSettings();
+        }
+    });
+    
+    // Save settings button
+    document.getElementById('cookie-save-settings')?.addEventListener('click', () => {
+        const analyticsCheckbox = document.getElementById('cookie-analytics');
+        
+        CookieConsent.setConsent({
+            analytics: analyticsCheckbox?.checked || false
+        });
+        
+        closeCookieSettings();
+        
+        if (analyticsCheckbox?.checked) {
+            initializeAnalytics();
+            showConsentMessage('✓ Analytics enabled');
+        } else {
+            showConsentMessage('✓ Analytics disabled');
+        }
+    });
+    
+    // Cancel button
+    document.getElementById('cookie-cancel-settings')?.addEventListener('click', () => {
+        closeCookieSettings();
+        
+        if (!CookieConsent.hasConsent()) {
+            document.getElementById('cookie-banner')?.removeAttribute('hidden');
+        }
+    });
+}
+
+// ============================================
 // GALLERY CONFIG
+// ============================================
+
 const galleries = {
     'low': { title: 'Language of Windows', dir: 'LoW' },
     'sol': { title: 'Snapshots of Life', dir: 'SoL' },
     'r': { title: 'Reflections', dir: 'R' },
     'sa': { title: 'Street Art', dir: 'SA' }
 };
-
-// GITHUB REPOSITORY CONFIGURATION
-const GITHUB_OWNER = 'gro-lab';
-const GITHUB_REPO = 'thenonconformist';
-const GITHUB_BRANCH = 'main';
 
 // STATE
 let imageManifest = {};
@@ -64,7 +261,10 @@ const debounce = (fn, delay) => {
 // MANIFEST LOADING
 const loadManifest = async () => {
     try {
-        const manifestUrl = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/images.json`;
+        const owner = 'gro-lab';
+        const repo = 'thenonconformist';
+        const branch = 'main';
+        const manifestUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/manifest.json`;
         
         console.log('📦 Loading manifest...');
         const response = await fetch(manifestUrl);
@@ -97,12 +297,7 @@ const generateFallbackManifest = () => {
         const ext = defaultExtensions[dir] || 'JPEG';
         manifest[dir] = [];
         for (let i = 1; i <= 50; i++) {
-            manifest[dir].push({ 
-                filename: `${dir}-${i}.${ext}`,
-                ext: ext,
-                path: `images/${dir}/${dir}-${i}.${ext}`,
-                mtime: Date.now()
-            });
+            manifest[dir].push({ index: i, ext: ext });
         }
     });
     
@@ -111,10 +306,12 @@ const generateFallbackManifest = () => {
     return manifest;
 };
 
-// IMAGE URL - UPDATED for universal filename support
-const createImageUrl = (imageData) => {
-    // Use the path from the manifest which includes the actual filename
-    return `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${imageData.path}`;
+// IMAGE URL
+const createImageUrl = (dir, index, ext) => {
+    const owner = 'gro-lab';
+    const repo = 'thenonconformist';
+    const branch = 'main';
+    return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/${dir}/${dir}-${index}.${ext}`;
 };
 
 const getDocIdFromUrl = (url) => {
@@ -201,7 +398,7 @@ const setupLazyLoading = (img) => {
     observer.observe(img);
 };
 
-// GALLERY GENERATION - UPDATED for universal filename support
+// GALLERY GENERATION
 const generateImageGrid = async (galleryKey) => {
     if (galleryImages[galleryKey]) {
         console.log(`✅ Gallery ${galleryKey} from cache`);
@@ -220,7 +417,7 @@ const generateImageGrid = async (galleryKey) => {
     console.log(`📸 Loading ${imageList.length} images for ${gallery.title}`);
     
     const images = imageList.map(imageData => {
-        const url = createImageUrl(imageData);
+        const url = createImageUrl(dir, imageData.index, imageData.ext);
         const docId = getDocIdFromUrl(url);
         const likes = likesCache[docId] || 0;
         
@@ -229,12 +426,11 @@ const generateImageGrid = async (galleryKey) => {
         card.dataset.gallery = galleryKey;
         card.dataset.url = url;
         card.dataset.category = gallery.title;
-        card.dataset.filename = imageData.filename;
         
         const img = document.createElement('img');
         img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
         img.dataset.src = url;
-        img.alt = `${gallery.title} - ${imageData.filename}`;
+        img.alt = `${gallery.title} - Image ${imageData.index}`;
         img.style.opacity = '0';
         img.style.transition = 'opacity 0.3s ease';
         
@@ -254,8 +450,7 @@ const generateImageGrid = async (galleryKey) => {
             url: url, 
             likes: likes,
             gallery: galleryKey,
-            category: gallery.title,
-            imageData: imageData
+            category: gallery.title
         };
     });
     
@@ -350,7 +545,6 @@ const openModal = (imageUrl, category = 'Image', galleryKey = currentGallery) =>
     currentModalImageUrl = imageUrl;
     modalImage.src = imageUrl;
     
-    // Get current gallery images and find index
     const images = galleryImages[galleryKey] || [];
     currentGalleryImages = images;
     currentModalImageIndex = images.findIndex(img => img.url === imageUrl);
@@ -442,7 +636,6 @@ const toggleLike = async () => {
         
         updateLikeButton();
         
-        // Update grid
         const imageCard = document.querySelector(`.image-card[data-url="${currentModalImageUrl}"]`);
         if (imageCard) {
             const likeCountSpan = imageCard.querySelector('.card-like-count span');
@@ -461,24 +654,30 @@ const toggleLike = async () => {
 // TERMS MODAL
 const termsModal = document.getElementById('terms-modal');
 const termsBtn = document.getElementById('terms-btn');
-const termsClose = termsModal.querySelector('.modal-close');
+const termsClose = termsModal?.querySelector('.modal-close');
 
-termsBtn.addEventListener('click', () => {
-    termsModal.removeAttribute('hidden');
-    document.body.style.overflow = 'hidden';
-});
+if (termsBtn) {
+    termsBtn.addEventListener('click', () => {
+        termsModal.removeAttribute('hidden');
+        document.body.style.overflow = 'hidden';
+    });
+}
 
-termsClose.addEventListener('click', () => {
-    termsModal.setAttribute('hidden', '');
-    document.body.style.overflow = 'auto';
-});
-
-termsModal.addEventListener('click', (e) => {
-    if (e.target === termsModal) {
+if (termsClose) {
+    termsClose.addEventListener('click', () => {
         termsModal.setAttribute('hidden', '');
         document.body.style.overflow = 'auto';
-    }
-});
+    });
+}
+
+if (termsModal) {
+    termsModal.addEventListener('click', (e) => {
+        if (e.target === termsModal) {
+            termsModal.setAttribute('hidden', '');
+            document.body.style.overflow = 'auto';
+        }
+    });
+}
 
 // EVENT LISTENERS
 modalClose.addEventListener('click', closeModal);
@@ -507,10 +706,22 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// INIT
+// ============================================
+// INITIALIZATION
+// ============================================
+
 const init = async () => {
     try {
         console.log('🚀 Initializing...');
+        
+        // Initialize cookie consent UI
+        initCookieBanner();
+        initCookieSettingsModal();
+        
+        // Initialize analytics if user has already consented
+        if (CookieConsent.isGranted('analytics')) {
+            await initializeAnalytics();
+        }
         
         const loadingIndicator = document.getElementById('loading-indicator');
         if (loadingIndicator) loadingIndicator.classList.remove('hidden');
