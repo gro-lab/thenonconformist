@@ -1,5 +1,5 @@
 // ============================================
-// THE NONCONFORMIST - Pinterest Style Script
+// THE NONCONFORMIST - Script (OPTIMIZED)
 // ============================================
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js';
@@ -30,14 +30,10 @@ const firebaseConfig = {
     measurementId: "G-5MGS0G4CDY"
 };
 
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const analytics = getAnalytics(app);
-
-// ============================================
-// IMAGE MANIFEST
-// ============================================
-let IMAGE_MANIFEST = null;
 
 // ============================================
 // GALLERY CONFIGURATION
@@ -46,23 +42,19 @@ let IMAGE_MANIFEST = null;
 const galleries = {
     'low': {
         title: 'Language of Windows',
-        dir: 'LoW',
-        count: 50
+        dir: 'LoW'
     },
     'sol': {
         title: 'Snapshots of Life',
-        dir: 'SoL',
-        count: 50
+        dir: 'SoL'
     },
     'r': {
         title: 'Reflections',
-        dir: 'R',
-        count: 50
+        dir: 'R'
     },
     'sa': {
         title: 'Street Art',
-        dir: 'SA',
-        count: 50
+        dir: 'SA'
     }
 };
 
@@ -70,6 +62,7 @@ const galleries = {
 // STATE MANAGEMENT
 // ============================================
 
+let imageManifest = {};
 let likesCache = {};
 let currentModalImageUrl = null;
 let isProcessing = false;
@@ -86,57 +79,78 @@ const debounce = (fn, delay) => {
     };
 };
 
-const createImageUrl = (dir, index, extension) => {
+// ============================================
+// MANIFEST LOADING
+// ============================================
+
+const loadManifest = async () => {
+    try {
+        const owner = 'gro-lab';
+        const repo = 'thenonconformist';
+        const branch = 'main';
+        
+        const manifestUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/manifest.json`;
+        
+        console.log('📦 Loading image manifest...');
+        const response = await fetch(manifestUrl);
+        
+        if (!response.ok) {
+            console.warn('⚠️ Manifest not found, using fallback...');
+            return generateFallbackManifest();
+        }
+        
+        imageManifest = await response.json();
+        console.log('✅ Manifest loaded:', imageManifest);
+        return imageManifest;
+    } catch (error) {
+        console.warn('⚠️ Error loading manifest, using fallback:', error);
+        return generateFallbackManifest();
+    }
+};
+
+// Fallback if manifest.json doesn't exist yet
+const generateFallbackManifest = () => {
+    const manifest = {};
+    const defaultExtensions = {
+        'LoW': 'JPEG',
+        'SoL': 'JPEG',
+        'R': 'JPEG',
+        'SA': 'JPEG'
+    };
+    
+    Object.keys(galleries).forEach(key => {
+        const dir = galleries[key].dir;
+        const ext = defaultExtensions[dir] || 'JPEG';
+        
+        manifest[dir] = [];
+        // Assume 50 images per gallery
+        for (let i = 1; i <= 50; i++) {
+            manifest[dir].push({
+                index: i,
+                ext: ext
+            });
+        }
+    });
+    
+    imageManifest = manifest;
+    console.log('📋 Using fallback manifest with 50 images per gallery');
+    return manifest;
+};
+
+// ============================================
+// IMAGE URL CREATION
+// ============================================
+
+const createImageUrl = (dir, index, ext) => {
     const owner = 'gro-lab';
     const repo = 'thenonconformist';
     const branch = 'main';
     
-    return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/${dir}/${dir}-${index}.${extension}`;
+    return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/${dir}/${dir}-${index}.${ext}`;
 };
 
 const getDocIdFromUrl = (url) => {
     return btoa(url).replace(/[^a-zA-Z0-9]/g, '');
-};
-
-// ============================================
-// LOAD IMAGE MANIFEST (OPTIONAL)
-// ============================================
-
-const loadImageManifest = async () => {
-    try {
-        const response = await fetch('images.json');
-        if (!response.ok) {
-            console.warn('⚠️ images.json not found, using fallback mode');
-            return null;
-        }
-        IMAGE_MANIFEST = await response.json();
-        console.log('✅ Loaded image manifest');
-        return IMAGE_MANIFEST;
-    } catch (error) {
-        console.warn('⚠️ Could not load manifest, using fallback mode');
-        return null;
-    }
-};
-
-// ============================================
-// FALLBACK: Try common extensions
-// ============================================
-
-const tryImageExtensions = async (dir, index) => {
-    const extensions = ['JPEG', 'JPG', 'jpg', 'jpeg', 'png', 'PNG'];
-    
-    for (const ext of extensions) {
-        const url = createImageUrl(dir, index, ext);
-        try {
-            const response = await fetch(url, { method: 'HEAD', cache: 'force-cache' });
-            if (response.ok) {
-                return { url, ext };
-            }
-        } catch (e) {
-            continue;
-        }
-    }
-    return null;
 };
 
 // ============================================
@@ -151,6 +165,7 @@ const fetchAllLikes = async () => {
             likes[doc.id] = doc.data().likes || 0;
         });
         likesCache = likes;
+        console.log(`❤️  Loaded ${Object.keys(likes).length} like records`);
         return likes;
     } catch (error) {
         console.error('Error fetching likes:', error);
@@ -166,11 +181,13 @@ const updateLike = async (url, increment_value) => {
         const docSnap = await getDoc(docRef);
         
         if (docSnap.exists()) {
+            // Update existing document
             await updateDoc(docRef, {
                 likes: increment(increment_value),
                 lastUpdated: serverTimestamp()
             });
         } else {
+            // Create new document
             await setDoc(docRef, {
                 url: url,
                 likes: Math.max(0, increment_value),
@@ -179,6 +196,7 @@ const updateLike = async (url, increment_value) => {
             });
         }
         
+        // Update local cache
         likesCache[docId] = (likesCache[docId] || 0) + increment_value;
         return likesCache[docId];
     } catch (error) {
@@ -188,166 +206,183 @@ const updateLike = async (url, increment_value) => {
 };
 
 // ============================================
-// IMAGE GRID GENERATION (PINTEREST STYLE)
+// LAZY LOADING WITH INTERSECTION OBSERVER
 // ============================================
+
+const setupLazyLoading = (img) => {
+    const options = {
+        rootMargin: '400px', // Increased from 200px for better preloading
+        threshold: 0.01
+    };
+    
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const image = entry.target;
+                const src = image.dataset.src;
+                
+                if (src && !image.classList.contains('loaded')) {
+                    // Create a new image to preload
+                    const preloader = new Image();
+                    preloader.onload = () => {
+                        image.src = src;
+                        image.classList.add('loaded');
+                        image.style.opacity = '1';
+                    };
+                    preloader.onerror = () => {
+                        console.warn(`Failed to load: ${src}`);
+                        image.remove(); // Remove broken images
+                    };
+                    preloader.src = src;
+                }
+                
+                observer.unobserve(image);
+            }
+        });
+    }, options);
+    
+    observer.observe(img);
+};
+
+// ============================================
+// IMAGE GRID GENERATION (Pinterest Masonry)
+// ============================================
+
+let allImages = []; // Store all images for filtering
+let currentFilter = 'all';
 
 const generateImageGrid = async (galleryKey) => {
     const gallery = galleries[galleryKey];
-    const gridId = `grid-${galleryKey}`;
-    const grid = document.getElementById(gridId);
+    const dir = gallery.dir;
+    const imageList = imageManifest[dir] || [];
     
+    if (imageList.length === 0) {
+        console.warn(`⚠️ No images found for ${gallery.title}`);
+        return;
+    }
+    
+    console.log(`📸 Preparing ${imageList.length} images for ${gallery.title}`);
+    
+    // Create image card elements
+    const images = imageList.map(imageData => {
+        const url = createImageUrl(dir, imageData.index, imageData.ext);
+        const docId = getDocIdFromUrl(url);
+        const likes = likesCache[docId] || 0;
+        
+        // Create card wrapper
+        const card = document.createElement('div');
+        card.className = 'image-card';
+        card.dataset.gallery = galleryKey;
+        card.dataset.url = url;
+        card.dataset.category = gallery.title;
+        
+        // Create image element
+        const img = document.createElement('img');
+        img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+        img.dataset.src = url;
+        img.alt = `${gallery.title} - Image ${imageData.index}`;
+        img.style.opacity = '0';
+        img.style.transition = 'opacity 0.3s ease';
+        
+        // Create like count badge
+        const likeCount = document.createElement('div');
+        likeCount.className = 'card-like-count';
+        likeCount.innerHTML = `<i class="fas fa-heart"></i> <span>${likes}</span>`;
+        
+        // Append elements
+        card.appendChild(img);
+        card.appendChild(likeCount);
+        
+        // Click to open modal
+        card.addEventListener('click', () => openModal(url, gallery.title));
+        
+        // Setup lazy loading
+        setupLazyLoading(img);
+        
+        return { 
+            element: card, 
+            url: url, 
+            likes: likes,
+            gallery: galleryKey,
+            category: gallery.title
+        };
+    });
+    
+    // Add to global images array
+    allImages = allImages.concat(images);
+    
+    console.log(`✅ Cards ready for ${gallery.title} (${images.length} images)`);
+};
+
+const renderMasonryGrid = () => {
+    const grid = document.getElementById('masonry-grid');
     if (!grid) return;
     
-    console.log(`📸 Loading ${gallery.title}...`);
-    
-    let images = [];
-    
-    // MODE 1: Use manifest if available
-    if (IMAGE_MANIFEST && IMAGE_MANIFEST[gallery.dir]) {
-        const manifestImages = IMAGE_MANIFEST[gallery.dir];
-        images = manifestImages.map(item => ({
-            url: createImageUrl(gallery.dir, item.index, item.ext),
-            index: item.index
-        }));
-        console.log(`   Using manifest: ${images.length} images`);
+    // Filter images based on current filter
+    let filteredImages = allImages;
+    if (currentFilter !== 'all') {
+        filteredImages = allImages.filter(img => img.gallery === currentFilter);
     }
-    // MODE 2: Fallback - try extensions
-    else {
-        console.log('   Using fallback mode (slower)...');
-        const BATCH_SIZE = 5;
-        
-        for (let i = 1; i <= gallery.count; i += BATCH_SIZE) {
-            const batch = [];
+    
+    // Sort by likes (most liked first)
+    filteredImages.sort((a, b) => b.likes - a.likes);
+    
+    // Clear grid
+    grid.innerHTML = '';
+    
+    // Append filtered images
+    filteredImages.forEach(({ element }) => {
+        grid.appendChild(element);
+    });
+    
+    console.log(`✅ Rendered ${filteredImages.length} images with filter: ${currentFilter}`);
+};
+
+// ============================================
+// FILTER FUNCTIONALITY
+// ============================================
+
+const setupFilters = () => {
+    const filterTabs = document.querySelectorAll('.filter-tab');
+    
+    filterTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            // Remove active class from all tabs
+            filterTabs.forEach(t => t.classList.remove('active'));
             
-            for (let j = i; j < Math.min(i + BATCH_SIZE, gallery.count + 1); j++) {
-                batch.push(
-                    tryImageExtensions(gallery.dir, j)
-                        .then(result => result ? { url: result.url, index: j } : null)
-                );
-            }
+            // Add active class to clicked tab
+            tab.classList.add('active');
             
-            const results = await Promise.all(batch);
-            images.push(...results.filter(Boolean));
+            // Get filter value
+            currentFilter = tab.dataset.gallery;
+            
+            // Re-render grid with filter
+            renderMasonryGrid();
+        });
+    });
+};
+
+// ============================================
+// BACK TO TOP BUTTON
+// ============================================
+
+const setupBackToTop = () => {
+    const backToTopBtn = document.getElementById('back-to-top');
+    
+    if (!backToTopBtn) return;
+    
+    window.addEventListener('scroll', () => {
+        if (window.pageYOffset > 500) {
+            backToTopBtn.classList.add('visible');
+        } else {
+            backToTopBtn.classList.remove('visible');
         }
-        console.log(`   Found ${images.length} images`);
-    }
-    
-    // Sort by likes (most popular first)
-    images.sort((a, b) => {
-        const likesA = likesCache[getDocIdFromUrl(a.url)] || 0;
-        const likesB = likesCache[getDocIdFromUrl(b.url)] || 0;
-        return likesB - likesA;
     });
     
-    // Create image elements with Pinterest-style masonry
-    images.forEach(({ url }, index) => {
-        const img = document.createElement('img');
-        img.src = url;
-        img.alt = `${gallery.title} - Image ${index + 1}`;
-        img.dataset.url = url;
-        img.loading = 'lazy';
-        
-        img.addEventListener('error', () => {
-            console.warn(`Failed to load: ${url}`);
-            img.remove();
-        });
-        
-        img.addEventListener('click', () => openModal(url));
-        
-        grid.appendChild(img);
-    });
-    
-    console.log(`✅ Loaded ${images.length} images for ${gallery.title}`);
-};
-
-// ============================================
-// PINTEREST CAROUSEL FUNCTIONALITY
-// ============================================
-
-const setupPinterestCarousel = () => {
-    document.querySelectorAll('.pinterest-carousel').forEach(carousel => {
-        const grid = carousel.querySelector('.pinterest-grid');
-        const prevBtn = carousel.querySelector('.carousel-nav.prev');
-        const nextBtn = carousel.querySelector('.carousel-nav.next');
-        
-        if (!grid) return;
-        
-        // Scroll by grid width
-        const scrollAmount = () => grid.offsetWidth;
-        
-        prevBtn.addEventListener('click', () => {
-            grid.scrollBy({ left: -scrollAmount(), behavior: 'smooth' });
-        });
-        
-        nextBtn.addEventListener('click', () => {
-            grid.scrollBy({ left: scrollAmount(), behavior: 'smooth' });
-        });
-        
-        // Show/hide navigation buttons based on scroll position
-        const updateNavButtons = () => {
-            const isAtStart = grid.scrollLeft <= 10;
-            const isAtEnd = grid.scrollLeft + grid.offsetWidth >= grid.scrollWidth - 10;
-            
-            prevBtn.style.opacity = isAtStart ? '0.3' : '0.9';
-            nextBtn.style.opacity = isAtEnd ? '0.3' : '0.9';
-            prevBtn.disabled = isAtStart;
-            nextBtn.disabled = isAtEnd;
-        };
-        
-        grid.addEventListener('scroll', debounce(updateNavButtons, 100));
-        updateNavButtons();
-    });
-    
-    // Touch swipe support
-    setupTouchSwipe();
-};
-
-const setupTouchSwipe = () => {
-    let startX = 0;
-    let scrollLeft = 0;
-    let isDown = false;
-    
-    document.querySelectorAll('.pinterest-grid').forEach(grid => {
-        grid.addEventListener('touchstart', (e) => {
-            startX = e.touches[0].pageX - grid.offsetLeft;
-            scrollLeft = grid.scrollLeft;
-        }, { passive: true });
-        
-        grid.addEventListener('touchmove', (e) => {
-            if (!startX) return;
-            const x = e.touches[0].pageX - grid.offsetLeft;
-            const walk = (x - startX) * 2;
-            grid.scrollLeft = scrollLeft - walk;
-        }, { passive: true });
-        
-        grid.addEventListener('touchend', () => {
-            startX = 0;
-        });
-        
-        // Mouse drag support for desktop
-        grid.addEventListener('mousedown', (e) => {
-            isDown = true;
-            startX = e.pageX - grid.offsetLeft;
-            scrollLeft = grid.scrollLeft;
-            grid.style.cursor = 'grabbing';
-        });
-        
-        grid.addEventListener('mouseleave', () => {
-            isDown = false;
-            grid.style.cursor = 'grab';
-        });
-        
-        grid.addEventListener('mouseup', () => {
-            isDown = false;
-            grid.style.cursor = 'grab';
-        });
-        
-        grid.addEventListener('mousemove', (e) => {
-            if (!isDown) return;
-            e.preventDefault();
-            const x = e.pageX - grid.offsetLeft;
-            const walk = (x - startX) * 2;
-            grid.scrollLeft = scrollLeft - walk;
+    backToTopBtn.addEventListener('click', () => {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
         });
     });
 };
@@ -361,9 +396,17 @@ const modalImage = document.getElementById('modal-image');
 const likeBtn = document.getElementById('like-btn');
 const modalClose = modal.querySelector('.modal-close');
 
-const openModal = (imageUrl) => {
+const openModal = (imageUrl, category = 'Image') => {
     currentModalImageUrl = imageUrl;
     modalImage.src = imageUrl;
+    
+    // Update modal info
+    const modalTitle = document.getElementById('modal-title');
+    const modalCategory = document.getElementById('modal-category');
+    
+    if (modalTitle) modalTitle.textContent = category;
+    if (modalCategory) modalCategory.textContent = category;
+    
     modal.removeAttribute('hidden');
     document.body.style.overflow = 'hidden';
     updateLikeButton();
@@ -383,17 +426,20 @@ const updateLikeButton = () => {
     const heart = likeBtn.querySelector('.heart');
     const count = likeBtn.querySelector('.count');
     
-    count.textContent = likes;
+    if (count) count.textContent = likes;
     
+    // Check if user has liked (using localStorage for session)
     const likedKey = `liked_${docId}`;
     const isLiked = localStorage.getItem(likedKey) === 'true';
     
-    if (isLiked) {
-        heart.classList.add('liked');
-        heart.textContent = '♥';
-    } else {
-        heart.classList.remove('liked');
-        heart.textContent = '♡';
+    if (heart) {
+        if (isLiked) {
+            heart.classList.remove('far');
+            heart.classList.add('fas', 'liked');
+        } else {
+            heart.classList.remove('fas', 'liked');
+            heart.classList.add('far');
+        }
     }
 };
 
@@ -465,9 +511,12 @@ modal.addEventListener('click', (e) => {
 
 likeBtn.addEventListener('click', toggleLike);
 
-window.addEventListener('resize', debounce(() => {
-    setupPinterestCarousel();
-}, 150));
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modal.hasAttribute('hidden')) {
+        closeModal();
+    }
+});
 
 // ============================================
 // INITIALIZATION
@@ -477,25 +526,54 @@ const init = async () => {
     try {
         console.log('🚀 Initializing The Nonconformist...');
         
-        // Try to load manifest (optional)
-        await loadImageManifest();
+        // Show loading indicator
+        const loadingIndicator = document.getElementById('loading-indicator');
+        if (loadingIndicator) loadingIndicator.classList.remove('hidden');
         
-        // Fetch likes from Firestore
-        await fetchAllLikes();
-        console.log('✅ Loaded likes from Firestore');
+        // Load manifest and likes in parallel
+        const [manifest, likes] = await Promise.all([
+            loadManifest(),
+            fetchAllLikes()
+        ]);
         
-        // Generate grids for all galleries
-        for (const key of Object.keys(galleries)) {
-            await generateImageGrid(key);
+        console.log('📊 Data loaded - generating galleries...');
+        
+        // Generate all galleries in parallel
+        await Promise.all(
+            Object.keys(galleries).map(key => generateImageGrid(key))
+        );
+        
+        // Render the masonry grid
+        renderMasonryGrid();
+        
+        // Setup filter tabs
+        setupFilters();
+        
+        // Setup back to top button
+        setupBackToTop();
+        
+        // Hide loading indicator
+        if (loadingIndicator) {
+            setTimeout(() => {
+                loadingIndicator.classList.add('hidden');
+            }, 300);
         }
-        
-        // Setup Pinterest-style carousel
-        setupPinterestCarousel();
         
         console.log('✅ The Nonconformist initialized successfully');
     } catch (error) {
-        console.error('Initialization error:', error);
+        console.error('❌ Initialization error:', error);
+        
+        // Hide loading indicator on error
+        const loadingIndicator = document.getElementById('loading-indicator');
+        if (loadingIndicator) {
+            loadingIndicator.innerHTML = '<p>Error loading images. Please refresh the page.</p>';
+        }
     }
 };
 
-document.addEventListener('DOMContentLoaded', init);
+// Start when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
