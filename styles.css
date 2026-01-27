@@ -256,6 +256,62 @@ body {
 }
 
 /* ============================================
+   GALLERY DESCRIPTION
+   ============================================ */
+
+.gallery-description-wrapper {
+    max-width: 1600px;
+    margin: 0 auto 2rem;
+    padding: 0 2rem;
+}
+
+.gallery-description {
+    background: var(--bg-light);
+    padding: 1.5rem 2rem;
+    border-radius: var(--border-radius-md);
+    border-left: 4px solid var(--accent-red);
+    transition: all var(--transition-normal);
+    animation: fadeIn var(--transition-normal);
+}
+
+.gallery-description.hidden {
+    display: none;
+}
+
+.gallery-description p {
+    font-size: 1rem;
+    line-height: 1.8;
+    color: var(--text-secondary);
+    margin: 0;
+    font-style: italic;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 768px) {
+    .gallery-description-wrapper {
+        padding: 0 1rem;
+    }
+    
+    .gallery-description {
+        padding: 1rem 1.5rem;
+    }
+    
+    .gallery-description p {
+        font-size: 0.9375rem;
+    }
+}
+
+/* ============================================
    MASONRY GRID (Pinterest-style)
    ============================================ */
 
@@ -296,7 +352,6 @@ body {
     transform: scale(1.05);
 }
 
-/* Image overlay on hover */
 .image-card::before {
     content: '';
     position: absolute;
@@ -315,7 +370,6 @@ body {
     opacity: 1;
 }
 
-/* Like indicator on card */
 .card-like-count {
     position: absolute;
     bottom: 12px;
@@ -344,7 +398,6 @@ body {
     color: var(--accent-red);
 }
 
-/* Responsive masonry columns */
 @media (min-width: 1400px) {
     .masonry-grid {
         column-count: 5;
@@ -477,15 +530,6 @@ body {
     display: none;
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
 .modal-close {
     position: absolute;
     top: 2rem;
@@ -615,7 +659,6 @@ body {
     font-size: 0.9375rem;
 }
 
-/* Modal Navigation Arrows */
 .modal-nav {
     position: absolute;
     top: 50%;
@@ -820,7 +863,6 @@ body {
     pointer-events: none;
 }
 
-/* Smooth scrollbar */
 ::-webkit-scrollbar {
     width: 12px;
 }
