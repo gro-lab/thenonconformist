@@ -66,6 +66,8 @@ let imageManifest = {};
 let likesCache = {};
 let currentModalImageUrl = null;
 let isProcessing = false;
+let currentGallery = 'low'; // Default to first gallery
+let galleryImages = {}; // Store loaded images per gallery
 
 // ============================================
 // UTILITIES
@@ -245,23 +247,26 @@ const setupLazyLoading = (img) => {
 };
 
 // ============================================
-// IMAGE GRID GENERATION (Pinterest Masonry)
+// IMAGE GRID GENERATION (Lazy Per-Gallery)
 // ============================================
 
-let allImages = []; // Store all images for filtering
-let currentFilter = 'all';
-
 const generateImageGrid = async (galleryKey) => {
+    // Check if gallery is already loaded
+    if (galleryImages[galleryKey]) {
+        console.log(`✅ Gallery ${galleryKey} already loaded from cache`);
+        return galleryImages[galleryKey];
+    }
+    
     const gallery = galleries[galleryKey];
     const dir = gallery.dir;
     const imageList = imageManifest[dir] || [];
     
     if (imageList.length === 0) {
         console.warn(`⚠️ No images found for ${gallery.title}`);
-        return;
+        return [];
     }
     
-    console.log(`📸 Preparing ${imageList.length} images for ${gallery.title}`);
+    console.log(`📸 Loading ${imageList.length} images for ${gallery.title}`);
     
     // Create image card elements
     const images = imageList.map(imageData => {
@@ -308,56 +313,66 @@ const generateImageGrid = async (galleryKey) => {
         };
     });
     
-    // Add to global images array
-    allImages = allImages.concat(images);
+    // Sort by likes (most liked first)
+    images.sort((a, b) => b.likes - a.likes);
     
-    console.log(`✅ Cards ready for ${gallery.title} (${images.length} images)`);
+    // Cache the loaded gallery
+    galleryImages[galleryKey] = images;
+    
+    console.log(`✅ Gallery ${gallery.title} loaded (${images.length} images)`);
+    return images;
 };
 
-const renderMasonryGrid = () => {
+const renderMasonryGrid = async (galleryKey) => {
     const grid = document.getElementById('masonry-grid');
     if (!grid) return;
     
-    // Filter images based on current filter
-    let filteredImages = allImages;
-    if (currentFilter !== 'all') {
-        filteredImages = allImages.filter(img => img.gallery === currentFilter);
-    }
-    
-    // Sort by likes (most liked first)
-    filteredImages.sort((a, b) => b.likes - a.likes);
+    // Show loading indicator
+    const loadingIndicator = document.getElementById('loading-indicator');
+    if (loadingIndicator) loadingIndicator.classList.remove('hidden');
     
     // Clear grid
     grid.innerHTML = '';
     
-    // Append filtered images
-    filteredImages.forEach(({ element }) => {
+    // Load the selected gallery (will use cache if already loaded)
+    const images = await generateImageGrid(galleryKey);
+    
+    // Append images to grid
+    images.forEach(({ element }) => {
         grid.appendChild(element);
     });
     
-    console.log(`✅ Rendered ${filteredImages.length} images with filter: ${currentFilter}`);
+    // Hide loading indicator
+    if (loadingIndicator) {
+        setTimeout(() => {
+            loadingIndicator.classList.add('hidden');
+        }, 300);
+    }
+    
+    console.log(`✅ Rendered ${images.length} images for gallery: ${galleryKey}`);
 };
 
 // ============================================
-// FILTER FUNCTIONALITY
+// FILTER FUNCTIONALITY (Gallery Switcher)
 // ============================================
 
 const setupFilters = () => {
     const filterTabs = document.querySelectorAll('.filter-tab');
     
     filterTabs.forEach(tab => {
-        tab.addEventListener('click', () => {
+        tab.addEventListener('click', async () => {
             // Remove active class from all tabs
             filterTabs.forEach(t => t.classList.remove('active'));
             
             // Add active class to clicked tab
             tab.classList.add('active');
             
-            // Get filter value
-            currentFilter = tab.dataset.gallery;
+            // Get gallery key
+            const galleryKey = tab.dataset.gallery;
+            currentGallery = galleryKey;
             
-            // Re-render grid with filter
-            renderMasonryGrid();
+            // Load and render the selected gallery
+            await renderMasonryGrid(galleryKey);
         });
     });
 };
@@ -536,28 +551,16 @@ const init = async () => {
             fetchAllLikes()
         ]);
         
-        console.log('📊 Data loaded - generating galleries...');
+        console.log('📊 Data loaded - rendering default gallery...');
         
-        // Generate all galleries in parallel
-        await Promise.all(
-            Object.keys(galleries).map(key => generateImageGrid(key))
-        );
+        // Only load and render the default gallery (Language of Windows)
+        await renderMasonryGrid(currentGallery);
         
-        // Render the masonry grid
-        renderMasonryGrid();
-        
-        // Setup filter tabs
+        // Setup filter tabs (for switching between galleries)
         setupFilters();
         
         // Setup back to top button
         setupBackToTop();
-        
-        // Hide loading indicator
-        if (loadingIndicator) {
-            setTimeout(() => {
-                loadingIndicator.classList.add('hidden');
-            }, 300);
-        }
         
         console.log('✅ The Nonconformist initialized successfully');
     } catch (error) {
