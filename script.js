@@ -1,4 +1,4 @@
-// THE NONCONFORMIST - Updated Script with Cookie Consent
+// THE NONCONFORMIST - Updated Script with Fixed Navigation
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js';
 import {
@@ -12,56 +12,9 @@ import {
     getDocs,
     serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js';
+import { getAnalytics } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-analytics.js';
 
-// ============================================
-// COOKIE CONSENT MANAGEMENT
-// ============================================
-
-const CookieConsent = {
-    STORAGE_KEY: 'cookie-consent',
-    
-    hasConsent() {
-        return localStorage.getItem(this.STORAGE_KEY) !== null;
-    },
-    
-    getConsent() {
-        const consent = localStorage.getItem(this.STORAGE_KEY);
-        if (!consent) return null;
-        
-        try {
-            return JSON.parse(consent);
-        } catch {
-            return null;
-        }
-    },
-    
-    setConsent(preferences) {
-        const consent = {
-            essential: true,
-            analytics: preferences.analytics || false,
-            timestamp: new Date().toISOString(),
-            version: '1.0'
-        };
-        
-        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(consent));
-        return consent;
-    },
-    
-    isGranted(type) {
-        const consent = this.getConsent();
-        if (!consent) return false;
-        return consent[type] === true;
-    },
-    
-    clearConsent() {
-        localStorage.removeItem(this.STORAGE_KEY);
-    }
-};
-
-// ============================================
 // FIREBASE CONFIG
-// ============================================
-
 const firebaseConfig = {
     apiKey: "AIzaSyBMt3p3OCOUcMb4mdpfaCEhzxhlsRSTej8",
     authDomain: "thenonconformistdotxyz.firebaseapp.com",
@@ -74,180 +27,9 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-let analytics = null; // ✅ Don't initialize yet - wait for consent
+const analytics = getAnalytics(app);
 
-// Optional: Floating cookie settings button (for users who already consented)
-function createCookieManageButton() {
-    if (!CookieConsent.hasConsent()) return;
-    
-    const btn = document.createElement('button');
-    btn.id = 'cookie-manage-floating';
-    btn.className = 'cookie-manage-btn';
-    btn.innerHTML = '<i class="fas fa-cookie-bite"></i>';
-    btn.title = 'Manage Cookie Preferences';
-    btn.setAttribute('aria-label', 'Manage Cookie Preferences');
-    
-    btn.addEventListener('click', openCookieSettings);
-    
-    document.body.appendChild(btn);
-}
-
-// ============================================
-// CONDITIONAL ANALYTICS INITIALIZATION
-// ============================================
-
-async function initializeAnalytics() {
-    if (CookieConsent.isGranted('analytics') && !analytics) {
-        try {
-            const { getAnalytics } = await import('https://www.gstatic.com/firebasejs/12.8.0/firebase-analytics.js');
-            analytics = getAnalytics(app);
-            console.log('✓ Analytics initialized with user consent');
-        } catch (err) {
-            console.warn('Failed to initialize analytics:', err);
-        }
-    }
-}
-
-// ============================================
-// COOKIE BANNER UI
-// ============================================
-
-function showConsentMessage(message) {
-    const toast = document.createElement('div');
-    toast.className = 'cookie-toast';
-    toast.textContent = message;
-    toast.style.cssText = `
-        position: fixed;
-        bottom: 2rem;
-        left: 50%;
-        transform: translateX(-50%);
-        background: #111;
-        color: white;
-        padding: 1rem 2rem;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        z-index: 10000;
-        animation: slideUp 0.3s ease-out;
-    `;
-    
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateX(-50%) translateY(20px)';
-        toast.style.transition = 'all 0.3s ease-out';
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
-}
-
-function initCookieBanner() {
-    const banner = document.getElementById('cookie-banner');
-    if (!banner) return;
-    
-    // Show banner if no consent exists
-    if (!CookieConsent.hasConsent()) {
-        banner.removeAttribute('hidden');
-    }
-    
-    // Accept All button
-    document.getElementById('cookie-accept')?.addEventListener('click', () => {
-        CookieConsent.setConsent({ analytics: true });
-        banner.setAttribute('hidden', '');
-        initializeAnalytics();
-        showConsentMessage('✓ Cookie preferences saved');
-    });
-    
-    // Reject Analytics button
-    document.getElementById('cookie-reject')?.addEventListener('click', () => {
-        CookieConsent.setConsent({ analytics: false });
-        banner.setAttribute('hidden', '');
-        showConsentMessage('✓ Only essential cookies will be used');
-    });
-    
-    // Settings button
-    document.getElementById('cookie-settings')?.addEventListener('click', () => {
-        banner.setAttribute('hidden', '');
-        openCookieSettings();
-    });
-    
-    // Learn more link
-    document.getElementById('cookie-learn-more')?.addEventListener('click', (e) => {
-        e.preventDefault();
-        banner.setAttribute('hidden', '');
-        document.getElementById('terms-btn')?.click();
-    });
-}
-
-function openCookieSettings() {
-    const modal = document.getElementById('cookie-settings-modal');
-    if (!modal) return;
-    
-    // Pre-populate settings
-    const consent = CookieConsent.getConsent();
-    const analyticsCheckbox = document.getElementById('cookie-analytics');
-    
-    if (analyticsCheckbox && consent) {
-        analyticsCheckbox.checked = consent.analytics;
-    }
-    
-    modal.removeAttribute('hidden');
-    document.body.style.overflow = 'hidden';
-}
-
-function closeCookieSettings() {
-    const modal = document.getElementById('cookie-settings-modal');
-    if (!modal) return;
-    
-    modal.setAttribute('hidden', '');
-    document.body.style.overflow = 'auto';
-}
-
-function initCookieSettingsModal() {
-    const modal = document.getElementById('cookie-settings-modal');
-    if (!modal) return;
-    
-    // Close button
-    modal.querySelector('.modal-close')?.addEventListener('click', closeCookieSettings);
-    
-    // Click outside to close
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            closeCookieSettings();
-        }
-    });
-    
-    // Save settings button
-    document.getElementById('cookie-save-settings')?.addEventListener('click', () => {
-        const analyticsCheckbox = document.getElementById('cookie-analytics');
-        
-        CookieConsent.setConsent({
-            analytics: analyticsCheckbox?.checked || false
-        });
-        
-        closeCookieSettings();
-        
-        if (analyticsCheckbox?.checked) {
-            initializeAnalytics();
-            showConsentMessage('✓ Analytics enabled');
-        } else {
-            showConsentMessage('✓ Analytics disabled');
-        }
-    });
-    
-    // Cancel button
-    document.getElementById('cookie-cancel-settings')?.addEventListener('click', () => {
-        closeCookieSettings();
-        
-        if (!CookieConsent.hasConsent()) {
-            document.getElementById('cookie-banner')?.removeAttribute('hidden');
-        }
-    });
-}
-
-// ============================================
 // GALLERY CONFIG
-// ============================================
-
 const galleries = {
     'low': { title: 'Language of Windows', dir: 'LoW' },
     'sol': { title: 'Snapshots of Life', dir: 'SoL' },
@@ -282,19 +64,19 @@ const loadManifest = async () => {
         const branch = 'main';
         const manifestUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/manifest.json`;
         
-        console.log('📦 Loading manifest...');
+        console.log('ðŸ“¦ Loading manifest...');
         const response = await fetch(manifestUrl);
         
         if (!response.ok) {
-            console.warn('⚠️ Manifest not found, using fallback');
+            console.warn('âš ï¸ Manifest not found, using fallback');
             return generateFallbackManifest();
         }
         
         imageManifest = await response.json();
-        console.log('✅ Manifest loaded:', imageManifest);
+        console.log('âœ… Manifest loaded:', imageManifest);
         return imageManifest;
     } catch (error) {
-        console.warn('⚠️ Error loading manifest:', error);
+        console.warn('âš ï¸ Error loading manifest:', error);
         return generateFallbackManifest();
     }
 };
@@ -318,7 +100,7 @@ const generateFallbackManifest = () => {
     });
     
     imageManifest = manifest;
-    console.log('📋 Using fallback manifest');
+    console.log('ðŸ“‹ Using fallback manifest');
     return manifest;
 };
 
@@ -343,7 +125,7 @@ const fetchAllLikes = async () => {
             likes[doc.id] = doc.data().likes || 0;
         });
         likesCache = likes;
-        console.log(`❤️ Loaded ${Object.keys(likes).length} like records`);
+        console.log(`â¤ï¸ Loaded ${Object.keys(likes).length} like records`);
         return likes;
     } catch (error) {
         console.error('Error fetching likes:', error);
@@ -417,7 +199,7 @@ const setupLazyLoading = (img) => {
 // GALLERY GENERATION
 const generateImageGrid = async (galleryKey) => {
     if (galleryImages[galleryKey]) {
-        console.log(`✅ Gallery ${galleryKey} from cache`);
+        console.log(`âœ… Gallery ${galleryKey} from cache`);
         return galleryImages[galleryKey];
     }
     
@@ -426,11 +208,11 @@ const generateImageGrid = async (galleryKey) => {
     const imageList = imageManifest[dir] || [];
     
     if (imageList.length === 0) {
-        console.warn(`⚠️ No images for ${gallery.title}`);
+        console.warn(`âš ï¸ No images for ${gallery.title}`);
         return [];
     }
     
-    console.log(`📸 Loading ${imageList.length} images for ${gallery.title}`);
+    console.log(`ðŸ“¸ Loading ${imageList.length} images for ${gallery.title}`);
     
     const images = imageList.map(imageData => {
         const url = createImageUrl(dir, imageData.index, imageData.ext);
@@ -473,7 +255,7 @@ const generateImageGrid = async (galleryKey) => {
     images.sort((a, b) => b.likes - a.likes);
     galleryImages[galleryKey] = images;
     
-    console.log(`✅ Gallery ${gallery.title} loaded (${images.length} images)`);
+    console.log(`âœ… Gallery ${gallery.title} loaded (${images.length} images)`);
     return images;
 };
 
@@ -498,7 +280,7 @@ const renderMasonryGrid = async (galleryKey) => {
         }, 300);
     }
     
-    console.log(`✅ Rendered ${images.length} images for gallery: ${galleryKey}`);
+    console.log(`âœ… Rendered ${images.length} images for gallery: ${galleryKey}`);
 };
 
 // GALLERY DESCRIPTION
@@ -561,6 +343,7 @@ const openModal = (imageUrl, category = 'Image', galleryKey = currentGallery) =>
     currentModalImageUrl = imageUrl;
     modalImage.src = imageUrl;
     
+    // Get current gallery images and find index
     const images = galleryImages[galleryKey] || [];
     currentGalleryImages = images;
     currentModalImageIndex = images.findIndex(img => img.url === imageUrl);
@@ -652,6 +435,7 @@ const toggleLike = async () => {
         
         updateLikeButton();
         
+        // Update grid
         const imageCard = document.querySelector(`.image-card[data-url="${currentModalImageUrl}"]`);
         if (imageCard) {
             const likeCountSpan = imageCard.querySelector('.card-like-count span');
@@ -670,30 +454,24 @@ const toggleLike = async () => {
 // TERMS MODAL
 const termsModal = document.getElementById('terms-modal');
 const termsBtn = document.getElementById('terms-btn');
-const termsClose = termsModal?.querySelector('.modal-close');
+const termsClose = termsModal.querySelector('.modal-close');
 
-if (termsBtn) {
-    termsBtn.addEventListener('click', () => {
-        termsModal.removeAttribute('hidden');
-        document.body.style.overflow = 'hidden';
-    });
-}
+termsBtn.addEventListener('click', () => {
+    termsModal.removeAttribute('hidden');
+    document.body.style.overflow = 'hidden';
+});
 
-if (termsClose) {
-    termsClose.addEventListener('click', () => {
+termsClose.addEventListener('click', () => {
+    termsModal.setAttribute('hidden', '');
+    document.body.style.overflow = 'auto';
+});
+
+termsModal.addEventListener('click', (e) => {
+    if (e.target === termsModal) {
         termsModal.setAttribute('hidden', '');
         document.body.style.overflow = 'auto';
-    });
-}
-
-if (termsModal) {
-    termsModal.addEventListener('click', (e) => {
-        if (e.target === termsModal) {
-            termsModal.setAttribute('hidden', '');
-            document.body.style.overflow = 'auto';
-        }
-    });
-}
+    }
+});
 
 // EVENT LISTENERS
 modalClose.addEventListener('click', closeModal);
@@ -722,22 +500,10 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// ============================================
-// INITIALIZATION
-// ============================================
-
+// INIT
 const init = async () => {
     try {
-        console.log('🚀 Initializing...');
-        
-        // Initialize cookie consent UI
-        initCookieBanner();
-        initCookieSettingsModal();
-        
-        // Initialize analytics if user has already consented
-        if (CookieConsent.isGranted('analytics')) {
-            await initializeAnalytics();
-        }
+        console.log('ðŸš€ Initializing...');
         
         const loadingIndicator = document.getElementById('loading-indicator');
         if (loadingIndicator) loadingIndicator.classList.remove('hidden');
@@ -747,15 +513,15 @@ const init = async () => {
             fetchAllLikes()
         ]);
         
-        console.log('📊 Data loaded - rendering...');
+        console.log('ðŸ“Š Data loaded - rendering...');
         
         await renderMasonryGrid(currentGallery);
         setupFilters();
         setupBackToTop();
         
-        console.log('✅ Initialized successfully');
+        console.log('âœ… Initialized successfully');
     } catch (error) {
-        console.error('❌ Init error:', error);
+        console.error('âŒ Init error:', error);
         
         const loadingIndicator = document.getElementById('loading-indicator');
         if (loadingIndicator) {
@@ -769,3 +535,209 @@ if (document.readyState === 'loading') {
 } else {
     init();
 }
+// ============================================
+// COOKIE CONSENT MANAGEMENT
+// ============================================
+
+const COOKIE_CONSENT_KEY = 'cookie_consent_preferences';
+const COOKIE_CONSENT_VERSION = '1.0';
+
+const cookieBanner = document.getElementById('cookie-banner');
+const cookieSettingsModal = document.getElementById('cookie-settings-modal');
+const cookieFloatBtn = document.getElementById('cookie-float-btn');
+
+// Check if user has already set preferences
+const checkCookieConsent = () => {
+    const saved = localStorage.getItem(COOKIE_CONSENT_KEY);
+    if (saved) {
+        try {
+            const preferences = JSON.parse(saved);
+            if (preferences.version === COOKIE_CONSENT_VERSION) {
+                applyCookiePreferences(preferences);
+                return true;
+            }
+        } catch (e) {
+            console.error('Error parsing cookie preferences:', e);
+        }
+    }
+    return false;
+};
+
+// Show cookie banner if no consent given
+const showCookieBanner = () => {
+    if (!checkCookieConsent()) {
+        cookieBanner.removeAttribute('hidden');
+    }
+};
+
+// Apply cookie preferences
+const applyCookiePreferences = (preferences) => {
+    console.log('📋 Applying cookie preferences:', preferences);
+    
+    // Analytics cookies
+    if (!preferences.analytics) {
+        // Disable analytics if user opted out
+        console.log('Analytics cookies: disabled');
+    }
+    
+    // Functional cookies
+    if (!preferences.functional) {
+        console.log('Functional cookies: disabled');
+    }
+    
+    // Marketing cookies
+    if (!preferences.marketing) {
+        console.log('Marketing cookies: disabled');
+    }
+};
+
+// Save cookie preferences
+const saveCookiePreferences = (preferences) => {
+    const toSave = {
+        ...preferences,
+        version: COOKIE_CONSENT_VERSION,
+        timestamp: new Date().toISOString()
+    };
+    localStorage.setItem(COOKIE_CONSENT_KEY, JSON.stringify(toSave));
+    applyCookiePreferences(toSave);
+};
+
+// Get current preferences from UI
+const getCurrentPreferences = () => {
+    return {
+        essential: true, // Always true
+        analytics: document.getElementById('analytics-cookies')?.checked || false,
+        functional: document.getElementById('functional-cookies')?.checked || false,
+        marketing: document.getElementById('marketing-cookies')?.checked || false
+    };
+};
+
+// Set preferences in UI
+const setPreferencesInUI = (preferences) => {
+    if (document.getElementById('analytics-cookies')) {
+        document.getElementById('analytics-cookies').checked = preferences.analytics !== false;
+    }
+    if (document.getElementById('functional-cookies')) {
+        document.getElementById('functional-cookies').checked = preferences.functional !== false;
+    }
+    if (document.getElementById('marketing-cookies')) {
+        document.getElementById('marketing-cookies').checked = preferences.marketing !== false;
+    }
+};
+
+// Accept all cookies
+document.getElementById('cookie-accept-btn')?.addEventListener('click', () => {
+    saveCookiePreferences({
+        essential: true,
+        analytics: true,
+        functional: true,
+        marketing: true
+    });
+    cookieBanner.setAttribute('hidden', '');
+});
+
+// Reject all cookies (except essential)
+document.getElementById('cookie-reject-btn')?.addEventListener('click', () => {
+    saveCookiePreferences({
+        essential: true,
+        analytics: false,
+        functional: false,
+        marketing: false
+    });
+    cookieBanner.setAttribute('hidden', '');
+});
+
+// Open cookie settings from banner
+document.getElementById('cookie-settings-btn')?.addEventListener('click', () => {
+    cookieBanner.setAttribute('hidden', '');
+    const saved = localStorage.getItem(COOKIE_CONSENT_KEY);
+    if (saved) {
+        try {
+            const preferences = JSON.parse(saved);
+            setPreferencesInUI(preferences);
+        } catch (e) {
+            // Use defaults
+        }
+    }
+    cookieSettingsModal.removeAttribute('hidden');
+    document.body.style.overflow = 'hidden';
+});
+
+// Open cookie settings from footer
+document.getElementById('footer-cookie-btn')?.addEventListener('click', () => {
+    const saved = localStorage.getItem(COOKIE_CONSENT_KEY);
+    if (saved) {
+        try {
+            const preferences = JSON.parse(saved);
+            setPreferencesInUI(preferences);
+        } catch (e) {
+            // Use defaults
+        }
+    }
+    cookieSettingsModal.removeAttribute('hidden');
+    document.body.style.overflow = 'hidden';
+});
+
+// Open cookie settings from floating button
+cookieFloatBtn?.addEventListener('click', () => {
+    const saved = localStorage.getItem(COOKIE_CONSENT_KEY);
+    if (saved) {
+        try {
+            const preferences = JSON.parse(saved);
+            setPreferencesInUI(preferences);
+        } catch (e) {
+            // Use defaults
+        }
+    }
+    cookieSettingsModal.removeAttribute('hidden');
+    document.body.style.overflow = 'hidden';
+});
+
+// Close cookie settings modal
+cookieSettingsModal?.querySelector('.modal-close')?.addEventListener('click', () => {
+    cookieSettingsModal.setAttribute('hidden', '');
+    document.body.style.overflow = 'auto';
+});
+
+// Click outside to close
+cookieSettingsModal?.addEventListener('click', (e) => {
+    if (e.target === cookieSettingsModal) {
+        cookieSettingsModal.setAttribute('hidden', '');
+        document.body.style.overflow = 'auto';
+    }
+});
+
+// Save preferences from modal
+document.getElementById('cookie-save-btn')?.addEventListener('click', () => {
+    const preferences = getCurrentPreferences();
+    saveCookiePreferences(preferences);
+    cookieSettingsModal.setAttribute('hidden', '');
+    document.body.style.overflow = 'auto';
+});
+
+// Accept all from modal
+document.getElementById('cookie-accept-all-btn')?.addEventListener('click', () => {
+    saveCookiePreferences({
+        essential: true,
+        analytics: true,
+        functional: true,
+        marketing: true
+    });
+    cookieSettingsModal.setAttribute('hidden', '');
+    document.body.style.overflow = 'auto';
+});
+
+// Reject all from modal
+document.getElementById('cookie-reject-all-btn')?.addEventListener('click', () => {
+    saveCookiePreferences({
+        essential: true,
+        analytics: false,
+        functional: false,
+        marketing: false
+    });
+    cookieSettingsModal.setAttribute('hidden', '');
+    document.body.style.overflow = 'auto';
+});
+
+// Initialize cookie banner on page load
+setTimeout(showCookieBanner, 500);
