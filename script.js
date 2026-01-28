@@ -58,7 +58,7 @@ let currentGallery = 'low';
 let galleryImages = {};
 
 // GDPR: Functional cookies enabled flag (default: true until user explicitly rejects)
-window.FUNCTIONAL_COOKIES_ENABLED = true;
+window.FUNCTIONAL_COOKIES_ENABLED = false;
 
 // UTILITIES
 const debounce = (fn, delay) => {
