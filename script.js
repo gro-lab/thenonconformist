@@ -589,6 +589,7 @@ const applyCookiePreferences = async (preferences) => {
     } else if (!preferences.analytics && analytics !== null) {
         // User REJECTED analytics - disable it
         analytics = null;
+        window['ga-disable-G-5MGS0G4CDY'] = true;
         console.log('🚫 Analytics disabled');
     }
     
