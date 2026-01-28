@@ -1069,3 +1069,25 @@ body {
     margin-bottom: 0.5rem;
     text-align: left;
 }
+
+/* Terms modal list styling */
+.terms-text ul {
+    margin-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.terms-text ul li {
+    font-size: 0.9375rem;
+    line-height: 1.8;
+    margin-bottom: 0.5rem;
+    color: var(--text-secondary);
+}
+
+.terms-text a {
+    color: var(--accent-red);
+    text-decoration: underline;
+}
+
+.terms-text a:hover {
+    color: var(--accent-red-hover);
+}
