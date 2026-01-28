@@ -430,7 +430,8 @@ const updateLikeButton = () => {
     if (count) count.textContent = likes;
     
     const likedKey = `liked_${docId}`;
-    const isLiked = localStorage.getItem(likedKey) === 'true';
+    const isLiked = window.FUNCTIONAL_COOKIES_ENABLED &&
+    localStorage.getItem(likedKey) === 'true';
     
     if (heart) {
         if (isLiked) {
