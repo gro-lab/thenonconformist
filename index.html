@@ -114,22 +114,146 @@
     </div>
 
     <div id="terms-modal" class="modal terms-modal" hidden>
-        <button class="modal-close" aria-label="Close terms">
-            <i class="fas fa-times"></i>
-        </button>
-        <div class="modal-content terms-content">
-            <h2>Terms & Conditions</h2>
-            <div class="terms-text">
-                <h3>1. Introduction</h3>
-                <p>Welcome to The Nonconformist. By accessing this website, you accept these terms.</p>
-                <h3>5. GDPR Compliance</h3>
-                <p>We comply with GDPR. Your data is secure and never sold to third parties.</p>
-                <p style="margin-top: 2rem; font-size: 0.85rem; color: #999;">
-                    <strong>Last Updated:</strong> January 2025
-                </p>
-            </div>
+    <button class="modal-close" aria-label="Close terms">
+        <i class="fas fa-times"></i>
+    </button>
+    <div class="modal-content terms-content">
+        <h2>Terms & Conditions and Privacy Policy</h2>
+        <div class="terms-text">
+            
+            <h3>1. Introduction</h3>
+            <p>Welcome to The Nonconformist ("we," "our," "us"). By accessing and using this website (thenonconformist.xyz), you agree to be bound by these Terms and Conditions and our Privacy Policy. If you do not agree with any part of these terms, please discontinue use of this website immediately.</p>
+            
+            <h3>2. Intellectual Property Rights</h3>
+            <p>All content on this website, including but not limited to photographs, images, text, graphics, logos, and design elements, are the exclusive property of The Nonconformist and are protected by international copyright, trademark, and other intellectual property laws.</p>
+            <p>You may not reproduce, distribute, modify, create derivative works of, publicly display, publicly perform, republish, download, store, or transmit any material from our website without our prior written consent, except for personal, non-commercial use.</p>
+            
+            <h3>3. User Conduct</h3>
+            <p>When using our website, you agree to:</p>
+            <ul>
+                <li>Not engage in any activity that disrupts or interferes with our services</li>
+                <li>Not attempt to gain unauthorized access to any portion of the website</li>
+                <li>Not use automated systems or software to extract data from the website</li>
+                <li>Not use the website for any unlawful purpose or in violation of these terms</li>
+            </ul>
+            
+            <h3>4. Like Feature & User Interactions</h3>
+            <p>Our website includes a "like" feature that allows visitors to express appreciation for photographs. When you interact with this feature:</p>
+            <ul>
+                <li>Your like is recorded anonymously in our database (Firebase Firestore)</li>
+                <li>A technical identifier is stored in your browser's local storage to prevent duplicate likes</li>
+                <li>No personally identifiable information is collected through this interaction</li>
+                <li>Like counts are publicly visible to all website visitors</li>
+            </ul>
+            
+            <h3>5. Privacy Policy & GDPR Compliance</h3>
+            <p>We are committed to protecting your privacy and complying with the General Data Protection Regulation (GDPR) and other applicable data protection laws.</p>
+            
+            <h4>5.1 Data We Collect</h4>
+            <p><strong>Automatically Collected Data:</strong></p>
+            <ul>
+                <li><strong>Analytics Data:</strong> We use Google Analytics (Firebase Analytics) to collect anonymized usage statistics including page views, session duration, device type, browser type, and general geographic location (country/region level only)</li>
+                <li><strong>Like Interactions:</strong> When you like an image, we store a hashed identifier of the image URL and a like count. This data is anonymous and cannot be traced back to you personally</li>
+                <li><strong>Technical Data:</strong> Your browser may store temporary data (cookies and local storage) to remember your preferences and like history</li>
+            </ul>
+            
+            <p><strong>Data We Do NOT Collect:</strong></p>
+            <ul>
+                <li>We do not collect names, email addresses, or personal identifiers</li>
+                <li>We do not track you across other websites</li>
+                <li>We do not sell, rent, or share your data with third parties for marketing purposes</li>
+            </ul>
+            
+            <h4>5.2 Legal Basis for Processing (GDPR)</h4>
+            <p>We process data based on the following legal grounds:</p>
+            <ul>
+                <li><strong>Legitimate Interest:</strong> Analytics help us improve website performance and user experience</li>
+                <li><strong>Consent:</strong> By continuing to use our website, you consent to the data collection described above</li>
+            </ul>
+            
+            <h4>5.3 Cookies & Local Storage</h4>
+            <p>Our website uses the following types of cookies and storage:</p>
+            <ul>
+                <li><strong>Essential Cookies:</strong> Required for the website to function properly (e.g., remembering your liked images)</li>
+                <li><strong>Analytics Cookies:</strong> Firebase Analytics uses cookies to understand how visitors interact with our site</li>
+                <li><strong>Cache Storage:</strong> Our Service Worker caches images locally in your browser to improve loading speed (expires after 7 days)</li>
+            </ul>
+            <p>You can control cookies through your browser settings. Disabling cookies may affect website functionality.</p>
+            
+            <h4>5.4 Third-Party Services</h4>
+            <p>We use the following third-party services that may collect data:</p>
+            <ul>
+                <li><strong>Firebase (Google LLC):</strong> Hosting, analytics, and database services. <a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Privacy Policy</a></li>
+                <li><strong>GitHub:</strong> Image hosting via GitHub Pages/Raw. <a href="https://docs.github.com/en/site-policy/privacy-policies/github-privacy-statement" target="_blank" rel="noopener">Privacy Policy</a></li>
+                <li><strong>Google Fonts & Font Awesome (Cloudflare CDN):</strong> Font and icon delivery. <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google Privacy</a> | <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener">Cloudflare Privacy</a></li>
+            </ul>
+            
+            <h4>5.5 Data Retention</h4>
+            <ul>
+                <li><strong>Like Data:</strong> Stored indefinitely unless you request deletion</li>
+                <li><strong>Analytics Data:</strong> Retained according to Google Analytics retention policies (typically 14 months)</li>
+                <li><strong>Cached Images:</strong> Automatically expire from your browser after 7 days</li>
+            </ul>
+            
+            <h4>5.6 Your GDPR Rights</h4>
+            <p>Under GDPR, you have the following rights:</p>
+            <ul>
+                <li><strong>Right to Access:</strong> Request a copy of data we hold about you</li>
+                <li><strong>Right to Rectification:</strong> Request correction of inaccurate data</li>
+                <li><strong>Right to Erasure:</strong> Request deletion of your data ("right to be forgotten")</li>
+                <li><strong>Right to Restrict Processing:</strong> Limit how we use your data</li>
+                <li><strong>Right to Data Portability:</strong> Receive your data in a portable format</li>
+                <li><strong>Right to Object:</strong> Object to processing based on legitimate interests</li>
+                <li><strong>Right to Withdraw Consent:</strong> Withdraw consent at any time</li>
+            </ul>
+            <p>To exercise any of these rights, contact us at: <a href="mailto:then-onconformist@outlook.com">then-onconformist@outlook.com</a></p>
+            
+            <h4>5.7 Data Security</h4>
+            <p>We implement appropriate technical and organizational measures to protect your data against unauthorized access, alteration, disclosure, or destruction. All data transmissions are encrypted using HTTPS/SSL. However, no method of transmission over the internet is 100% secure.</p>
+            
+            <h4>5.8 International Data Transfers</h4>
+            <p>Your data may be transferred to and processed in countries outside the European Economic Area (EEA), including the United States, where our service providers (Firebase/Google) operate. We ensure such transfers comply with GDPR through appropriate safeguards such as Standard Contractual Clauses.</p>
+            
+            <h3>6. External Links</h3>
+            <p>Our website contains links to external sites (Instagram, Facebook). We are not responsible for the privacy practices or content of these external sites. We recommend reviewing their privacy policies before providing any personal information.</p>
+            
+            <h3>7. Children's Privacy</h3>
+            <p>Our website is not intended for children under the age of 16. We do not knowingly collect personal information from children. If you believe a child has provided us with personal information, please contact us immediately so we can delete it.</p>
+            
+            <h3>8. Limitation of Liability</h3>
+            <p>The Nonconformist website is provided "as is" without warranties of any kind, either express or implied. We do not warrant that the website will be uninterrupted, error-free, or free from viruses or other harmful components.</p>
+            <p>To the fullest extent permitted by law, we shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of or inability to use the website.</p>
+            
+            <h3>9. Indemnification</h3>
+            <p>You agree to indemnify and hold harmless The Nonconformist, its owners, and affiliates from any claims, damages, losses, liabilities, and expenses (including legal fees) arising from your use of the website or violation of these terms.</p>
+            
+            <h3>10. Changes to Terms</h3>
+            <p>We reserve the right to modify these Terms and Conditions and our Privacy Policy at any time. Changes will be effective immediately upon posting to the website. Your continued use of the website after changes constitutes acceptance of the modified terms. We will update the "Last Updated" date below when changes are made.</p>
+            
+            <h3>11. Governing Law & Dispute Resolution</h3>
+            <p>These terms shall be governed by and construed in accordance with the laws of Romania. Any disputes arising from these terms or your use of the website shall be subject to the exclusive jurisdiction of the courts of Timișoara, Romania.</p>
+            
+            <h3>12. Severability</h3>
+            <p>If any provision of these terms is found to be invalid or unenforceable, the remaining provisions shall remain in full force and effect.</p>
+            
+            <h3>13. Contact Information</h3>
+            <p>For questions, concerns, or to exercise your GDPR rights, please contact us:</p>
+            <p>
+                <strong>Email:</strong> <a href="mailto:then-onconformist@outlook.com">then-onconformist@outlook.com</a><br>
+                <strong>Instagram:</strong> <a href="https://www.instagram.com/then0nc0nformist/" target="_blank" rel="noopener">@then0nc0nformist</a><br>
+                <strong>Facebook:</strong> <a href="https://www.facebook.com/then0nc0nformist" target="_blank" rel="noopener">The Nonconformist</a>
+            </p>
+            
+            <h3>14. Acknowledgment</h3>
+            <p>By using this website, you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions and Privacy Policy.</p>
+            
+            <p style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid #e8e8e8; font-size: 0.85rem; color: #999;">
+                <strong>Last Updated:</strong> January 27, 2025<br>
+                <strong>Version:</strong> 1.0
+            </p>
         </div>
     </div>
+</div>
 
     <!-- Cookie Consent Banner -->
     <div id="cookie-banner" class="cookie-banner" hidden>
