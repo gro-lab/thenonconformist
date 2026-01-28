@@ -24,6 +24,9 @@ const firebaseConfig = {
     measurementId: "G-5MGS0G4CDY"
 };
 
+// GDPR: Default analytics disabled until explicit consent
+window['ga-disable-G-5MGS0G4CDY'] = true;
+
 // ⚠️ CRITICAL GDPR FIX: Firebase NOT initialized by default
 // Only initialized after functional cookie consent
 let app = null;
@@ -58,7 +61,7 @@ let currentGallery = 'low';
 let galleryImages = {};
 
 // GDPR: Functional cookies enabled flag (default: true until user explicitly rejects)
-window.FUNCTIONAL_COOKIES_ENABLED = false;
+window.FUNCTIONAL_COOKIES_ENABLED = true;
 
 // UTILITIES
 const debounce = (fn, delay) => {
@@ -376,6 +379,7 @@ const openModal = (imageUrl, category = 'Image', galleryKey = currentGallery) =>
     modal.removeAttribute('hidden');
     document.body.style.overflow = 'hidden';
     updateLikeButton();
+    updateLikeButtonAvailability();
     updateNavButtons();
 };
 
@@ -401,6 +405,7 @@ const navigateModal = (direction) => {
     modalImage.src = nextImage.url;
     
     updateLikeButton();
+    updateLikeButtonAvailability();
     updateNavButtons();
 };
 
@@ -435,6 +440,25 @@ const updateLikeButton = () => {
             heart.classList.remove('fas', 'liked');
             heart.classList.add('far');
         }
+    }
+};
+
+// GDPR: Update like button availability based on consent
+const updateLikeButtonAvailability = () => {
+    if (!likeBtn) return;
+
+    if (!window.FUNCTIONAL_COOKIES_ENABLED) {
+        likeBtn.disabled = true;
+        likeBtn.title = 'Enable functional cookies to use this feature';
+        likeBtn.classList.add('disabled');
+        likeBtn.style.opacity = '0.5';
+        likeBtn.style.cursor = 'not-allowed';
+    } else {
+        likeBtn.disabled = false;
+        likeBtn.title = '';
+        likeBtn.classList.remove('disabled');
+        likeBtn.style.opacity = '1';
+        likeBtn.style.cursor = 'pointer';
     }
 };
 
@@ -576,6 +600,9 @@ const applyCookiePreferences = async (preferences) => {
     if (preferences.analytics && analytics === null) {
         // User ACCEPTED analytics - lazy load Firebase Analytics
         try {
+            // Enable analytics by removing kill switch
+            window['ga-disable-G-5MGS0G4CDY'] = false;
+            
             // Ensure Firebase app is initialized first
             if (!app) {
                 await initFirebase();
@@ -588,9 +615,12 @@ const applyCookiePreferences = async (preferences) => {
         }
     } else if (!preferences.analytics && analytics !== null) {
         // User REJECTED analytics - disable it
-        analytics = null;
         window['ga-disable-G-5MGS0G4CDY'] = true;
+        analytics = null;
         console.log('🚫 Analytics disabled');
+    } else if (!preferences.analytics) {
+        // Ensure kill switch is active
+        window['ga-disable-G-5MGS0G4CDY'] = true;
     }
     
     // ============================================
@@ -604,6 +634,7 @@ const applyCookiePreferences = async (preferences) => {
         
         // Re-render current gallery with likes data
         await renderMasonryGrid(currentGallery);
+        updateLikeButtonAvailability();
         
         console.log('✅ Functional cookies enabled - likes feature active');
     } else if (!preferences.functional) {
@@ -615,10 +646,12 @@ const applyCookiePreferences = async (preferences) => {
         if (galleryImages[currentGallery]) {
             await renderMasonryGrid(currentGallery);
         }
+        updateLikeButtonAvailability();
         
         console.log('🚫 Functional cookies disabled - likes feature disabled');
     } else if (preferences.functional) {
         window.FUNCTIONAL_COOKIES_ENABLED = true;
+        updateLikeButtonAvailability();
         console.log('✅ Functional cookies remain enabled');
     }
     
