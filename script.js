@@ -60,8 +60,8 @@ let isProcessing = false;
 let currentGallery = 'low';
 let galleryImages = {};
 
-// GDPR: Functional cookies enabled flag (default: true until user explicitly rejects)
-window.FUNCTIONAL_COOKIES_ENABLED = true;
+// GDPR: Functional cookies disabled by default until user explicitly accepts
+window.FUNCTIONAL_COOKIES_ENABLED = false;
 
 // UTILITIES
 const debounce = (fn, delay) => {
@@ -821,15 +821,20 @@ const init = async () => {
         const loadingIndicator = document.getElementById('loading-indicator');
         if (loadingIndicator) loadingIndicator.classList.remove('hidden');
         
+        // GDPR CRITICAL: Check for saved consent FIRST
+        const hasConsent = checkCookieConsent();
+        
         // Load manifest (no consent needed - just image paths)
         await loadManifest();
         
-        // GDPR CRITICAL: Only initialize Firebase and fetch likes if functional cookies enabled
+        // GDPR CRITICAL: Only initialize Firebase if user has previously consented
+        // If no saved consent exists, FUNCTIONAL_COOKIES_ENABLED will be false
         if (window.FUNCTIONAL_COOKIES_ENABLED) {
             await initFirebase();
             await fetchAllLikes();
         } else {
             likesCache = {};  // Empty cache if no consent
+            console.log('⚠️ No consent - Firebase not initialized');
         }
         
         console.log('📊 Data loaded - rendering...');
@@ -839,7 +844,11 @@ const init = async () => {
         setupBackToTop();
         
         // Show cookie banner if consent not given
-        setTimeout(showCookieBanner, 500);
+        if (!hasConsent) {
+            setTimeout(() => {
+                cookieBanner.removeAttribute('hidden');
+            }, 500);
+        }
         
         console.log('✅ Initialized successfully');
     } catch (error) {
