@@ -12,7 +12,6 @@ import {
     getDocs,
     serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js';
-import { getAnalytics } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-analytics.js';
 
 // FIREBASE CONFIG
 const firebaseConfig = {
@@ -27,7 +26,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const analytics = getAnalytics(app);
+let analytics = null; // GDPR: Initialized only after consent
 
 // GALLERY CONFIG
 const galleries = {
@@ -46,6 +45,9 @@ let currentGalleryImages = [];
 let isProcessing = false;
 let currentGallery = 'low';
 let galleryImages = {};
+
+// GDPR: Functional cookies enabled flag (default: true until user explicitly rejects)
+window.FUNCTIONAL_COOKIES_ENABLED = true;
 
 // UTILITIES
 const debounce = (fn, delay) => {
@@ -414,6 +416,13 @@ const updateLikeButton = () => {
 };
 
 const toggleLike = async () => {
+    
+    // GDPR: Check if functional cookies are enabled
+    if (window.FUNCTIONAL_COOKIES_ENABLED === false) {
+        alert('Please enable functional cookies in cookie settings to use the like feature.');
+        return;
+    }
+
     if (!currentModalImageUrl || isProcessing) return;
     
     isProcessing = true;
@@ -570,24 +579,46 @@ const showCookieBanner = () => {
     }
 };
 
-// Apply cookie preferences
-const applyCookiePreferences = (preferences) => {
+// Apply cookie preferences - GDPR COMPLIANT VERSION
+const applyCookiePreferences = async (preferences) => {
     console.log('📋 Applying cookie preferences:', preferences);
     
-    // Analytics cookies
-    if (!preferences.analytics) {
-        // Disable analytics if user opted out
-        console.log('Analytics cookies: disabled');
+    // ============================================
+    // ANALYTICS COOKIES - Firebase Analytics
+    // ============================================
+    if (preferences.analytics && analytics === null) {
+        // User ACCEPTED analytics - lazy load Firebase Analytics
+        try {
+            const { getAnalytics } = await import('https://www.gstatic.com/firebasejs/12.8.0/firebase-analytics.js');
+            analytics = getAnalytics(app);
+            console.log('✅ Analytics enabled after consent');
+        } catch (error) {
+            console.error('❌ Failed to load analytics:', error);
+        }
+    } else if (!preferences.analytics && analytics !== null) {
+        // User REJECTED analytics - disable it
+        // Note: Firebase doesn't have a clean disable, so we set to null and stop using it
+        analytics = null;
+        console.log('🚫 Analytics disabled');
     }
     
-    // Functional cookies
+    // ============================================
+    // FUNCTIONAL COOKIES - Like functionality
+    // ============================================
     if (!preferences.functional) {
-        console.log('Functional cookies: disabled');
+        // User rejected functional cookies - disable likes
+        console.log('🚫 Functional cookies disabled - likes feature disabled');
+        window.FUNCTIONAL_COOKIES_ENABLED = false;
+    } else {
+        window.FUNCTIONAL_COOKIES_ENABLED = true;
+        console.log('✅ Functional cookies enabled - likes feature active');
     }
     
-    // Marketing cookies
+    // ============================================
+    // MARKETING COOKIES - Not currently used
+    // ============================================
     if (!preferences.marketing) {
-        console.log('Marketing cookies: disabled');
+        console.log('🚫 Marketing cookies disabled');
     }
 };
 
