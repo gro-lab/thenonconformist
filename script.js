@@ -62,7 +62,7 @@ const loadManifest = async () => {
         const owner = 'gro-lab';
         const repo = 'thenonconformist';
         const branch = 'main';
-        const manifestUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/manifest.json`;
+        const manifestUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images.json`;
         
         console.log('ðŸ“¦ Loading manifest...');
         const response = await fetch(manifestUrl);
@@ -94,7 +94,7 @@ const generateFallbackManifest = () => {
         const dir = galleries[key].dir;
         const ext = defaultExtensions[dir] || 'JPEG';
         manifest[dir] = [];
-        for (let i = 1; i <= 50; i++) {
+        for (let i = 1; i <= 5; i++) {
             manifest[dir].push({ index: i, ext: ext });
         }
     });
