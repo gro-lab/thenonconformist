@@ -1,10 +1,19 @@
 #!/usr/bin/env node
 
+/**
+ * MANIFEST GENERATOR
+ * 
+ * Scans images folder and generates images.json in the ROOT folder
+ * 
+ * Usage:
+ *   node generate-manifest.js
+ */
+
 const fs = require('fs');
 const path = require('path');
 
 const IMAGES_DIR = './images';
-const OUTPUT_FILE = './images.json';
+const OUTPUT_FILE = './images.json';  // Output to ROOT folder
 const VALID_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'JPG', 'JPEG', 'PNG', 'GIF', 'WEBP'];
 const GALLERIES = ['LoW', 'SoL', 'R', 'SA'];
 
@@ -34,20 +43,27 @@ function scanGallery(galleryDir) {
         const filePath = path.join(fullPath, file);
         const stats = fs.statSync(filePath);
         
+        // Extract index from filename (e.g., "LoW-5.PNG" -> 5)
+        const match = file.match(/^[A-Za-z]+-(\d+)\./);
+        const index = match ? parseInt(match[1], 10) : null;
+        
+        if (index === null) {
+            console.warn(`⚠️  Skipping file with invalid naming: ${file}`);
+            return;
+        }
+        
         images.push({
-            filename: file,
-            ext: getExtension(file),
-            path: `images/${galleryDir}/${file}`,
-            mtime: stats.mtime.getTime()
+            index: index,
+            ext: getExtension(file)
         });
     });
     
-    images.sort((a, b) => a.filename.localeCompare(b.filename));
+    images.sort((a, b) => a.index - b.index);
     return images;
 }
 
 function generateManifest() {
-    console.log('📦 Generating universal manifest...\n');
+    console.log('📦 Generating manifest...\n');
     const manifest = {};
     
     GALLERIES.forEach(gallery => {
