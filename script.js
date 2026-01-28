@@ -1,4 +1,4 @@
-// THE NONCONFORMIST - Updated Script with Fixed Navigation
+// THE NONCONFORMIST - FULLY GDPR-COMPLIANT VERSION
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js';
 import {
@@ -24,9 +24,20 @@ const firebaseConfig = {
     measurementId: "G-5MGS0G4CDY"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-let analytics = null; // GDPR: Initialized only after consent
+// ⚠️ CRITICAL GDPR FIX: Firebase NOT initialized by default
+// Only initialized after functional cookie consent
+let app = null;
+let db = null;
+let analytics = null;
+
+// Initialize Firebase only when user consents to functional cookies
+const initFirebase = async () => {
+    if (app) return; // Already initialized
+    
+    app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    console.log('✅ Firebase initialized after consent');
+};
 
 // GALLERY CONFIG
 const galleries = {
@@ -66,19 +77,19 @@ const loadManifest = async () => {
         const branch = 'main';
         const manifestUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images.json`;
         
-        console.log('ðŸ“¦ Loading manifest...');
+        console.log('📦 Loading manifest...');
         const response = await fetch(manifestUrl);
         
         if (!response.ok) {
-            console.warn('âš ï¸ Manifest not found, using fallback');
+            console.warn('⚠️ Manifest not found, using fallback');
             return generateFallbackManifest();
         }
         
         imageManifest = await response.json();
-        console.log('âœ… Manifest loaded:', imageManifest);
+        console.log('✅ Manifest loaded:', imageManifest);
         return imageManifest;
     } catch (error) {
-        console.warn('âš ï¸ Error loading manifest:', error);
+        console.warn('⚠️ Error loading manifest:', error);
         return generateFallbackManifest();
     }
 };
@@ -102,7 +113,7 @@ const generateFallbackManifest = () => {
     });
     
     imageManifest = manifest;
-    console.log('ðŸ“‹ Using fallback manifest');
+    console.log('📋 Using fallback manifest');
     return manifest;
 };
 
@@ -118,8 +129,14 @@ const getDocIdFromUrl = (url) => {
     return btoa(url).replace(/[^a-zA-Z0-9]/g, '');
 };
 
-// FIRESTORE
+// FIRESTORE - GDPR PROTECTED
 const fetchAllLikes = async () => {
+    // GDPR: Only fetch if functional cookies enabled
+    if (!window.FUNCTIONAL_COOKIES_ENABLED || !db) {
+        console.log('🚫 Likes disabled - functional cookies not accepted');
+        return {};
+    }
+    
     try {
         const querySnapshot = await getDocs(collection(db, 'image_likes'));
         const likes = {};
@@ -127,7 +144,7 @@ const fetchAllLikes = async () => {
             likes[doc.id] = doc.data().likes || 0;
         });
         likesCache = likes;
-        console.log(`â¤ï¸ Loaded ${Object.keys(likes).length} like records`);
+        console.log(`❤️ Loaded ${Object.keys(likes).length} like records`);
         return likes;
     } catch (error) {
         console.error('Error fetching likes:', error);
@@ -136,6 +153,12 @@ const fetchAllLikes = async () => {
 };
 
 const updateLike = async (url, increment_value) => {
+    // GDPR: Only update if functional cookies enabled
+    if (!window.FUNCTIONAL_COOKIES_ENABLED || !db) {
+        console.log('🚫 Cannot update likes - functional cookies not accepted');
+        return null;
+    }
+    
     try {
         const docId = getDocIdFromUrl(url);
         const docRef = doc(db, 'image_likes', docId);
@@ -201,7 +224,7 @@ const setupLazyLoading = (img) => {
 // GALLERY GENERATION
 const generateImageGrid = async (galleryKey) => {
     if (galleryImages[galleryKey]) {
-        console.log(`âœ… Gallery ${galleryKey} from cache`);
+        console.log(`✅ Gallery ${galleryKey} from cache`);
         return galleryImages[galleryKey];
     }
     
@@ -210,11 +233,11 @@ const generateImageGrid = async (galleryKey) => {
     const imageList = imageManifest[dir] || [];
     
     if (imageList.length === 0) {
-        console.warn(`âš ï¸ No images for ${gallery.title}`);
+        console.warn(`⚠️ No images for ${gallery.title}`);
         return [];
     }
     
-    console.log(`ðŸ“¸ Loading ${imageList.length} images for ${gallery.title}`);
+    console.log(`📸 Loading ${imageList.length} images for ${gallery.title}`);
     
     const images = imageList.map(imageData => {
         const url = createImageUrl(dir, imageData.index, imageData.ext);
@@ -257,7 +280,7 @@ const generateImageGrid = async (galleryKey) => {
     images.sort((a, b) => b.likes - a.likes);
     galleryImages[galleryKey] = images;
     
-    console.log(`âœ… Gallery ${gallery.title} loaded (${images.length} images)`);
+    console.log(`✅ Gallery ${gallery.title} loaded (${images.length} images)`);
     return images;
 };
 
@@ -282,7 +305,7 @@ const renderMasonryGrid = async (galleryKey) => {
         }, 300);
     }
     
-    console.log(`âœ… Rendered ${images.length} images for gallery: ${galleryKey}`);
+    console.log(`✅ Rendered ${images.length} images for gallery: ${galleryKey}`);
 };
 
 // GALLERY DESCRIPTION
@@ -416,14 +439,13 @@ const updateLikeButton = () => {
 };
 
 const toggleLike = async () => {
+    if (!currentModalImageUrl || isProcessing) return;
     
     // GDPR: Check if functional cookies are enabled
     if (window.FUNCTIONAL_COOKIES_ENABLED === false) {
         alert('Please enable functional cookies in cookie settings to use the like feature.');
         return;
     }
-
-    if (!currentModalImageUrl || isProcessing) return;
     
     isProcessing = true;
     likeBtn.disabled = true;
@@ -509,43 +531,8 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// INIT
-const init = async () => {
-    try {
-        console.log('ðŸš€ Initializing...');
-        
-        const loadingIndicator = document.getElementById('loading-indicator');
-        if (loadingIndicator) loadingIndicator.classList.remove('hidden');
-        
-        const [manifest, likes] = await Promise.all([
-            loadManifest(),
-            fetchAllLikes()
-        ]);
-        
-        console.log('ðŸ“Š Data loaded - rendering...');
-        
-        await renderMasonryGrid(currentGallery);
-        setupFilters();
-        setupBackToTop();
-        
-        console.log('âœ… Initialized successfully');
-    } catch (error) {
-        console.error('âŒ Init error:', error);
-        
-        const loadingIndicator = document.getElementById('loading-indicator');
-        if (loadingIndicator) {
-            loadingIndicator.innerHTML = '<p>Error loading images. Please refresh.</p>';
-        }
-    }
-};
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-} else {
-    init();
-}
 // ============================================
-// COOKIE CONSENT MANAGEMENT
+// COOKIE CONSENT MANAGEMENT - GDPR COMPLIANT
 // ============================================
 
 const COOKIE_CONSENT_KEY = 'cookie_consent_preferences';
@@ -579,7 +566,7 @@ const showCookieBanner = () => {
     }
 };
 
-// Apply cookie preferences - GDPR COMPLIANT VERSION
+// Apply cookie preferences - FULLY GDPR COMPLIANT
 const applyCookiePreferences = async (preferences) => {
     console.log('📋 Applying cookie preferences:', preferences);
     
@@ -589,6 +576,10 @@ const applyCookiePreferences = async (preferences) => {
     if (preferences.analytics && analytics === null) {
         // User ACCEPTED analytics - lazy load Firebase Analytics
         try {
+            // Ensure Firebase app is initialized first
+            if (!app) {
+                await initFirebase();
+            }
             const { getAnalytics } = await import('https://www.gstatic.com/firebasejs/12.8.0/firebase-analytics.js');
             analytics = getAnalytics(app);
             console.log('✅ Analytics enabled after consent');
@@ -597,21 +588,37 @@ const applyCookiePreferences = async (preferences) => {
         }
     } else if (!preferences.analytics && analytics !== null) {
         // User REJECTED analytics - disable it
-        // Note: Firebase doesn't have a clean disable, so we set to null and stop using it
         analytics = null;
         console.log('🚫 Analytics disabled');
     }
     
     // ============================================
-    // FUNCTIONAL COOKIES - Like functionality
+    // FUNCTIONAL COOKIES - Firebase + Likes
     // ============================================
-    if (!preferences.functional) {
-        // User rejected functional cookies - disable likes
-        console.log('🚫 Functional cookies disabled - likes feature disabled');
-        window.FUNCTIONAL_COOKIES_ENABLED = false;
-    } else {
+    if (preferences.functional && !db) {
+        // User ACCEPTED functional cookies - initialize Firebase and load likes
         window.FUNCTIONAL_COOKIES_ENABLED = true;
+        await initFirebase();
+        await fetchAllLikes();
+        
+        // Re-render current gallery with likes data
+        await renderMasonryGrid(currentGallery);
+        
         console.log('✅ Functional cookies enabled - likes feature active');
+    } else if (!preferences.functional) {
+        // User REJECTED functional cookies - disable likes
+        window.FUNCTIONAL_COOKIES_ENABLED = false;
+        likesCache = {};
+        
+        // Re-render gallery without likes (if already rendered)
+        if (galleryImages[currentGallery]) {
+            await renderMasonryGrid(currentGallery);
+        }
+        
+        console.log('🚫 Functional cookies disabled - likes feature disabled');
+    } else if (preferences.functional) {
+        window.FUNCTIONAL_COOKIES_ENABLED = true;
+        console.log('✅ Functional cookies remain enabled');
     }
     
     // ============================================
@@ -770,5 +777,49 @@ document.getElementById('cookie-reject-all-btn')?.addEventListener('click', () =
     document.body.style.overflow = 'auto';
 });
 
-// Initialize cookie banner on page load
-setTimeout(showCookieBanner, 500);
+// ============================================
+// INIT - GDPR COMPLIANT VERSION
+// ============================================
+const init = async () => {
+    try {
+        console.log('🚀 Initializing...');
+        
+        const loadingIndicator = document.getElementById('loading-indicator');
+        if (loadingIndicator) loadingIndicator.classList.remove('hidden');
+        
+        // Load manifest (no consent needed - just image paths)
+        await loadManifest();
+        
+        // GDPR CRITICAL: Only initialize Firebase and fetch likes if functional cookies enabled
+        if (window.FUNCTIONAL_COOKIES_ENABLED) {
+            await initFirebase();
+            await fetchAllLikes();
+        } else {
+            likesCache = {};  // Empty cache if no consent
+        }
+        
+        console.log('📊 Data loaded - rendering...');
+        
+        await renderMasonryGrid(currentGallery);
+        setupFilters();
+        setupBackToTop();
+        
+        // Show cookie banner if consent not given
+        setTimeout(showCookieBanner, 500);
+        
+        console.log('✅ Initialized successfully');
+    } catch (error) {
+        console.error('❌ Init error:', error);
+        
+        const loadingIndicator = document.getElementById('loading-indicator');
+        if (loadingIndicator) {
+            loadingIndicator.innerHTML = '<p>Error loading images. Please refresh.</p>';
+        }
+    }
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
