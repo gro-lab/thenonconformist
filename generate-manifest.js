@@ -4,6 +4,7 @@
  * MANIFEST GENERATOR
  * 
  * Scans images folder and generates images.json in the ROOT folder
+ * Detects ALL images regardless of naming convention
  * 
  * Usage:
  *   node generate-manifest.js
@@ -35,30 +36,31 @@ function scanGallery(galleryDir) {
     }
     
     const files = fs.readdirSync(fullPath);
-    const images = [];
+    const validImages = [];
     
+    // First pass: collect all valid image files
     files.forEach(file => {
         if (!isValidImage(file)) return;
         
         const filePath = path.join(fullPath, file);
         const stats = fs.statSync(filePath);
         
-        // Extract index from filename (e.g., "LoW-5.PNG" -> 5)
-        const match = file.match(/^[A-Za-z]+-(\d+)\./);
-        const index = match ? parseInt(match[1], 10) : null;
-        
-        if (index === null) {
-            console.warn(`⚠️  Skipping file with invalid naming: ${file}`);
-            return;
-        }
-        
-        images.push({
-            index: index,
+        validImages.push({
+            filename: file,
             ext: getExtension(file)
         });
     });
     
-    images.sort((a, b) => a.index - b.index);
+    // Sort alphabetically by filename
+    validImages.sort((a, b) => a.filename.localeCompare(b.filename));
+    
+    // Assign sequential indices starting from 1
+    const images = validImages.map((img, idx) => ({
+        index: idx + 1,
+        ext: img.ext,
+        originalName: img.filename
+    }));
+    
     return images;
 }
 
@@ -70,7 +72,16 @@ function generateManifest() {
         console.log(`📂 Scanning ${gallery}...`);
         const images = scanGallery(gallery);
         manifest[gallery] = images;
-        console.log(`   ✅ Found ${images.length} images\n`);
+        console.log(`   ✅ Found ${images.length} images`);
+        
+        // Show first few filenames for verification
+        if (images.length > 0) {
+            console.log(`   📄 Sample: ${images[0].originalName}`);
+            if (images.length > 1) {
+                console.log(`   📄        ${images[Math.min(1, images.length - 1)].originalName}`);
+            }
+        }
+        console.log('');
     });
     
     return manifest;

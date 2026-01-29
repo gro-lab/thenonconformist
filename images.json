@@ -1,6 +1,30 @@
 {
-  "LoW": [],
-  "SoL": [],
-  "R": [],
-  "SA": []
+  "LoW": [
+    {
+      "index": 1,
+      "ext": "jpg",
+      "originalName": "single-fresh-red-strawberry-on-table-green-background-food-fruit-sweet-macro-juicy-plant-image-photo.jpg"
+    }
+  ],
+  "SoL": [
+    {
+      "index": 1,
+      "ext": "jpg",
+      "originalName": "single-fresh-red-strawberry-on-table-green-background-food-fruit-sweet-macro-juicy-plant-image-photo.jpg"
+    }
+  ],
+  "R": [
+    {
+      "index": 1,
+      "ext": "jpg",
+      "originalName": "single-fresh-red-strawberry-on-table-green-background-food-fruit-sweet-macro-juicy-plant-image-photo.jpg"
+    }
+  ],
+  "SA": [
+    {
+      "index": 1,
+      "ext": "jpg",
+      "originalName": "single-fresh-red-strawberry-on-table-green-background-food-fruit-sweet-macro-juicy-plant-image-photo.jpg"
+    }
+  ]
 }
