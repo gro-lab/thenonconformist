@@ -110,8 +110,12 @@ const generateFallbackManifest = () => {
         const dir = galleries[key].dir;
         const ext = defaultExtensions[dir] || 'JPEG';
         manifest[dir] = [];
-        for (let i = 1; i <= 5; i++) {
-            manifest[dir].push({ index: i, ext: ext });
+        for (let i = 1; i <= 50; i++) {
+            manifest[dir].push({ 
+                index: i, 
+                ext: ext,
+                originalName: `${dir}-${i}.${ext}`
+            });
         }
     });
     
@@ -120,27 +124,31 @@ const generateFallbackManifest = () => {
     return manifest;
 };
 
-// IMAGE URL
-const createImageUrl = (dir, index, ext) => {
+// IMAGE URL - UPDATED to use originalName if available
+const createImageUrl = (dir, imageData) => {
     const owner = 'gro-lab';
     const repo = 'thenonconformist';
     const branch = 'main';
-    return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/${dir}/${dir}-${index}.${ext}`;
+    
+    // Use originalName if available (new format), otherwise fall back to pattern
+    const filename = imageData.originalName || `${dir}-${imageData.index}.${imageData.ext}`;
+    
+    return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/${dir}/${filename}`;
 };
 
 const getDocIdFromUrl = (url) => {
     return btoa(url).replace(/[^a-zA-Z0-9]/g, '');
 };
 
-// FIRESTORE - GDPR PROTECTED
+// FIRESTORE
 const fetchAllLikes = async () => {
-    // GDPR: Only fetch if functional cookies enabled
-    if (!window.FUNCTIONAL_COOKIES_ENABLED || !db) {
-        console.log('🚫 Likes disabled - functional cookies not accepted');
-        return {};
-    }
-    
     try {
+        // GDPR: Only fetch likes if functional cookies enabled
+        if (!window.FUNCTIONAL_COOKIES_ENABLED || !db) {
+            console.log('⚠️ Functional cookies disabled - likes not loaded');
+            return {};
+        }
+        
         const querySnapshot = await getDocs(collection(db, 'image_likes'));
         const likes = {};
         querySnapshot.forEach((doc) => {
@@ -156,13 +164,13 @@ const fetchAllLikes = async () => {
 };
 
 const updateLike = async (url, increment_value) => {
-    // GDPR: Only update if functional cookies enabled
-    if (!window.FUNCTIONAL_COOKIES_ENABLED || !db) {
-        console.log('🚫 Cannot update likes - functional cookies not accepted');
-        return null;
-    }
-    
     try {
+        // GDPR: Only update likes if functional cookies enabled
+        if (!window.FUNCTIONAL_COOKIES_ENABLED || !db) {
+            console.warn('⚠️ Functional cookies required for likes');
+            return null;
+        }
+        
         const docId = getDocIdFromUrl(url);
         const docRef = doc(db, 'image_likes', docId);
         const docSnap = await getDoc(docRef);
@@ -224,7 +232,7 @@ const setupLazyLoading = (img) => {
     observer.observe(img);
 };
 
-// GALLERY GENERATION
+// GALLERY GENERATION - UPDATED to pass full imageData object
 const generateImageGrid = async (galleryKey) => {
     if (galleryImages[galleryKey]) {
         console.log(`✅ Gallery ${galleryKey} from cache`);
@@ -243,7 +251,8 @@ const generateImageGrid = async (galleryKey) => {
     console.log(`📸 Loading ${imageList.length} images for ${gallery.title}`);
     
     const images = imageList.map(imageData => {
-        const url = createImageUrl(dir, imageData.index, imageData.ext);
+        // UPDATED: Pass full imageData object instead of individual parameters
+        const url = createImageUrl(dir, imageData);
         const docId = getDocIdFromUrl(url);
         const likes = likesCache[docId] || 0;
         
@@ -379,7 +388,6 @@ const openModal = (imageUrl, category = 'Image', galleryKey = currentGallery) =>
     modal.removeAttribute('hidden');
     document.body.style.overflow = 'hidden';
     updateLikeButton();
-    updateLikeButtonAvailability();
     updateNavButtons();
 };
 
@@ -405,7 +413,6 @@ const navigateModal = (direction) => {
     modalImage.src = nextImage.url;
     
     updateLikeButton();
-    updateLikeButtonAvailability();
     updateNavButtons();
 };
 
@@ -430,8 +437,7 @@ const updateLikeButton = () => {
     if (count) count.textContent = likes;
     
     const likedKey = `liked_${docId}`;
-    const isLiked = window.FUNCTIONAL_COOKIES_ENABLED &&
-    localStorage.getItem(likedKey) === 'true';
+    const isLiked = localStorage.getItem(likedKey) === 'true';
     
     if (heart) {
         if (isLiked) {
@@ -444,31 +450,12 @@ const updateLikeButton = () => {
     }
 };
 
-// GDPR: Update like button availability based on consent
-const updateLikeButtonAvailability = () => {
-    if (!likeBtn) return;
-
-    if (!window.FUNCTIONAL_COOKIES_ENABLED) {
-        likeBtn.disabled = true;
-        likeBtn.title = 'Enable functional cookies to use this feature';
-        likeBtn.classList.add('disabled');
-        likeBtn.style.opacity = '0.5';
-        likeBtn.style.cursor = 'not-allowed';
-    } else {
-        likeBtn.disabled = false;
-        likeBtn.title = '';
-        likeBtn.classList.remove('disabled');
-        likeBtn.style.opacity = '1';
-        likeBtn.style.cursor = 'pointer';
-    }
-};
-
 const toggleLike = async () => {
     if (!currentModalImageUrl || isProcessing) return;
     
     // GDPR: Check if functional cookies are enabled
-    if (window.FUNCTIONAL_COOKIES_ENABLED === false) {
-        alert('Please enable functional cookies in cookie settings to use the like feature.');
+    if (!window.FUNCTIONAL_COOKIES_ENABLED) {
+        alert('Please accept functional cookies to use the like feature.');
         return;
     }
     
@@ -529,6 +516,126 @@ termsModal.addEventListener('click', (e) => {
     }
 });
 
+// GDPR COOKIE CONSENT BANNER
+const initCookieBanner = () => {
+    const savedPrefs = localStorage.getItem('cookiePreferences');
+    
+    if (savedPrefs) {
+        // User already made choice
+        const prefs = JSON.parse(savedPrefs);
+        console.log('📋 Applying cookie preferences:', prefs);
+        applyCookiePreferences(prefs);
+    } else {
+        // Show banner
+        showCookieBanner();
+    }
+};
+
+const showCookieBanner = () => {
+    const banner = document.getElementById('cookie-banner');
+    if (banner) {
+        banner.classList.remove('hidden');
+    }
+};
+
+const applyCookiePreferences = async (prefs) => {
+    // Essential cookies (always enabled)
+    
+    // Functional cookies (Firebase, likes, etc.)
+    if (prefs.functional) {
+        window.FUNCTIONAL_COOKIES_ENABLED = true;
+        await initFirebase();
+        await fetchAllLikes();
+        console.log('✅ Functional cookies enabled');
+    }
+    
+    // Analytics cookies
+    if (prefs.analytics) {
+        window['ga-disable-G-5MGS0G4CDY'] = false;
+        // Import and initialize analytics
+        import('https://www.gstatic.com/firebasejs/12.8.0/firebase-analytics.js')
+            .then(({ getAnalytics }) => {
+                if (app) {
+                    analytics = getAnalytics(app);
+                    console.log('✅ Analytics enabled after consent');
+                }
+            });
+    }
+};
+
+// Cookie banner event listeners
+document.addEventListener('DOMContentLoaded', () => {
+    const acceptAllBtn = document.getElementById('accept-all-cookies');
+    const acceptEssentialBtn = document.getElementById('accept-essential-cookies');
+    const customizeBtn = document.getElementById('customize-cookies');
+    const saveCustomBtn = document.getElementById('save-custom-cookies');
+    const cookieBanner = document.getElementById('cookie-banner');
+    const cookieCustomize = document.getElementById('cookie-customize');
+    
+    if (acceptAllBtn) {
+        acceptAllBtn.addEventListener('click', async () => {
+            const prefs = {
+                essential: true,
+                analytics: true,
+                functional: true,
+                marketing: true,
+                version: '1.0',
+                timestamp: new Date().toISOString()
+            };
+            localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
+            if (cookieBanner) cookieBanner.classList.add('hidden');
+            await applyCookiePreferences(prefs);
+            location.reload(); // Reload to apply settings
+        });
+    }
+    
+    if (acceptEssentialBtn) {
+        acceptEssentialBtn.addEventListener('click', () => {
+            const prefs = {
+                essential: true,
+                analytics: false,
+                functional: false,
+                marketing: false,
+                version: '1.0',
+                timestamp: new Date().toISOString()
+            };
+            localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
+            if (cookieBanner) cookieBanner.classList.add('hidden');
+            console.log('✅ Essential cookies only');
+        });
+    }
+    
+    if (customizeBtn && cookieCustomize) {
+        customizeBtn.addEventListener('click', () => {
+            if (cookieBanner) cookieBanner.classList.add('hidden');
+            cookieCustomize.classList.remove('hidden');
+        });
+    }
+    
+    if (saveCustomBtn && cookieCustomize) {
+        saveCustomBtn.addEventListener('click', async () => {
+            const prefs = {
+                essential: true, // Always true
+                analytics: document.getElementById('cookie-analytics')?.checked || false,
+                functional: document.getElementById('cookie-functional')?.checked || false,
+                marketing: document.getElementById('cookie-marketing')?.checked || false,
+                version: '1.0',
+                timestamp: new Date().toISOString()
+            };
+            localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
+            cookieCustomize.classList.add('hidden');
+            await applyCookiePreferences(prefs);
+            
+            // If functional cookies remain disabled, show message
+            if (!prefs.functional) {
+                console.log('✅ Functional cookies remain enabled');
+            }
+            
+            location.reload(); // Reload to apply settings
+        });
+    }
+});
+
 // EVENT LISTENERS
 modalClose.addEventListener('click', closeModal);
 
@@ -556,286 +663,23 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// ============================================
-// COOKIE CONSENT MANAGEMENT - GDPR COMPLIANT
-// ============================================
-
-const COOKIE_CONSENT_KEY = 'cookie_consent_preferences';
-const COOKIE_CONSENT_VERSION = '1.0';
-
-const cookieBanner = document.getElementById('cookie-banner');
-const cookieSettingsModal = document.getElementById('cookie-settings-modal');
-const cookieFloatBtn = document.getElementById('cookie-float-btn');
-
-// Check if user has already set preferences
-const checkCookieConsent = () => {
-    const saved = localStorage.getItem(COOKIE_CONSENT_KEY);
-    if (saved) {
-        try {
-            const preferences = JSON.parse(saved);
-            if (preferences.version === COOKIE_CONSENT_VERSION) {
-                applyCookiePreferences(preferences);
-                return true;
-            }
-        } catch (e) {
-            console.error('Error parsing cookie preferences:', e);
-        }
-    }
-    return false;
-};
-
-// Show cookie banner if no consent given
-const showCookieBanner = () => {
-    if (!checkCookieConsent()) {
-        cookieBanner.removeAttribute('hidden');
-    }
-};
-
-// Apply cookie preferences - FULLY GDPR COMPLIANT
-const applyCookiePreferences = async (preferences) => {
-    console.log('📋 Applying cookie preferences:', preferences);
-    
-    // ============================================
-    // ANALYTICS COOKIES - Firebase Analytics
-    // ============================================
-    if (preferences.analytics && analytics === null) {
-        // User ACCEPTED analytics - lazy load Firebase Analytics
-        try {
-            // Enable analytics by removing kill switch
-            window['ga-disable-G-5MGS0G4CDY'] = false;
-            
-            // Ensure Firebase app is initialized first
-            if (!app) {
-                await initFirebase();
-            }
-            const { getAnalytics } = await import('https://www.gstatic.com/firebasejs/12.8.0/firebase-analytics.js');
-            analytics = getAnalytics(app);
-            console.log('✅ Analytics enabled after consent');
-        } catch (error) {
-            console.error('❌ Failed to load analytics:', error);
-        }
-    } else if (!preferences.analytics && analytics !== null) {
-        // User REJECTED analytics - disable it
-        window['ga-disable-G-5MGS0G4CDY'] = true;
-        analytics = null;
-        console.log('🚫 Analytics disabled');
-    } else if (!preferences.analytics) {
-        // Ensure kill switch is active
-        window['ga-disable-G-5MGS0G4CDY'] = true;
-    }
-    
-    // ============================================
-    // FUNCTIONAL COOKIES - Firebase + Likes
-    // ============================================
-    if (preferences.functional && !db) {
-        // User ACCEPTED functional cookies - initialize Firebase and load likes
-        window.FUNCTIONAL_COOKIES_ENABLED = true;
-        await initFirebase();
-        await fetchAllLikes();
-        
-        // Re-render current gallery with likes data
-        await renderMasonryGrid(currentGallery);
-        updateLikeButtonAvailability();
-        
-        console.log('✅ Functional cookies enabled - likes feature active');
-    } else if (!preferences.functional) {
-        // User REJECTED functional cookies - disable likes
-        window.FUNCTIONAL_COOKIES_ENABLED = false;
-        likesCache = {};
-        
-        // Re-render gallery without likes (if already rendered)
-        if (galleryImages[currentGallery]) {
-            await renderMasonryGrid(currentGallery);
-        }
-        updateLikeButtonAvailability();
-        
-        console.log('🚫 Functional cookies disabled - likes feature disabled');
-    } else if (preferences.functional) {
-        window.FUNCTIONAL_COOKIES_ENABLED = true;
-        updateLikeButtonAvailability();
-        console.log('✅ Functional cookies remain enabled');
-    }
-    
-    // ============================================
-    // MARKETING COOKIES - Not currently used
-    // ============================================
-    if (!preferences.marketing) {
-        console.log('🚫 Marketing cookies disabled');
-    }
-};
-
-// Save cookie preferences
-const saveCookiePreferences = (preferences) => {
-    const toSave = {
-        ...preferences,
-        version: COOKIE_CONSENT_VERSION,
-        timestamp: new Date().toISOString()
-    };
-    localStorage.setItem(COOKIE_CONSENT_KEY, JSON.stringify(toSave));
-    applyCookiePreferences(toSave);
-};
-
-// Get current preferences from UI
-const getCurrentPreferences = () => {
-    return {
-        essential: true, // Always true
-        analytics: document.getElementById('analytics-cookies')?.checked || false,
-        functional: document.getElementById('functional-cookies')?.checked || false,
-        marketing: document.getElementById('marketing-cookies')?.checked || false
-    };
-};
-
-// Set preferences in UI
-const setPreferencesInUI = (preferences) => {
-    if (document.getElementById('analytics-cookies')) {
-        document.getElementById('analytics-cookies').checked = preferences.analytics !== false;
-    }
-    if (document.getElementById('functional-cookies')) {
-        document.getElementById('functional-cookies').checked = preferences.functional !== false;
-    }
-    if (document.getElementById('marketing-cookies')) {
-        document.getElementById('marketing-cookies').checked = preferences.marketing !== false;
-    }
-};
-
-// Accept all cookies
-document.getElementById('cookie-accept-btn')?.addEventListener('click', () => {
-    saveCookiePreferences({
-        essential: true,
-        analytics: true,
-        functional: true,
-        marketing: true
-    });
-    cookieBanner.setAttribute('hidden', '');
-});
-
-// Reject all cookies (except essential)
-document.getElementById('cookie-reject-btn')?.addEventListener('click', () => {
-    saveCookiePreferences({
-        essential: true,
-        analytics: false,
-        functional: false,
-        marketing: false
-    });
-    cookieBanner.setAttribute('hidden', '');
-});
-
-// Open cookie settings from banner
-document.getElementById('cookie-settings-btn')?.addEventListener('click', () => {
-    cookieBanner.setAttribute('hidden', '');
-    const saved = localStorage.getItem(COOKIE_CONSENT_KEY);
-    if (saved) {
-        try {
-            const preferences = JSON.parse(saved);
-            setPreferencesInUI(preferences);
-        } catch (e) {
-            // Use defaults
-        }
-    }
-    cookieSettingsModal.removeAttribute('hidden');
-    document.body.style.overflow = 'hidden';
-});
-
-// Open cookie settings from footer
-document.getElementById('footer-cookie-btn')?.addEventListener('click', () => {
-    const saved = localStorage.getItem(COOKIE_CONSENT_KEY);
-    if (saved) {
-        try {
-            const preferences = JSON.parse(saved);
-            setPreferencesInUI(preferences);
-        } catch (e) {
-            // Use defaults
-        }
-    }
-    cookieSettingsModal.removeAttribute('hidden');
-    document.body.style.overflow = 'hidden';
-});
-
-// Open cookie settings from floating button
-cookieFloatBtn?.addEventListener('click', () => {
-    const saved = localStorage.getItem(COOKIE_CONSENT_KEY);
-    if (saved) {
-        try {
-            const preferences = JSON.parse(saved);
-            setPreferencesInUI(preferences);
-        } catch (e) {
-            // Use defaults
-        }
-    }
-    cookieSettingsModal.removeAttribute('hidden');
-    document.body.style.overflow = 'hidden';
-});
-
-// Close cookie settings modal
-cookieSettingsModal?.querySelector('.modal-close')?.addEventListener('click', () => {
-    cookieSettingsModal.setAttribute('hidden', '');
-    document.body.style.overflow = 'auto';
-});
-
-// Click outside to close
-cookieSettingsModal?.addEventListener('click', (e) => {
-    if (e.target === cookieSettingsModal) {
-        cookieSettingsModal.setAttribute('hidden', '');
-        document.body.style.overflow = 'auto';
-    }
-});
-
-// Save preferences from modal
-document.getElementById('cookie-save-btn')?.addEventListener('click', () => {
-    const preferences = getCurrentPreferences();
-    saveCookiePreferences(preferences);
-    cookieSettingsModal.setAttribute('hidden', '');
-    document.body.style.overflow = 'auto';
-});
-
-// Accept all from modal
-document.getElementById('cookie-accept-all-btn')?.addEventListener('click', () => {
-    saveCookiePreferences({
-        essential: true,
-        analytics: true,
-        functional: true,
-        marketing: true
-    });
-    cookieSettingsModal.setAttribute('hidden', '');
-    document.body.style.overflow = 'auto';
-});
-
-// Reject all from modal
-document.getElementById('cookie-reject-all-btn')?.addEventListener('click', () => {
-    saveCookiePreferences({
-        essential: true,
-        analytics: false,
-        functional: false,
-        marketing: false
-    });
-    cookieSettingsModal.setAttribute('hidden', '');
-    document.body.style.overflow = 'auto';
-});
-
-// ============================================
-// INIT - GDPR COMPLIANT VERSION
-// ============================================
+// INIT
 const init = async () => {
     try {
         console.log('🚀 Initializing...');
         
+        // Initialize cookie banner first
+        initCookieBanner();
+        
         const loadingIndicator = document.getElementById('loading-indicator');
         if (loadingIndicator) loadingIndicator.classList.remove('hidden');
         
-        // GDPR CRITICAL: Check for saved consent FIRST
-        const hasConsent = checkCookieConsent();
+        // Load manifest (doesn't require cookies)
+        const manifest = await loadManifest();
         
-        // Load manifest (no consent needed - just image paths)
-        await loadManifest();
-        
-        // GDPR CRITICAL: Only initialize Firebase if user has previously consented
-        // If no saved consent exists, FUNCTIONAL_COOKIES_ENABLED will be false
+        // Fetch likes only if functional cookies enabled
         if (window.FUNCTIONAL_COOKIES_ENABLED) {
-            await initFirebase();
             await fetchAllLikes();
-        } else {
-            likesCache = {};  // Empty cache if no consent
-            console.log('⚠️ No consent - Firebase not initialized');
         }
         
         console.log('📊 Data loaded - rendering...');
@@ -843,13 +687,6 @@ const init = async () => {
         await renderMasonryGrid(currentGallery);
         setupFilters();
         setupBackToTop();
-        
-        // Show cookie banner if consent not given
-        if (!hasConsent) {
-            setTimeout(() => {
-                cookieBanner.removeAttribute('hidden');
-            }, 500);
-        }
         
         console.log('✅ Initialized successfully');
     } catch (error) {
