@@ -516,6 +516,17 @@ termsModal.addEventListener('click', (e) => {
     }
 });
 
+// COOKIE SETTINGS BUTTON (in footer)
+const cookieSettingsBtn = document.getElementById('cookie-settings-btn');
+if (cookieSettingsBtn) {
+    cookieSettingsBtn.addEventListener('click', () => {
+        const cookieCustomize = document.getElementById('cookie-customize');
+        if (cookieCustomize) {
+            cookieCustomize.classList.remove('hidden');
+        }
+    });
+}
+
 // GDPR COOKIE CONSENT BANNER
 const initCookieBanner = () => {
     const savedPrefs = localStorage.getItem('cookiePreferences');
@@ -534,7 +545,7 @@ const initCookieBanner = () => {
 const showCookieBanner = () => {
     const banner = document.getElementById('cookie-banner');
     if (banner) {
-        banner.classList.remove('hidden');
+        banner.removeAttribute('hidden');
     }
 };
 
@@ -565,15 +576,27 @@ const applyCookiePreferences = async (prefs) => {
 
 // Cookie banner event listeners
 document.addEventListener('DOMContentLoaded', () => {
-    const acceptAllBtn = document.getElementById('accept-all-cookies');
-    const acceptEssentialBtn = document.getElementById('accept-essential-cookies');
-    const customizeBtn = document.getElementById('customize-cookies');
-    const saveCustomBtn = document.getElementById('save-custom-cookies');
     const cookieBanner = document.getElementById('cookie-banner');
-    const cookieCustomize = document.getElementById('cookie-customize');
+    const cookieSettingsModal = document.getElementById('cookie-settings-modal');
     
-    if (acceptAllBtn) {
-        acceptAllBtn.addEventListener('click', async () => {
+    // Banner buttons
+    const cookieAcceptBtn = document.getElementById('cookie-accept-btn');
+    const cookieRejectBtn = document.getElementById('cookie-reject-btn');
+    const cookieSettingsBtn = document.getElementById('cookie-settings-btn');
+    
+    // Modal buttons
+    const cookieSaveBtn = document.getElementById('cookie-save-btn');
+    const cookieAcceptAllBtn = document.getElementById('cookie-accept-all-btn');
+    const cookieRejectAllBtn = document.getElementById('cookie-reject-all-btn');
+    const cookieSettingsModalClose = cookieSettingsModal?.querySelector('.modal-close');
+    
+    // Floating button
+    const cookieFloatBtn = document.getElementById('cookie-float-btn');
+    const footerCookieBtn = document.getElementById('footer-cookie-btn');
+    
+    // Accept All from banner
+    if (cookieAcceptBtn) {
+        cookieAcceptBtn.addEventListener('click', async () => {
             const prefs = {
                 essential: true,
                 analytics: true,
@@ -583,14 +606,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 timestamp: new Date().toISOString()
             };
             localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
-            if (cookieBanner) cookieBanner.classList.add('hidden');
+            if (cookieBanner) cookieBanner.setAttribute('hidden', '');
             await applyCookiePreferences(prefs);
-            location.reload(); // Reload to apply settings
+            location.reload();
         });
     }
     
-    if (acceptEssentialBtn) {
-        acceptEssentialBtn.addEventListener('click', () => {
+    // Reject All from banner
+    if (cookieRejectBtn) {
+        cookieRejectBtn.addEventListener('click', () => {
             const prefs = {
                 essential: true,
                 analytics: false,
@@ -600,38 +624,109 @@ document.addEventListener('DOMContentLoaded', () => {
                 timestamp: new Date().toISOString()
             };
             localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
-            if (cookieBanner) cookieBanner.classList.add('hidden');
+            if (cookieBanner) cookieBanner.setAttribute('hidden', '');
             console.log('✅ Essential cookies only');
+            location.reload();
         });
     }
     
-    if (customizeBtn && cookieCustomize) {
-        customizeBtn.addEventListener('click', () => {
-            if (cookieBanner) cookieBanner.classList.add('hidden');
-            cookieCustomize.classList.remove('hidden');
+    // Open settings modal from banner
+    if (cookieSettingsBtn && cookieSettingsModal) {
+        cookieSettingsBtn.addEventListener('click', () => {
+            if (cookieBanner) cookieBanner.setAttribute('hidden', '');
+            cookieSettingsModal.removeAttribute('hidden');
+            document.body.style.overflow = 'hidden';
         });
     }
     
-    if (saveCustomBtn && cookieCustomize) {
-        saveCustomBtn.addEventListener('click', async () => {
+    // Open settings modal from floating button
+    if (cookieFloatBtn && cookieSettingsModal) {
+        cookieFloatBtn.addEventListener('click', () => {
+            cookieSettingsModal.removeAttribute('hidden');
+            document.body.style.overflow = 'hidden';
+        });
+    }
+    
+    // Open settings modal from footer
+    if (footerCookieBtn && cookieSettingsModal) {
+        footerCookieBtn.addEventListener('click', () => {
+            cookieSettingsModal.removeAttribute('hidden');
+            document.body.style.overflow = 'hidden';
+        });
+    }
+    
+    // Close settings modal
+    if (cookieSettingsModalClose && cookieSettingsModal) {
+        cookieSettingsModalClose.addEventListener('click', () => {
+            cookieSettingsModal.setAttribute('hidden', '');
+            document.body.style.overflow = 'auto';
+        });
+    }
+    
+    // Click outside to close settings modal
+    if (cookieSettingsModal) {
+        cookieSettingsModal.addEventListener('click', (e) => {
+            if (e.target === cookieSettingsModal) {
+                cookieSettingsModal.setAttribute('hidden', '');
+                document.body.style.overflow = 'auto';
+            }
+        });
+    }
+    
+    // Save custom preferences
+    if (cookieSaveBtn && cookieSettingsModal) {
+        cookieSaveBtn.addEventListener('click', async () => {
             const prefs = {
                 essential: true, // Always true
-                analytics: document.getElementById('cookie-analytics')?.checked || false,
-                functional: document.getElementById('cookie-functional')?.checked || false,
-                marketing: document.getElementById('cookie-marketing')?.checked || false,
+                analytics: document.getElementById('analytics-cookies')?.checked || false,
+                functional: document.getElementById('functional-cookies')?.checked || false,
+                marketing: document.getElementById('marketing-cookies')?.checked || false,
                 version: '1.0',
                 timestamp: new Date().toISOString()
             };
             localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
-            cookieCustomize.classList.add('hidden');
+            cookieSettingsModal.setAttribute('hidden', '');
+            document.body.style.overflow = 'auto';
             await applyCookiePreferences(prefs);
-            
-            // If functional cookies remain disabled, show message
-            if (!prefs.functional) {
-                console.log('✅ Functional cookies remain enabled');
-            }
-            
-            location.reload(); // Reload to apply settings
+            location.reload();
+        });
+    }
+    
+    // Accept all from settings modal
+    if (cookieAcceptAllBtn && cookieSettingsModal) {
+        cookieAcceptAllBtn.addEventListener('click', async () => {
+            const prefs = {
+                essential: true,
+                analytics: true,
+                functional: true,
+                marketing: true,
+                version: '1.0',
+                timestamp: new Date().toISOString()
+            };
+            localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
+            cookieSettingsModal.setAttribute('hidden', '');
+            document.body.style.overflow = 'auto';
+            await applyCookiePreferences(prefs);
+            location.reload();
+        });
+    }
+    
+    // Reject all from settings modal
+    if (cookieRejectAllBtn && cookieSettingsModal) {
+        cookieRejectAllBtn.addEventListener('click', () => {
+            const prefs = {
+                essential: true,
+                analytics: false,
+                functional: false,
+                marketing: false,
+                version: '1.0',
+                timestamp: new Date().toISOString()
+            };
+            localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
+            cookieSettingsModal.setAttribute('hidden', '');
+            document.body.style.overflow = 'auto';
+            console.log('✅ Essential cookies only');
+            location.reload();
         });
     }
 });
