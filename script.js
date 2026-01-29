@@ -550,6 +550,8 @@ const showCookieBanner = () => {
 };
 
 const applyCookiePreferences = async (prefs) => {
+    console.log('🔧 Applying cookie preferences:', prefs);
+    
     // Essential cookies (always enabled)
     
     // Functional cookies (Firebase, likes, etc.)
@@ -558,6 +560,8 @@ const applyCookiePreferences = async (prefs) => {
         await initFirebase();
         await fetchAllLikes();
         console.log('✅ Functional cookies enabled');
+    } else {
+        console.log('❌ Functional cookies disabled');
     }
     
     // Analytics cookies
@@ -571,7 +575,20 @@ const applyCookiePreferences = async (prefs) => {
                     console.log('✅ Analytics enabled after consent');
                 }
             });
+    } else {
+        console.log('❌ Analytics cookies disabled');
     }
+    
+    // Marketing cookies
+    if (prefs.marketing) {
+        console.log('✅ Marketing cookies enabled');
+    } else {
+        console.log('❌ Marketing cookies disabled');
+    }
+    
+    // Verify what was saved
+    const saved = localStorage.getItem('cookiePreferences');
+    console.log('💾 Verified saved preferences:', JSON.parse(saved));
 };
 
 // Cookie banner event listeners
@@ -605,6 +622,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 version: '1.0',
                 timestamp: new Date().toISOString()
             };
+            console.log('✅ Accepting all cookies from banner:', prefs);
             localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
             if (cookieBanner) cookieBanner.setAttribute('hidden', '');
             await applyCookiePreferences(prefs);
@@ -634,6 +652,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cookieSettingsBtn && cookieSettingsModal) {
         cookieSettingsBtn.addEventListener('click', () => {
             if (cookieBanner) cookieBanner.setAttribute('hidden', '');
+            loadCookiePreferencesIntoModal();
             cookieSettingsModal.removeAttribute('hidden');
             document.body.style.overflow = 'hidden';
         });
@@ -642,6 +661,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Open settings modal from floating button
     if (cookieFloatBtn && cookieSettingsModal) {
         cookieFloatBtn.addEventListener('click', () => {
+            loadCookiePreferencesIntoModal();
             cookieSettingsModal.removeAttribute('hidden');
             document.body.style.overflow = 'hidden';
         });
@@ -650,9 +670,26 @@ document.addEventListener('DOMContentLoaded', () => {
     // Open settings modal from footer
     if (footerCookieBtn && cookieSettingsModal) {
         footerCookieBtn.addEventListener('click', () => {
+            loadCookiePreferencesIntoModal();
             cookieSettingsModal.removeAttribute('hidden');
             document.body.style.overflow = 'hidden';
         });
+    }
+    
+    // Helper function to load saved preferences into checkboxes
+    function loadCookiePreferencesIntoModal() {
+        const savedPrefs = localStorage.getItem('cookiePreferences');
+        if (savedPrefs) {
+            const prefs = JSON.parse(savedPrefs);
+            
+            const analyticsCheckbox = document.getElementById('analytics-cookies');
+            const functionalCheckbox = document.getElementById('functional-cookies');
+            const marketingCheckbox = document.getElementById('marketing-cookies');
+            
+            if (analyticsCheckbox) analyticsCheckbox.checked = prefs.analytics || false;
+            if (functionalCheckbox) functionalCheckbox.checked = prefs.functional || false;
+            if (marketingCheckbox) marketingCheckbox.checked = prefs.marketing || false;
+        }
     }
     
     // Close settings modal
@@ -676,14 +713,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // Save custom preferences
     if (cookieSaveBtn && cookieSettingsModal) {
         cookieSaveBtn.addEventListener('click', async () => {
+            const analyticsCheckbox = document.getElementById('analytics-cookies');
+            const functionalCheckbox = document.getElementById('functional-cookies');
+            const marketingCheckbox = document.getElementById('marketing-cookies');
+            
             const prefs = {
                 essential: true, // Always true
-                analytics: document.getElementById('analytics-cookies')?.checked || false,
-                functional: document.getElementById('functional-cookies')?.checked || false,
-                marketing: document.getElementById('marketing-cookies')?.checked || false,
+                analytics: analyticsCheckbox?.checked || false,
+                functional: functionalCheckbox?.checked || false,
+                marketing: marketingCheckbox?.checked || false,
                 version: '1.0',
                 timestamp: new Date().toISOString()
             };
+            
+            console.log('💾 Saving cookie preferences:', prefs);
             localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
             cookieSettingsModal.setAttribute('hidden', '');
             document.body.style.overflow = 'auto';
@@ -695,6 +738,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Accept all from settings modal
     if (cookieAcceptAllBtn && cookieSettingsModal) {
         cookieAcceptAllBtn.addEventListener('click', async () => {
+            // First, check all the boxes
+            const analyticsCheckbox = document.getElementById('analytics-cookies');
+            const functionalCheckbox = document.getElementById('functional-cookies');
+            const marketingCheckbox = document.getElementById('marketing-cookies');
+            
+            if (analyticsCheckbox) analyticsCheckbox.checked = true;
+            if (functionalCheckbox) functionalCheckbox.checked = true;
+            if (marketingCheckbox) marketingCheckbox.checked = true;
+            
             const prefs = {
                 essential: true,
                 analytics: true,
@@ -703,6 +755,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 version: '1.0',
                 timestamp: new Date().toISOString()
             };
+            console.log('✅ Accepting all cookies from modal:', prefs);
             localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
             cookieSettingsModal.setAttribute('hidden', '');
             document.body.style.overflow = 'auto';
@@ -714,6 +767,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Reject all from settings modal
     if (cookieRejectAllBtn && cookieSettingsModal) {
         cookieRejectAllBtn.addEventListener('click', () => {
+            // First, uncheck all optional boxes
+            const analyticsCheckbox = document.getElementById('analytics-cookies');
+            const functionalCheckbox = document.getElementById('functional-cookies');
+            const marketingCheckbox = document.getElementById('marketing-cookies');
+            
+            if (analyticsCheckbox) analyticsCheckbox.checked = false;
+            if (functionalCheckbox) functionalCheckbox.checked = false;
+            if (marketingCheckbox) marketingCheckbox.checked = false;
+            
             const prefs = {
                 essential: true,
                 analytics: false,
@@ -722,10 +784,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 version: '1.0',
                 timestamp: new Date().toISOString()
             };
+            console.log('🚫 Rejecting all optional cookies:', prefs);
             localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
             cookieSettingsModal.setAttribute('hidden', '');
             document.body.style.overflow = 'auto';
-            console.log('✅ Essential cookies only');
             location.reload();
         });
     }
