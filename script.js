@@ -72,6 +72,18 @@ const debounce = (fn, delay) => {
     };
 };
 
+// GDPR: Clear functional cookie data when user rejects
+const clearFunctionalCookieData = () => {
+    // Remove all like preferences from localStorage
+    const keys = Object.keys(localStorage);
+    keys.forEach(key => {
+        if (key.startsWith('liked_')) {
+            localStorage.removeItem(key);
+        }
+    });
+    console.log('🗑️ Cleared functional cookie data');
+};
+
 // MANIFEST LOADING
 const loadManifest = async () => {
     try {
@@ -436,8 +448,12 @@ const updateLikeButton = () => {
     
     if (count) count.textContent = likes;
     
-    const likedKey = `liked_${docId}`;
-    const isLiked = localStorage.getItem(likedKey) === 'true';
+    // GDPR: Only check localStorage if functional cookies enabled
+    let isLiked = false;
+    if (window.FUNCTIONAL_COOKIES_ENABLED) {
+        const likedKey = `liked_${docId}`;
+        isLiked = localStorage.getItem(likedKey) === 'true';
+    }
     
     if (heart) {
         if (isLiked) {
@@ -642,6 +658,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 timestamp: new Date().toISOString()
             };
             localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
+            
+            // GDPR: Clear functional data when rejecting
+            clearFunctionalCookieData();
+            
             if (cookieBanner) cookieBanner.setAttribute('hidden', '');
             console.log('✅ Essential cookies only');
             location.reload();
@@ -728,6 +748,12 @@ document.addEventListener('DOMContentLoaded', () => {
             
             console.log('💾 Saving cookie preferences:', prefs);
             localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
+            
+            // GDPR: Clear functional data if being disabled
+            if (!prefs.functional) {
+                clearFunctionalCookieData();
+            }
+            
             cookieSettingsModal.setAttribute('hidden', '');
             document.body.style.overflow = 'auto';
             await applyCookiePreferences(prefs);
@@ -786,6 +812,10 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             console.log('🚫 Rejecting all optional cookies:', prefs);
             localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
+            
+            // GDPR: Clear functional data when rejecting
+            clearFunctionalCookieData();
+            
             cookieSettingsModal.setAttribute('hidden', '');
             document.body.style.overflow = 'auto';
             location.reload();
