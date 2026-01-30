@@ -1,4 +1,4 @@
-// THE NONCONFORMIST - FULLY GDPR-COMPLIANT VERSION
+// THE NONCONFORMIST - FULLY GDPR-COMPLIANT VERSION WITH FIXED LIKE/UNLIKE
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js';
 import {
@@ -192,17 +192,23 @@ const updateLike = async (url, increment_value) => {
                 likes: increment(increment_value),
                 lastUpdated: serverTimestamp()
             });
+            // Get the updated value from server
+            const updatedSnap = await getDoc(docRef);
+            const newLikes = updatedSnap.data().likes;
+            likesCache[docId] = newLikes;
+            return newLikes;
         } else {
+            // New document - only set if increment_value is positive
+            const initialLikes = Math.max(0, increment_value);
             await setDoc(docRef, {
                 url: url,
-                likes: Math.max(0, increment_value),
+                likes: initialLikes,
                 createdAt: serverTimestamp(),
                 lastUpdated: serverTimestamp()
             });
+            likesCache[docId] = initialLikes;
+            return initialLikes;
         }
-        
-        likesCache[docId] = (likesCache[docId] || 0) + increment_value;
-        return likesCache[docId];
     } catch (error) {
         console.error('Error updating likes:', error);
         return null;
@@ -483,27 +489,45 @@ const toggleLike = async () => {
     const isCurrentlyLiked = localStorage.getItem(likedKey) === 'true';
     
     try {
+        // FIXED: Properly handle increment/decrement
         const increment_value = isCurrentlyLiked ? -1 : 1;
-        await updateLike(currentModalImageUrl, increment_value);
+        const newLikes = await updateLike(currentModalImageUrl, increment_value);
         
-        if (isCurrentlyLiked) {
-            localStorage.removeItem(likedKey);
-        } else {
-            localStorage.setItem(likedKey, 'true');
-        }
-        
-        updateLikeButton();
-        
-        // Update grid
-        const imageCard = document.querySelector(`.image-card[data-url="${currentModalImageUrl}"]`);
-        if (imageCard) {
-            const likeCountSpan = imageCard.querySelector('.card-like-count span');
-            if (likeCountSpan) {
-                likeCountSpan.textContent = likesCache[docId];
+        if (newLikes !== null) {
+            // Update localStorage
+            if (isCurrentlyLiked) {
+                localStorage.removeItem(likedKey);
+            } else {
+                localStorage.setItem(likedKey, 'true');
             }
+            
+            // Update UI with the actual server value
+            likesCache[docId] = newLikes;
+            updateLikeButton();
+            
+            // Update grid - find the card and update its like count
+            const imageCard = document.querySelector(`.image-card[data-url="${currentModalImageUrl}"]`);
+            if (imageCard) {
+                const likeCountSpan = imageCard.querySelector('.card-like-count span');
+                if (likeCountSpan) {
+                    likeCountSpan.textContent = newLikes;
+                }
+            }
+            
+            // Update the cached gallery data for proper sorting
+            Object.keys(galleryImages).forEach(galleryKey => {
+                const images = galleryImages[galleryKey];
+                const imageIndex = images.findIndex(img => img.url === currentModalImageUrl);
+                if (imageIndex !== -1) {
+                    images[imageIndex].likes = newLikes;
+                    // Re-sort the gallery
+                    images.sort((a, b) => b.likes - a.likes);
+                }
+            });
         }
     } catch (error) {
         console.error('Error toggling like:', error);
+        alert('Failed to update like. Please try again.');
     } finally {
         isProcessing = false;
         likeBtn.disabled = false;
