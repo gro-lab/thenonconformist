@@ -1171,16 +1171,12 @@ i {
 .social-link.email i::before     { content: "✉"; }
 
 /* Generic fallback if no platform class is set */
-.social-link i::before {
-    content: "●";
-}
 
 /* -----------------------------
    FILTER / UI DECORATIVE ICONS
 ------------------------------ */
 
 .filter-tab i::before {
-    content: "◦";
     font-size: 1rem;
 }
 
