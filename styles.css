@@ -121,7 +121,7 @@ body {
     gap: 0.5rem;
     padding: 0.5rem 1rem;
     background: var(--bg-light);
-    border-radius: 20px;
+    border-radius: 10%;
     color: var(--text-secondary);
     text-decoration: none;
     font-size: 0.875rem;
