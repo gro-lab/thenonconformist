@@ -352,11 +352,6 @@ body {
         padding: 0 1rem 2rem;
     }
 }
-
-@media (max-width: 479px) {
-    .masonry-grid {
-        column-count: 1;
-    }
     
     .masonry-wrapper {
         padding: 0 1rem 2rem;
