@@ -915,3 +915,15 @@ if (document.readyState === 'loading') {
 } else {
     init();
 }
+
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+                console.log('✅ Service Worker registered for image caching');
+            })
+            .catch(error => {
+                console.warn('Service Worker registration failed:', error);
+            });
+    });
+}
