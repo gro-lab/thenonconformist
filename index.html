@@ -1,16 +1,142 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- ============================================ -->
+    <!-- ESSENTIAL META TAGS -->
+    <!-- ============================================ -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="The Nonconformist">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    
+    <!-- ============================================ -->
+    <!-- PRIMARY META TAGS (SEO) -->
+    <!-- ============================================ -->
+    <title>The Nonconformist | Photography Portfolio - Windows, Life, Reflections, Street Art</title>
+    <meta name="title" content="The Nonconformist | Photography Portfolio">
+    <meta name="description" content="Explore The Nonconformist's unique photography portfolio featuring Language of Windows, Snapshots of Life, Reflections, and Street Art. Capturing emotions, truth, and beauty in everyday moments.">
+    <meta name="keywords" content="photography, art photography, street photography, window photography, urban photography, reflections, street art, fine art, Timișoara photographer, Romanian photographer, artistic photography, contemporary photography, emotion in photography">
+    <meta name="author" content="The Nonconformist">
+    <meta name="language" content="English">
+    <meta name="revisit-after" content="7 days">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://thenonconformist.xyz/">
+    
+    <!-- ============================================ -->
+    <!-- OPEN GRAPH / FACEBOOK -->
+    <!-- ============================================ -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://thenonconformist.xyz/">
+    <meta property="og:title" content="The Nonconformist | Photography Portfolio">
+    <meta property="og:description" content="Explore unique photography capturing emotions, truth, and beauty in everyday moments. Featured galleries: Language of Windows, Snapshots of Life, Reflections, and Street Art.">
+    <meta property="og:image" content="https://thenonconformist.xyz/images/og-image.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="The Nonconformist">
+    <meta property="og:locale" content="en_US">
+    
+    <!-- ============================================ -->
+    <!-- TWITTER CARD -->
+    <!-- ============================================ -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://thenonconformist.xyz/">
+    <meta name="twitter:title" content="The Nonconformist | Photography Portfolio">
+    <meta name="twitter:description" content="Explore unique photography capturing emotions, truth, and beauty in everyday moments.">
+    <meta name="twitter:image" content="https://thenonconformist.xyz/images/twitter-card.jpg">
+    <meta name="twitter:creator" content="@then0nc0nformist">
+    
+    <!-- ============================================ -->
+    <!-- ADDITIONAL SEO & PWA TAGS -->
+    <!-- ============================================ -->
     <meta name="theme-color" content="#ffffff">
-    <title>The Nonconformist</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="The Nonconformist">
+    
+    <!-- ============================================ -->
+    <!-- FAVICONS -->
+    <!-- ============================================ -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+    
+    <!-- ============================================ -->
+    <!-- PRECONNECT TO EXTERNAL DOMAINS -->
+    <!-- ============================================ -->
+    <link rel="preconnect" href="https://www.googletagmanager.com">
+    <link rel="preconnect" href="https://www.google-analytics.com">
+    <link rel="preconnect" href="https://firebaseapp.com">
+    <link rel="dns-prefetch" href="https://raw.githubusercontent.com">
+    
+    <!-- ============================================ -->
+    <!-- STRUCTURED DATA (JSON-LD) - PERSON -->
+    <!-- ============================================ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Person",
+      "name": "The Nonconformist",
+      "url": "https://thenonconformist.xyz",
+      "image": "https://thenonconformist.xyz/images/profile.jpg",
+      "sameAs": [
+        "https://www.instagram.com/then0nc0nformist/",
+        "https://www.facebook.com/then0nc0nformist"
+      ],
+      "jobTitle": "Photographer",
+      "worksFor": {
+        "@type": "Organization",
+        "name": "The Nonconformist"
+      },
+      "description": "Art photographer capturing emotions, truth, and beauty in everyday moments. Specializing in urban photography, street art, reflections, and architectural details.",
+      "knowsAbout": ["Photography", "Street Photography", "Urban Art", "Fine Art Photography"]
+    }
+    </script>
+    
+    <!-- ============================================ -->
+    <!-- STRUCTURED DATA (JSON-LD) - WEBSITE -->
+    <!-- ============================================ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "The Nonconformist",
+      "alternateName": "The Nonconformist Photography",
+      "url": "https://thenonconformist.xyz",
+      "description": "Photography portfolio featuring unique perspectives on windows, life, reflections, and street art. Art is a human right.",
+      "publisher": {
+        "@type": "Person",
+        "name": "The Nonconformist"
+      },
+      "inLanguage": "en-US"
+    }
+    </script>
+    
+    <!-- ============================================ -->
+    <!-- STRUCTURED DATA (JSON-LD) - IMAGE GALLERY -->
+    <!-- ============================================ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "ImageGallery",
+      "name": "The Nonconformist Photography Gallery",
+      "url": "https://thenonconformist.xyz",
+      "image": "https://thenonconformist.xyz/images/og-image.jpg",
+      "description": "Curated photography galleries showcasing unique artistic perspectives: Language of Windows, Snapshots of Life, Reflections, and Street Art",
+      "about": "Art Photography",
+      "creator": {
+        "@type": "Person",
+        "name": "The Nonconformist"
+      }
+    }
+    </script>
+    
+    <!-- ============================================ -->
+    <!-- STYLESHEET -->
+    <!-- ============================================ -->
     <link rel="stylesheet" href="styles.css">
-    <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet"> -->
 </head>
 <body>
     <header class="header">
@@ -26,7 +152,7 @@
                 <a href="https://www.facebook.com/then0nc0nformist" target="_blank" rel="noopener noreferrer" aria-label="Facebook" class="social-link">
                     <span>Facebook</span>
                 </a>
-                <a href="mailto:then-onconformist@outlook.com" aria-label="Email" class="contact-link">
+                <a href="/cdn-cgi/l/email-protection#c1b5a9a4afecaeafa2aeafa7aeb3aca8b2b581aeb4b5adaeaeaaefa2aeac" aria-label="Email" class="contact-link">
                     <span>Email</span>
                 </a>
             </nav>
@@ -140,19 +266,14 @@
                 <p><strong>Important:</strong> Like data is stored as anonymous aggregates per image. We cannot identify or delete a specific user's likes without a device-specific identifier.</p>
                 
                 <h3>4. Data Retention</h3>
-                <p>Anonymous like counts are stored indefinitely to maintain gallery popularity rankings. Cookie preferences are stored in your browser's localStorage.</p>
+                <p>Like counts: Stored indefinitely unless you request deletion.<br>
+                Analytics data: Retained for 14 months as per Google's default policy.</p>
                 
-                <h3>5. Third-Party Services</h3>
-                <p><strong>Firebase (Google):</strong> Analytics data may be transferred to the US under Standard Contractual Clauses (SCCs).</p>
-                <p><strong>CDNs:</strong> Google Fonts and Font Awesome are loaded from external CDNs for performance.</p>
+                <h3>5. Contact</h3>
+                <p>For data requests or privacy concerns, contact us via the email link in the header.</p>
                 
-                <h3>6. Contact</h3>
-                <p>For privacy concerns or data requests: <a href="mailto:then-onconformist@outlook.com">then-onconformist@outlook.com</a></p>
-                
-                <p style="margin-top: 2rem; font-size: 0.85rem; color: #999;">
-                    <strong>Last Updated:</strong> January 2026<br>
-                    <strong>Legal Basis:</strong> Explicit user consent (GDPR Article 6(1)(a))
-                </p>
+                <h3>6. Changes to This Policy</h3>
+                <p>We may update this policy periodically. Changes will be posted on this page.</p>
             </div>
         </div>
     </div>
@@ -160,10 +281,8 @@
     <!-- Cookie Consent Banner -->
     <div id="cookie-banner" class="cookie-banner" hidden>
         <div class="cookie-content">
-            <div class="cookie-text">
-                <h3><i class="fas fa-cookie-bite"></i> Cookie Consent Required</h3>
-                <p>We need your <strong style="color: red">explicit consent</strong> before using analytics or functional cookies. In order to <strong style="color: red">show and use the like functionality</strong>, please accept the <strong style="color: red">functional cookies</strong>. Essential cookies (required for the site to work) are always active. You can change your preferences anytime.</p>
-            </div>
+            <h3><i class="fas fa-cookie-bite"></i> We value your privacy</h3>
+            <p>We use cookies to enhance your browsing experience and analyze site traffic. By clicking "Accept All", you consent to our use of cookies.</p>
             <div class="cookie-actions">
                 <button id="cookie-settings-btn" class="cookie-btn cookie-btn-secondary">
                     <i class="fas fa-cog"></i> Customize
@@ -289,10 +408,10 @@
             <div class="footer-section">
                 <h4>Connect</h4>
                 <div class="footer-social">
-                    <a href="https://www.instagram.com/then0nc0nformist/" target="_blank">
+                    <a href="https://www.instagram.com/then0nc0nformist/" target="_blank" rel="noopener noreferrer">
                         <span>Instagram</span>
                     </a>
-                    <a href="https://www.facebook.com/then0nc0nformist" target="_blank">
+                    <a href="https://www.facebook.com/then0nc0nformist" target="_blank" rel="noopener noreferrer">
                         <span>Facebook</span>
                     </a>
                 </div>
@@ -308,6 +427,7 @@
         </div>
     </footer>
 
-    <script type="module" src="script.js"></script>
+    <!-- Load JavaScript -->
+    <script src="script.js" type="module"></script>
 </body>
 </html>

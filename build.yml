@@ -6,7 +6,8 @@
 # This workflow:
 # 1. Runs on every push to main branch
 # 2. Auto-generates images.json manifest (UNIVERSAL - ANY FILENAME)
-# 3. Deploys to Firebase Hosting
+# 3. Auto-generates SEO sitemaps
+# 4. Deploys to Firebase Hosting
 
 name: Build and Deploy
 
@@ -20,6 +21,7 @@ on:
 env:
   NODE_VERSION: '18'
   FIREBASE_PROJECT_ID: 'thenonconformistdotxyz'
+  SITE_URL: 'https://thenonconformist.xyz'
 
 jobs:
   build:
@@ -86,19 +88,23 @@ jobs:
               
               const files = fs.readdirSync(dirPath);
               
-              manifest[dir] = files
+              // First pass: collect all valid images
+              const validImages = files
                   .filter(file => isValidImage(file))
-                  .map(file => {
-                      const filePath = path.join(dirPath, file);
-                      const stats = fs.statSync(filePath);
-                      return {
-                          filename: file,
-                          ext: getExtension(file),
-                          path: `images/${dir}/${file}`,
-                          mtime: stats.mtime.getTime()
-                      };
-                  })
-                  .sort((a, b) => a.filename.localeCompare(b.filename));
+                  .map(file => ({
+                      filename: file,
+                      ext: getExtension(file)
+                  }));
+              
+              // Sort alphabetically
+              validImages.sort((a, b) => a.filename.localeCompare(b.filename));
+              
+              // Assign sequential indices
+              manifest[dir] = validImages.map((img, idx) => ({
+                  index: idx + 1,
+                  ext: img.ext,
+                  originalName: img.filename
+              }));
               
               console.log(`📸 ${dir}: Found ${manifest[dir].length} images`);
           });
@@ -124,7 +130,82 @@ jobs:
           head -n 50 images.json
       
       # ============================================
-      # 5. Create build artifacts
+      # 5. AUTO-GENERATE SEO Sitemaps
+      # ============================================
+      - name: Generate SEO sitemaps
+        run: |
+          echo "🗺️  Generating SEO sitemaps..."
+          
+          cat > generate-sitemaps.js << 'EOF'
+          const fs = require('fs');
+          const baseUrl = '${{ env.SITE_URL }}';
+          const now = new Date().toISOString().split('T')[0];
+          
+          // Load images manifest
+          const manifest = JSON.parse(fs.readFileSync('./images.json', 'utf8'));
+          
+          // Gallery names
+          const galleries = {
+            'LoW': 'Language of Windows',
+            'SoL': 'Snapshots of Life',
+            'R': 'Reflections',
+            'SA': 'Street Art'
+          };
+          
+          // Generate main sitemap
+          const mainSitemap = `<?xml version="1.0" encoding="UTF-8"?>
+          <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+            <url>
+              <loc>${baseUrl}/</loc>
+              <lastmod>${now}</lastmod>
+              <changefreq>weekly</changefreq>
+              <priority>1.0</priority>
+            </url>
+          </urlset>`;
+          
+          fs.writeFileSync('./sitemap.xml', mainSitemap);
+          console.log('✅ Main sitemap generated');
+          
+          // Generate image sitemap
+          let imageEntries = '';
+          let totalImages = 0;
+          
+          Object.keys(manifest).forEach(galleryKey => {
+            const galleryName = galleries[galleryKey] || galleryKey;
+            const images = manifest[galleryKey];
+            
+            images.forEach(img => {
+              const imageUrl = `${baseUrl}/images/${galleryKey}/${encodeURIComponent(img.originalName)}`;
+              const caption = `The Nonconformist - ${galleryName}`;
+              const title = img.originalName.replace(/\.(jpg|jpeg|png|webp|gif)$/i, '');
+              
+              imageEntries += `
+              <image:image>
+                <image:loc>${imageUrl}</image:loc>
+                <image:caption>${caption}</image:caption>
+                <image:title>${title}</image:title>
+              </image:image>`;
+              
+              totalImages++;
+            });
+          });
+          
+          const imageSitemap = `<?xml version="1.0" encoding="UTF-8"?>
+          <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+                  xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+            <url>
+              <loc>${baseUrl}/</loc>${imageEntries}
+            </url>
+          </urlset>`;
+          
+          fs.writeFileSync('./sitemap-images.xml', imageSitemap);
+          console.log(`✅ Image sitemap generated (${totalImages} images)`);
+          EOF
+          
+          node generate-sitemaps.js
+      
+      # ============================================
+      # 6. Create build artifacts
       # ============================================
       - name: Create build artifacts
         run: |
@@ -133,6 +214,11 @@ jobs:
           cp styles.css dist/
           cp script.js dist/
           cp images.json dist/
+          cp sitemap.xml dist/
+          cp sitemap-images.xml dist/
+          cp robots.txt dist/ 2>/dev/null || echo "User-agent: *\nAllow: /\nSitemap: ${{ env.SITE_URL }}/sitemap.xml" > dist/robots.txt
+          cp humans.txt dist/ 2>/dev/null || true
+          cp site.webmanifest dist/ 2>/dev/null || true
           cp favicon.ico dist/ 2>/dev/null || true
           cp -r images dist/ 2>/dev/null || true
           
@@ -140,7 +226,7 @@ jobs:
           ls -lah dist/
       
       # ============================================
-      # 6. Upload artifacts for review
+      # 7. Upload artifacts for review
       # ============================================
       - name: Upload build artifacts
         uses: actions/upload-artifact@v3
@@ -150,7 +236,7 @@ jobs:
           retention-days: 30
       
       # ============================================
-      # 7. Deploy to Firebase (only on main push)
+      # 8. Deploy to Firebase (only on main push)
       # ============================================
       - name: Deploy to Firebase Hosting
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -164,14 +250,15 @@ jobs:
           entryPoint: './dist'
       
       # ============================================
-      # 8. Notify Success
+      # 9. Notify Success
       # ============================================
       - name: Post success message
         if: success()
         run: |
           echo "✅ Build and deployment successful!"
-          echo "🚀 Live at: https://thenonconformist.web.app"
-          echo "📸 Manifest included with $(cat images.json | grep -o '"filename"' | wc -l) total images"
+          echo "🚀 Live at: ${{ env.SITE_URL }}"
+          echo "📸 Manifest included with $(cat images.json | grep -o '"index"' | wc -l) total images"
+          echo "🗺️  Sitemaps generated and deployed"
 
   # ============================================
   # VALIDATE JOB (runs in parallel)
@@ -224,65 +311,10 @@ jobs:
             fi
           done
           echo "📊 Total images across all galleries: $total"
-
----
-
-# ============================================
-# GITHUB SECRETS REQUIRED
-# ============================================
-# Add these to: Settings → Secrets and variables → Actions
-
-# FIREBASE_SERVICE_ACCOUNT:
-#   (Copy JSON from Firebase Console → Project Settings → Service Accounts)
-
----
-
-# ============================================
-# PACKAGE.JSON (Required for npm install)
-# ============================================
-
-# {
-#   "name": "thenonconformist",
-#   "version": "1.0.0",
-#   "description": "The Nonconformist - Photography Portfolio",
-#   "scripts": {
-#     "deploy": "firebase deploy",
-#     "generate-manifest": "node generate-manifest.js"
-#   },
-#   "dependencies": {},
-#   "devDependencies": {}
-# }
-
----
-
-# ============================================
-# FIREBASE.JSON (Required for Firebase Hosting)
-# ============================================
-
-# {
-#   "hosting": {
-#     "public": "dist",
-#     "ignore": [
-#       "firebase.json",
-#       "**/.*",
-#       "**/node_modules/**"
-#     ],
-#     "rewrites": [
-#       {
-#         "source": "**",
-#         "destination": "/index.html"
-#       }
-#     ],
-#     "headers": [
-#       {
-#         "source": "images.json",
-#         "headers": [
-#           {
-#             "key": "Cache-Control",
-#             "value": "public, max-age=300"
-#           }
-#         ]
-#       }
-#     ]
-#   }
-# }
+      
+      - name: Validate SEO files
+        run: |
+          echo "Checking SEO files..."
+          [ -f "robots.txt" ] && echo "✅ robots.txt exists" || echo "⚠️ robots.txt missing"
+          [ -f "humans.txt" ] && echo "✅ humans.txt exists" || echo "ℹ️ humans.txt optional"
+          [ -f "site.webmanifest" ] && echo "✅ site.webmanifest exists" || echo "⚠️ site.webmanifest missing"

@@ -1,0 +1,21 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /cdn-cgi/
+
+# Sitemaps
+Sitemap: https://thenonconformist.xyz/sitemap.xml
+Sitemap: https://thenonconformist.xyz/sitemap-images.xml
+
+# Crawl-delay for polite bots
+Crawl-delay: 1
+
+# Specific bot rules
+User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /images/
+
+User-agent: bingbot
+Allow: /
