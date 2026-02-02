@@ -9,7 +9,7 @@
 # 3. Auto-generates SEO sitemaps
 # 4. Deploys to Firebase Hosting
 
-name: Build and Deploy
+name: Build and Deploy 
 
 on:
   push:
