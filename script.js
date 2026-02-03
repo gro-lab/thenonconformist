@@ -60,9 +60,6 @@ let isProcessing = false;
 let currentGallery = 'low';
 let galleryImages = {};
 
-// NEW: Store untransposed source images for each gallery
-let gallerySourceImages = {};
-
 // GDPR: Functional cookies disabled by default until user explicitly accepts
 window.FUNCTIONAL_COOKIES_ENABLED = false;
 
@@ -259,60 +256,6 @@ const setupLazyLoading = (img) => {
     observer.observe(img);
 };
 
-// HORIZONTAL ROW SORTING - FIXED VERSION
-const sortImagesForHorizontalRows = (images) => {
-    // Get column count based on window width (matches CSS breakpoints)
-    const width = window.innerWidth;
-    let columnCount;
-    
-    if (width > 1400) {
-        columnCount = 5;
-    } else if (width > 1000) {
-        columnCount = 4;
-    } else if (width > 700) {
-        columnCount = 3;
-    } else {
-        columnCount = 2; // Minimum 2 columns
-    }
-    
-    // Sort by likes (descending), then by originalIndex (ascending) for stable sort
-    const sorted = [...images].sort((a, b) => {
-        if (b.likes !== a.likes) {
-            return b.likes - a.likes;
-        }
-        // When likes are equal, maintain original order
-        return a.originalIndex - b.originalIndex;
-    });
-    
-    // Calculate number of rows
-    const totalImages = sorted.length;
-    const rowCount = Math.ceil(totalImages / columnCount);
-    
-    // Create row-major 2D array (what we want visually)
-    const grid = [];
-    for (let row = 0; row < rowCount; row++) {
-        grid[row] = [];
-        for (let col = 0; col < columnCount; col++) {
-            const index = row * columnCount + col;
-            if (index < totalImages) {
-                grid[row][col] = sorted[index];
-            }
-        }
-    }
-    
-    // Transpose to column-major order (what CSS columns need)
-    const result = [];
-    for (let col = 0; col < columnCount; col++) {
-        for (let row = 0; row < rowCount; row++) {
-            if (grid[row] && grid[row][col]) {
-                result.push(grid[row][col]);
-            }
-        }
-    }
-    
-    return result;
-};
-
 // GALLERY GENERATION - UPDATED to pass full imageData object
 const generateImageGrid = async (galleryKey) => {
     if (galleryImages[galleryKey]) {
@@ -331,7 +274,7 @@ const generateImageGrid = async (galleryKey) => {
     
     console.log(`📸 Loading ${imageList.length} images for ${gallery.title}`);
     
-    const images = imageList.map((imageData, idx) => {
+    const images = imageList.map(imageData => {
         // UPDATED: Pass full imageData object instead of individual parameters
         const url = createImageUrl(dir, imageData);
         const docId = getDocIdFromUrl(url);
@@ -386,20 +329,18 @@ const generateImageGrid = async (galleryKey) => {
             url: url, 
             likes: likes,
             gallery: galleryKey,
-            category: gallery.title,
-            originalIndex: idx
+            category: gallery.title
         };
     });
     
-    // Store source images (untransposed) for later re-sorting
-    gallerySourceImages[galleryKey] = [...images];
+    // ============================================
+    // CHANGE #1: Sort images by likes in DESCENDING order
+    // ============================================
+    images.sort((a, b) => b.likes - a.likes);
+    galleryImages[galleryKey] = images;
     
-    // Sort for horizontal rows (this transposes the images)
-    const sortedImages = sortImagesForHorizontalRows(images);
-    galleryImages[galleryKey] = sortedImages;
-    
-    console.log(`✅ Gallery ${gallery.title} loaded (${sortedImages.length} images)`);
-    return sortedImages;
+    console.log(`✅ Gallery ${gallery.title} loaded (${images.length} images)`);
+    return images;
 };
 
 const renderMasonryGrid = async (galleryKey) => {
@@ -602,21 +543,18 @@ const toggleLike = async () => {
                 }
             }
             
-            // Update the source images (not the transposed ones!)
-            Object.keys(gallerySourceImages).forEach(galleryKey => {
-                const sourceImages = gallerySourceImages[galleryKey];
-                const sourceImageIndex = sourceImages.findIndex(img => img.url === currentModalImageUrl);
-                if (sourceImageIndex !== -1) {
-                    sourceImages[sourceImageIndex].likes = newLikes;
-                    
-                    // Re-sort from source images (not from galleryImages!)
-                    const sortedImages = sortImagesForHorizontalRows(sourceImages);
-                    galleryImages[galleryKey] = sortedImages;
+            // ============================================
+            // CHANGE #2: SIMPLE FIX - Just update the like count
+            // NO RE-SORTING, NO RE-RENDERING
+            // ============================================
+            Object.keys(galleryImages).forEach(galleryKey => {
+                const images = galleryImages[galleryKey];
+                const imageIndex = images.findIndex(img => img.url === currentModalImageUrl);
+                if (imageIndex !== -1) {
+                    images[imageIndex].likes = newLikes;
+                    // NO RE-SORTING HERE!
                 }
             });
-            
-            // Re-render the current gallery to show new sort order
-            await renderMasonryGrid(currentGallery);
         }
     } catch (error) {
         console.error('Error toggling like:', error);
@@ -934,7 +872,7 @@ document.addEventListener('DOMContentLoaded', () => {
             clearFunctionalCookieData();
             
             cookieSettingsModal.setAttribute('hidden', '');
-            document.body.style.overflow = 'auto';
+            document.body.style.overflow = 'auto');
             location.reload();
         });
     }
@@ -965,20 +903,6 @@ document.addEventListener('keydown', (e) => {
             navigateModal('next');
         }
     }
-});
-
-// Resize handler to re-sort when column count changes
-let resizeTimeout;
-window.addEventListener('resize', () => {
-    clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(async () => {
-        if (currentGallery && gallerySourceImages[currentGallery]) {
-            // Re-sort from source images (not from galleryImages!)
-            const sortedImages = sortImagesForHorizontalRows(gallerySourceImages[currentGallery]);
-            galleryImages[currentGallery] = sortedImages;
-            await renderMasonryGrid(currentGallery);
-        }
-    }, 300);
 });
 
 // INIT
