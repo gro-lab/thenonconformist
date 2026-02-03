@@ -256,60 +256,6 @@ const setupLazyLoading = (img) => {
     observer.observe(img);
 };
 
-// HORIZONTAL ROW SORTING FUNCTION
-const sortImagesForHorizontalRows = (images) => {
-    // Get column count based on window width (matches CSS breakpoints)
-    const width = window.innerWidth;
-    let columnCount;
-    
-    if (width > 1400) {
-        columnCount = 5;
-    } else if (width > 1000) {
-        columnCount = 4;
-    } else if (width > 700) {
-        columnCount = 3;
-    } else {
-        columnCount = 2; // Minimum 2 columns
-    }
-    
-    // Sort by likes (descending), then by originalIndex for stable sort
-    const sorted = [...images].sort((a, b) => {
-        if (b.likes !== a.likes) {
-            return b.likes - a.likes;
-        }
-        // When likes are equal, maintain original order
-        return a.originalIndex - b.originalIndex;
-    });
-    
-    // Calculate number of rows
-    const totalImages = sorted.length;
-    const rowCount = Math.ceil(totalImages / columnCount);
-    
-    // Create row-major 2D array (what we want visually)
-    const grid = [];
-    for (let row = 0; row < rowCount; row++) {
-        grid[row] = [];
-        for (let col = 0; col < columnCount; col++) {
-            const index = row * columnCount + col;
-            if (index < totalImages) {
-                grid[row][col] = sorted[index];
-            }
-        }
-    }
-    
-    // Transpose to column-major order (what CSS columns need)
-    const result = [];
-    for (let col = 0; col < columnCount; col++) {
-        for (let row = 0; row < rowCount; row++) {
-            if (grid[row] && grid[row][col]) {
-                result.push(grid[row][col]);
-            }
-        }
-    }
-    
-    return result;
-};
-
 // GALLERY GENERATION - UPDATED to pass full imageData object
 const generateImageGrid = async (galleryKey) => {
     if (galleryImages[galleryKey]) {
@@ -328,7 +274,7 @@ const generateImageGrid = async (galleryKey) => {
     
     console.log(`📸 Loading ${imageList.length} images for ${gallery.title}`);
     
-    const images = imageList.map((imageData, idx) => {
+    const images = imageList.map(imageData => {
         // UPDATED: Pass full imageData object instead of individual parameters
         const url = createImageUrl(dir, imageData);
         const docId = getDocIdFromUrl(url);
@@ -383,16 +329,15 @@ const generateImageGrid = async (galleryKey) => {
             url: url, 
             likes: likes,
             gallery: galleryKey,
-            category: gallery.title,
-            originalIndex: idx
+            category: gallery.title
         };
     });
     
-    const sortedImages = sortImagesForHorizontalRows(images);
-    galleryImages[galleryKey] = sortedImages;
+    images.sort((a, b) => b.likes - a.likes);
+    galleryImages[galleryKey] = images;
     
-    console.log(`✅ Gallery ${gallery.title} loaded (${sortedImages.length} images)`);
-    return sortedImages;
+    console.log(`✅ Gallery ${gallery.title} loaded (${images.length} images)`);
+    return images;
 };
 
 const renderMasonryGrid = async (galleryKey) => {
@@ -601,13 +546,10 @@ const toggleLike = async () => {
                 const imageIndex = images.findIndex(img => img.url === currentModalImageUrl);
                 if (imageIndex !== -1) {
                     images[imageIndex].likes = newLikes;
-                    // Re-sort the gallery with horizontal row sorting
-                    galleryImages[galleryKey] = sortImagesForHorizontalRows(images);
+                    // Re-sort the gallery
+                    images.sort((a, b) => b.likes - a.likes);
                 }
             });
-            
-            // Re-render the current gallery to show new sort order
-            await renderMasonryGrid(currentGallery);
         }
     } catch (error) {
         console.error('Error toggling like:', error);
@@ -956,19 +898,6 @@ document.addEventListener('keydown', (e) => {
             navigateModal('next');
         }
     }
-});
-
-// Resize handler to re-sort when column count changes
-let resizeTimeout;
-window.addEventListener('resize', () => {
-    clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(async () => {
-        if (currentGallery && galleryImages[currentGallery]) {
-            const images = galleryImages[currentGallery];
-            galleryImages[currentGallery] = sortImagesForHorizontalRows(images);
-            await renderMasonryGrid(currentGallery);
-        }
-    }, 300);
 });
 
 // INIT
