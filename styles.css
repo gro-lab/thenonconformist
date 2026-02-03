@@ -363,9 +363,7 @@ body {
     .masonry-wrapper {
         padding: 0 1rem 2rem;
     }
-    .filter-tabs {
-        justify-content: flex-start;
-    }
+    
 }
 
 /* LOADING */
