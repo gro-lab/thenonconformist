@@ -9,7 +9,7 @@
 # 3. Auto-generates SEO sitemaps
 # 4. Deploys to Firebase Hosting
 
-name: Build and Deploy 
+name: Build and Deploy
 
 on:
   push:
@@ -49,20 +49,23 @@ jobs:
       # 3. Install Dependencies
       # ============================================
       - name: Install dependencies
-        run: npm install
+        run: |
+          npm install
+          npm install image-size
       
       # ============================================
       # 4. AUTO-GENERATE images.json manifest
-      # UPDATED: Now detects ALL images regardless of filename
+      # UPDATED: Now includes aspect ratio detection to prevent layout jumping
       # ============================================
       - name: Generate image manifest
         run: |
-          echo "🔍 Scanning for images..."
+          echo "🔍 Scanning for images with aspect ratios..."
           
-          # Create Node.js script inline
+          # Create Node.js script inline with aspect ratio detection
           cat > generate-manifest.js << 'EOF'
           const fs = require('fs');
           const path = require('path');
+          const sizeOf = require('image-size');
           
           const galleries = ['LoW', 'SoL', 'R', 'SA'];
           const manifest = {};
@@ -77,6 +80,19 @@ jobs:
               return validExtensions.includes(ext);
           }
           
+          function getAspectRatio(width, height) {
+              const ratio = width / height;
+              if (Math.abs(ratio - (16/9)) < 0.1) {
+                  return { ratio: '16:9', orientation: 'horizontal', decimal: ratio };
+              } else if (Math.abs(ratio - (9/16)) < 0.1) {
+                  return { ratio: '9:16', orientation: 'vertical', decimal: ratio };
+              } else if (ratio > 1) {
+                  return { ratio: 'custom', orientation: 'horizontal', decimal: ratio };
+              } else {
+                  return { ratio: 'custom', orientation: 'vertical', decimal: ratio };
+              }
+          }
+          
           galleries.forEach(dir => {
               const dirPath = path.join(process.cwd(), 'images', dir);
               
@@ -88,33 +104,83 @@ jobs:
               
               const files = fs.readdirSync(dirPath);
               
-              // First pass: collect all valid images
+              // First pass: collect all valid images with dimensions
               const validImages = files
                   .filter(file => isValidImage(file))
-                  .map(file => ({
-                      filename: file,
-                      ext: getExtension(file)
-                  }));
+                  .map(file => {
+                      const filePath = path.join(dirPath, file);
+                      try {
+                          const dimensions = sizeOf(filePath);
+                          const aspectInfo = getAspectRatio(dimensions.width, dimensions.height);
+                          return {
+                              filename: file,
+                              ext: getExtension(file),
+                              width: dimensions.width,
+                              height: dimensions.height,
+                              aspectRatio: aspectInfo.ratio,
+                              orientation: aspectInfo.orientation,
+                              aspectDecimal: aspectInfo.decimal
+                          };
+                      } catch (error) {
+                          console.warn(`⚠️  Could not read ${file}: ${error.message}`);
+                          return {
+                              filename: file,
+                              ext: getExtension(file),
+                              width: null,
+                              height: null,
+                              aspectRatio: 'unknown',
+                              orientation: 'unknown',
+                              aspectDecimal: null
+                          };
+                      }
+                  });
               
               // Sort alphabetically
               validImages.sort((a, b) => a.filename.localeCompare(b.filename));
               
-              // Assign sequential indices
+              // Assign sequential indices with aspect ratio data
               manifest[dir] = validImages.map((img, idx) => ({
                   index: idx + 1,
                   ext: img.ext,
-                  originalName: img.filename
+                  originalName: img.filename,
+                  width: img.width,
+                  height: img.height,
+                  aspectRatio: img.aspectRatio,
+                  orientation: img.orientation,
+                  aspectDecimal: img.aspectDecimal
               }));
               
-              console.log(`📸 ${dir}: Found ${manifest[dir].length} images`);
+              const horizontal = validImages.filter(img => img.orientation === 'horizontal').length;
+              const vertical = validImages.filter(img => img.orientation === 'vertical').length;
+              console.log(`📸 ${dir}: Found ${manifest[dir].length} images (${horizontal}H / ${vertical}V)`);
           });
           
           fs.writeFileSync('images.json', JSON.stringify(manifest, null, 2));
-          console.log('\n✅ Generated images.json');
+          console.log('\n✅ Generated images.json with aspect ratios');
           console.log('\n📊 Manifest Summary:');
           let totalImages = 0;
+          let totalHorizontal = 0;
+          let totalVertical = 0;
           Object.keys(manifest).forEach(gallery => {
-              const count = manifest[gallery].length;
+              const images = manifest[gallery];
+              const count = images.length;
+              const horizontal = images.filter(img => img.orientation === 'horizontal').length;
+              const vertical = images.filter(img => img.orientation === 'vertical').length;
+              totalImages += count;
+              totalHorizontal += horizontal;
+              totalVertical += vertical;
+              console.log(`   ${gallery}: ${count} images (${horizontal} horizontal, ${vertical} vertical)`);
+          });
+          console.log(`   Total: ${totalImages} images (${totalHorizontal} horizontal, ${totalVertical} vertical)`);
+          EOF
+          
+          # Run the script
+          node generate-manifest.js
+          
+          # Show the generated manifest (first 50 lines)
+          echo ""
+          echo "📄 Generated manifest (preview):"
+          head -n 50 images.json
               totalImages += count;
               console.log(`   ${gallery}: ${count} images`);
           });

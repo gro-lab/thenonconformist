@@ -1,7 +1,7 @@
 /* THE NONCONFORMIST - Updated Styles */
 
-:root { 
-    --bg-white: #ffffff;  
+:root {
+    --bg-white: #ffffff;
     --bg-light: #fafafa;
     --bg-hover: #f5f5f5;
     --text-primary: #111111;
@@ -62,7 +62,7 @@ body {
 }
 
 .header-content {
-    width: 100%;
+    max-width: 1600px;
     margin: 0 auto;
     padding: 1.25rem 2rem;
     display: flex;
@@ -180,13 +180,12 @@ body {
 
 /* FILTER TABS */
 .filter-tabs {
-    width: 100%;
+    max-width: 1600px;
     margin: 0 auto 2rem;
     padding: 0 2rem;
     display: flex;
     gap: 1rem;
     overflow-x: auto;
-    justify-content: center;
 }
 
 .filter-tab {
@@ -218,7 +217,7 @@ body {
 
 /* GALLERY DESCRIPTION */
 .gallery-description-wrapper {
-    width: 100%;
+    max-width: 1600px;
     margin: 0 auto 2rem;
     padding: 0 2rem;
 }
@@ -244,7 +243,7 @@ body {
 
 /* MASONRY GRID */
 .masonry-wrapper {
-    width: 100%; 
+    max-width: 1600px;
     margin: 0 auto;
     padding: 0 2rem 4rem;
 }
@@ -361,9 +360,6 @@ body {
     
     .masonry-wrapper {
         padding: 0 1rem 2rem;
-    }
-    .filter-tabs {
-        justify-content: flex-start;
     }
 }
 
@@ -1190,4 +1186,3 @@ i {
 i::before {
     aria-hidden: true;
 }
-

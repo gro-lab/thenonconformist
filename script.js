@@ -126,13 +126,19 @@ const generateFallbackManifest = () => {
             manifest[dir].push({ 
                 index: i, 
                 ext: ext,
-                originalName: `${dir}-${i}.${ext}`
+                originalName: `${dir}-${i}.${ext}`,
+                // Add default aspect ratio data for fallback
+                width: 1920,
+                height: 1080,
+                aspectRatio: '16:9',
+                orientation: 'horizontal',
+                aspectDecimal: 16/9
             });
         }
     });
     
     imageManifest = manifest;
-    console.log('📋 Using fallback manifest');
+    console.log('📋 Using fallback manifest with default aspect ratios');
     return manifest;
 };
 
@@ -286,6 +292,26 @@ const generateImageGrid = async (galleryKey) => {
         img.alt = `${gallery.title} - Image ${imageData.index}`;
         img.style.opacity = '0';
         img.style.transition = 'opacity 0.3s ease';
+        
+        // CRITICAL: Set aspect ratio to prevent layout jumping
+        // Use aspect ratio from manifest if available
+        if (imageData.aspectDecimal && imageData.aspectDecimal > 0) {
+            // Set aspect ratio using CSS custom property
+            img.style.aspectRatio = imageData.aspectDecimal;
+        } else if (imageData.width && imageData.height) {
+            // Fallback: calculate from dimensions
+            img.style.aspectRatio = imageData.width / imageData.height;
+        } else if (imageData.orientation === 'horizontal') {
+            // Fallback: use 16:9 for horizontal
+            img.style.aspectRatio = 16 / 9;
+        } else if (imageData.orientation === 'vertical') {
+            // Fallback: use 9:16 for vertical
+            img.style.aspectRatio = 9 / 16;
+        }
+        
+        // Set width to 100% so it fills the card and height adjusts automatically
+        img.style.width = '100%';
+        img.style.height = 'auto';
         
         const likeCount = document.createElement('div');
         likeCount.className = 'card-like-count';
