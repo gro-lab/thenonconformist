@@ -130,6 +130,7 @@ body {
     color: var(--text-secondary);
     text-decoration: none;
     transition: all var(--transition-fast);
+    border-radius: 999px;
 }
 
 .contact-link:hover {
