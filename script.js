@@ -258,7 +258,6 @@ const setupLazyLoading = (img) => {
 
 // HORIZONTAL ROW SORTING
 // CSS columns fill vertically, but we want images sorted by likes to appear in horizontal rows
-// Example: Row 1: [9, 8, 7, 6], Row 2: [5, 4, 3, 2], Row 3: [1, 1, 1, 1]
 const sortImagesForHorizontalRows = (images) => {
     // Get column count based on window width (matches CSS breakpoints)
     const width = window.innerWidth;
@@ -271,11 +270,17 @@ const sortImagesForHorizontalRows = (images) => {
     } else if (width > 700) {
         columnCount = 3;
     } else {
-        columnCount = 2; // Minimum 2 columns even on small screens
+        columnCount = 2; // Minimum 2 columns
     }
     
-    // Sort by likes (descending)
-    const sorted = [...images].sort((a, b) => b.likes - a.likes);
+    // Sort by likes (descending), then by originalIndex (ascending) for stable sort
+    const sorted = [...images].sort((a, b) => {
+        if (b.likes !== a.likes) {
+            return b.likes - a.likes;
+        }
+        // When likes are equal, maintain original order
+        return a.originalIndex - b.originalIndex;
+    });
     
     // Calculate number of rows
     const totalImages = sorted.length;
@@ -324,7 +329,7 @@ const generateImageGrid = async (galleryKey) => {
     
     console.log(`📸 Loading ${imageList.length} images for ${gallery.title}`);
     
-    const images = imageList.map(imageData => {
+    const images = imageList.map((imageData, idx) => {
         // UPDATED: Pass full imageData object instead of individual parameters
         const url = createImageUrl(dir, imageData);
         const docId = getDocIdFromUrl(url);
@@ -379,7 +384,8 @@ const generateImageGrid = async (galleryKey) => {
             url: url, 
             likes: likes,
             gallery: galleryKey,
-            category: gallery.title
+            category: gallery.title,
+            originalIndex: idx
         };
     });
     
@@ -953,70 +959,13 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// Resize listener to re-sort when column count changes
+// Resize handler to re-sort when column count changes
 let resizeTimeout;
 window.addEventListener('resize', () => {
     clearTimeout(resizeTimeout);
     resizeTimeout = setTimeout(async () => {
         if (currentGallery && galleryImages[currentGallery]) {
-            // Clear cache and re-generate with new column count
-            const gallery = galleries[currentGallery];
-            const dir = gallery.dir;
-            const imageList = imageManifest[dir] || [];
-            
-            // Rebuild images array with current likes
-            const images = imageList.map(imageData => {
-                const url = createImageUrl(dir, imageData);
-                const docId = getDocIdFromUrl(url);
-                const likes = likesCache[docId] || 0;
-                
-                const card = document.createElement('div');
-                card.className = 'image-card';
-                card.dataset.gallery = currentGallery;
-                card.dataset.url = url;
-                card.dataset.category = gallery.title;
-                
-                const img = document.createElement('img');
-                img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-                img.dataset.src = url;
-                img.alt = `${gallery.title} - Image ${imageData.index}`;
-                img.style.opacity = '0';
-                img.style.transition = 'opacity 0.3s ease';
-                
-                if (imageData.aspectDecimal && imageData.aspectDecimal > 0) {
-                    img.style.aspectRatio = imageData.aspectDecimal;
-                } else if (imageData.width && imageData.height) {
-                    img.style.aspectRatio = imageData.width / imageData.height;
-                } else if (imageData.orientation === 'horizontal') {
-                    img.style.aspectRatio = 16 / 9;
-                } else if (imageData.orientation === 'vertical') {
-                    img.style.aspectRatio = 9 / 16;
-                }
-                
-                img.style.width = '100%';
-                img.style.height = 'auto';
-                
-                const likeCount = document.createElement('div');
-                likeCount.className = 'card-like-count';
-                likeCount.innerHTML = `<i class="fas fa-heart"></i> <span>${likes}</span>`;
-                
-                card.appendChild(img);
-                card.appendChild(likeCount);
-                
-                card.addEventListener('click', () => openModal(url, gallery.title, currentGallery));
-                
-                setupLazyLoading(img);
-                
-                return { 
-                    element: card, 
-                    url: url, 
-                    likes: likes,
-                    gallery: currentGallery,
-                    category: gallery.title
-                };
-            });
-            
-            // Re-sort with new column count
+            const images = galleryImages[currentGallery];
             galleryImages[currentGallery] = sortImagesForHorizontalRows(images);
             await renderMasonryGrid(currentGallery);
         }
