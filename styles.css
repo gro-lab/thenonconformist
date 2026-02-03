@@ -62,7 +62,6 @@ body {
 }
 
 .header-content {
-    max-width: 1600px;
     margin: 0 auto;
     padding: 1.25rem 2rem;
     display: flex;
@@ -180,7 +179,6 @@ body {
 
 /* FILTER TABS */
 .filter-tabs {
-    max-width: 1600px;
     margin: 0 auto 2rem;
     padding: 0 2rem;
     display: flex;
@@ -218,7 +216,6 @@ body {
 
 /* GALLERY DESCRIPTION */
 .gallery-description-wrapper {
-    max-width: 1600px;
     margin: 0 auto 2rem;
     padding: 0 2rem;
 }
@@ -244,7 +241,6 @@ body {
 
 /* MASONRY GRID */
 .masonry-wrapper {
-    max-width: 1600px;
     margin: 0 auto;
     padding: 0 2rem 4rem;
 }
@@ -643,7 +639,6 @@ body {
 }
 
 .footer-content {
-    max-width: 1600px;
     margin: 0 auto 2rem;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
