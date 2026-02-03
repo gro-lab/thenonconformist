@@ -256,6 +256,56 @@ const setupLazyLoading = (img) => {
     observer.observe(img);
 };
 
+// HORIZONTAL ROW SORTING
+// CSS columns fill vertically, but we want images sorted by likes to appear in horizontal rows
+// Example: Row 1: [9, 8, 7, 6], Row 2: [5, 4, 3, 2], Row 3: [1, 1, 1, 1]
+const sortImagesForHorizontalRows = (images) => {
+    // Get column count based on window width (matches CSS breakpoints)
+    const width = window.innerWidth;
+    let columnCount;
+    
+    if (width > 1400) {
+        columnCount = 5;
+    } else if (width > 1000) {
+        columnCount = 4;
+    } else if (width > 700) {
+        columnCount = 3;
+    } else {
+        columnCount = 2; // Minimum 2 columns even on small screens
+    }
+    
+    // Sort by likes (descending)
+    const sorted = [...images].sort((a, b) => b.likes - a.likes);
+    
+    // Calculate number of rows
+    const totalImages = sorted.length;
+    const rowCount = Math.ceil(totalImages / columnCount);
+    
+    // Create row-major 2D array (what we want visually)
+    const grid = [];
+    for (let row = 0; row < rowCount; row++) {
+        grid[row] = [];
+        for (let col = 0; col < columnCount; col++) {
+            const index = row * columnCount + col;
+            if (index < totalImages) {
+                grid[row][col] = sorted[index];
+            }
+        }
+    }
+    
+    // Transpose to column-major order (what CSS columns need)
+    const result = [];
+    for (let col = 0; col < columnCount; col++) {
+        for (let row = 0; row < rowCount; row++) {
+            if (grid[row] && grid[row][col]) {
+                result.push(grid[row][col]);
+            }
+        }
+    }
+    
+    return result;
+};
+
 // GALLERY GENERATION - UPDATED to pass full imageData object
 const generateImageGrid = async (galleryKey) => {
     if (galleryImages[galleryKey]) {
@@ -333,11 +383,11 @@ const generateImageGrid = async (galleryKey) => {
         };
     });
     
-    images.sort((a, b) => b.likes - a.likes);
-    galleryImages[galleryKey] = images;
+    const sortedImages = sortImagesForHorizontalRows(images);
+    galleryImages[galleryKey] = sortedImages;
     
-    console.log(`✅ Gallery ${gallery.title} loaded (${images.length} images)`);
-    return images;
+    console.log(`✅ Gallery ${gallery.title} loaded (${sortedImages.length} images)`);
+    return sortedImages;
 };
 
 const renderMasonryGrid = async (galleryKey) => {
@@ -546,10 +596,13 @@ const toggleLike = async () => {
                 const imageIndex = images.findIndex(img => img.url === currentModalImageUrl);
                 if (imageIndex !== -1) {
                     images[imageIndex].likes = newLikes;
-                    // Re-sort the gallery
-                    images.sort((a, b) => b.likes - a.likes);
+                    // Re-sort the gallery with horizontal row sorting
+                    galleryImages[galleryKey] = sortImagesForHorizontalRows(images);
                 }
             });
+            
+            // Re-render the current gallery to show new sort order
+            await renderMasonryGrid(currentGallery);
         }
     } catch (error) {
         console.error('Error toggling like:', error);
@@ -898,6 +951,76 @@ document.addEventListener('keydown', (e) => {
             navigateModal('next');
         }
     }
+});
+
+// Resize listener to re-sort when column count changes
+let resizeTimeout;
+window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(async () => {
+        if (currentGallery && galleryImages[currentGallery]) {
+            // Clear cache and re-generate with new column count
+            const gallery = galleries[currentGallery];
+            const dir = gallery.dir;
+            const imageList = imageManifest[dir] || [];
+            
+            // Rebuild images array with current likes
+            const images = imageList.map(imageData => {
+                const url = createImageUrl(dir, imageData);
+                const docId = getDocIdFromUrl(url);
+                const likes = likesCache[docId] || 0;
+                
+                const card = document.createElement('div');
+                card.className = 'image-card';
+                card.dataset.gallery = currentGallery;
+                card.dataset.url = url;
+                card.dataset.category = gallery.title;
+                
+                const img = document.createElement('img');
+                img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                img.dataset.src = url;
+                img.alt = `${gallery.title} - Image ${imageData.index}`;
+                img.style.opacity = '0';
+                img.style.transition = 'opacity 0.3s ease';
+                
+                if (imageData.aspectDecimal && imageData.aspectDecimal > 0) {
+                    img.style.aspectRatio = imageData.aspectDecimal;
+                } else if (imageData.width && imageData.height) {
+                    img.style.aspectRatio = imageData.width / imageData.height;
+                } else if (imageData.orientation === 'horizontal') {
+                    img.style.aspectRatio = 16 / 9;
+                } else if (imageData.orientation === 'vertical') {
+                    img.style.aspectRatio = 9 / 16;
+                }
+                
+                img.style.width = '100%';
+                img.style.height = 'auto';
+                
+                const likeCount = document.createElement('div');
+                likeCount.className = 'card-like-count';
+                likeCount.innerHTML = `<i class="fas fa-heart"></i> <span>${likes}</span>`;
+                
+                card.appendChild(img);
+                card.appendChild(likeCount);
+                
+                card.addEventListener('click', () => openModal(url, gallery.title, currentGallery));
+                
+                setupLazyLoading(img);
+                
+                return { 
+                    element: card, 
+                    url: url, 
+                    likes: likes,
+                    gallery: currentGallery,
+                    category: gallery.title
+                };
+            });
+            
+            // Re-sort with new column count
+            galleryImages[currentGallery] = sortImagesForHorizontalRows(images);
+            await renderMasonryGrid(currentGallery);
+        }
+    }, 300);
 });
 
 // INIT
