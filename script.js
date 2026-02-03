@@ -333,9 +333,6 @@ const generateImageGrid = async (galleryKey) => {
         };
     });
     
-    // ============================================
-    // CHANGE #1: Sort images by likes in DESCENDING order
-    // ============================================
     images.sort((a, b) => b.likes - a.likes);
     galleryImages[galleryKey] = images;
     
@@ -543,16 +540,14 @@ const toggleLike = async () => {
                 }
             }
             
-            // ============================================
-            // CHANGE #2: SIMPLE FIX - Just update the like count
-            // NO RE-SORTING, NO RE-RENDERING
-            // ============================================
+            // Update the cached gallery data for proper sorting
             Object.keys(galleryImages).forEach(galleryKey => {
                 const images = galleryImages[galleryKey];
                 const imageIndex = images.findIndex(img => img.url === currentModalImageUrl);
                 if (imageIndex !== -1) {
                     images[imageIndex].likes = newLikes;
-                    // NO RE-SORTING HERE!
+                    // Re-sort the gallery
+                    images.sort((a, b) => b.likes - a.likes);
                 }
             });
         }
@@ -872,7 +867,7 @@ document.addEventListener('DOMContentLoaded', () => {
             clearFunctionalCookieData();
             
             cookieSettingsModal.setAttribute('hidden', '');
-            document.body.style.overflow = 'auto');
+            document.body.style.overflow = 'auto';
             location.reload();
         });
     }
