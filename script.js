@@ -1,4 +1,4 @@
-// THE NONCONFORMIST - FULLY GDPR-COMPLIANT VERSION WITH FIXED LIKE/UNLIKE
+// THE NONCONFORMIST - SIMPLIFIED VERSION WITH CSS GRID
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js';
 import {
@@ -50,20 +50,41 @@ const galleries = {
     'sa': { title: 'Street Art', dir: 'SA' }
 };
 
-// STATE
+// ============================================
+// SIMPLIFIED STATE (NO MORE COMPLEX CACHING)
+// ============================================
+
 let imageManifest = {};
 let likesCache = {};
 let currentModalImageUrl = null;
 let currentModalImageIndex = -1;
-let currentGalleryImages = [];
+let currentGalleryImages = []; // For modal navigation (in sorted order)
 let isProcessing = false;
 let currentGallery = 'low';
-let galleryImages = {};
+let galleryImageData = {}; // Simple storage: galleryKey -> array of image objects
 
 // GDPR: Functional cookies disabled by default until user explicitly accepts
 window.FUNCTIONAL_COOKIES_ENABLED = false;
 
-// UTILITIES
+// ============================================
+// SIMPLIFIED SORTING (NO TRANSPOSE NEEDED WITH CSS GRID!)
+// ============================================
+
+/**
+ * Stable sort by likes, then by original index
+ * With CSS Grid, images render left-to-right, top-to-bottom automatically!
+ */
+const stableSortByLikes = (items) => {
+    return [...items].sort((a, b) => {
+        if (b.likes !== a.likes) return b.likes - a.likes;
+        return a.originalIndex - b.originalIndex;
+    });
+};
+
+// ============================================
+// UTILITIES (UNCHANGED)
+// ============================================
+
 const debounce = (fn, delay) => {
     let timeoutId;
     return (...args) => {
@@ -74,7 +95,6 @@ const debounce = (fn, delay) => {
 
 // GDPR: Clear functional cookie data when user rejects
 const clearFunctionalCookieData = () => {
-    // Remove all like preferences from localStorage
     const keys = Object.keys(localStorage);
     keys.forEach(key => {
         if (key.startsWith('liked_')) {
@@ -84,7 +104,7 @@ const clearFunctionalCookieData = () => {
     console.log('🗑️ Cleared functional cookie data');
 };
 
-// MANIFEST LOADING
+// MANIFEST LOADING (UNCHANGED)
 const loadManifest = async () => {
     try {
         const owner = 'gro-lab';
@@ -127,7 +147,6 @@ const generateFallbackManifest = () => {
                 index: i, 
                 ext: ext,
                 originalName: `${dir}-${i}.${ext}`,
-                // Add default aspect ratio data for fallback
                 width: 1920,
                 height: 1080,
                 aspectRatio: '16:9',
@@ -142,15 +161,13 @@ const generateFallbackManifest = () => {
     return manifest;
 };
 
-// IMAGE URL - UPDATED to use originalName if available
+// IMAGE URL (UNCHANGED)
 const createImageUrl = (dir, imageData) => {
     const owner = 'gro-lab';
     const repo = 'thenonconformist';
     const branch = 'main';
     
-    // Use originalName if available (new format), otherwise fall back to pattern
     const filename = imageData.originalName || `${dir}-${imageData.index}.${imageData.ext}`;
-    
     return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/${dir}/${filename}`;
 };
 
@@ -158,10 +175,9 @@ const getDocIdFromUrl = (url) => {
     return btoa(url).replace(/[^a-zA-Z0-9]/g, '');
 };
 
-// FIRESTORE
+// FIRESTORE FUNCTIONS (UNCHANGED)
 const fetchAllLikes = async () => {
     try {
-        // GDPR: Only fetch likes if functional cookies enabled
         if (!window.FUNCTIONAL_COOKIES_ENABLED || !db) {
             console.log('⚠️ Functional cookies disabled - likes not loaded');
             return {};
@@ -183,7 +199,6 @@ const fetchAllLikes = async () => {
 
 const updateLike = async (url, increment_value) => {
     try {
-        // GDPR: Only update likes if functional cookies enabled
         if (!window.FUNCTIONAL_COOKIES_ENABLED || !db) {
             console.warn('⚠️ Functional cookies required for likes');
             return null;
@@ -198,13 +213,11 @@ const updateLike = async (url, increment_value) => {
                 likes: increment(increment_value),
                 lastUpdated: serverTimestamp()
             });
-            // Get the updated value from server
             const updatedSnap = await getDoc(docRef);
             const newLikes = updatedSnap.data().likes;
             likesCache[docId] = newLikes;
             return newLikes;
         } else {
-            // New document - only set if increment_value is positive
             const initialLikes = Math.max(0, increment_value);
             await setDoc(docRef, {
                 url: url,
@@ -221,7 +234,7 @@ const updateLike = async (url, increment_value) => {
     }
 };
 
-// LAZY LOADING
+// LAZY LOADING (UNCHANGED)
 const setupLazyLoading = (img) => {
     const options = {
         rootMargin: '400px',
@@ -256,13 +269,14 @@ const setupLazyLoading = (img) => {
     observer.observe(img);
 };
 
-// GALLERY GENERATION - UPDATED to pass full imageData object
-const generateImageGrid = async (galleryKey) => {
-    if (galleryImages[galleryKey]) {
-        console.log(`✅ Gallery ${galleryKey} from cache`);
-        return galleryImages[galleryKey];
-    }
-    
+// ============================================
+// SIMPLIFIED GALLERY FUNCTIONS (CSS GRID = NO TRANSPOSE!)
+// ============================================
+
+/**
+ * Load and prepare image data for a gallery
+ */
+const loadGalleryData = async (galleryKey) => {
     const gallery = galleries[galleryKey];
     const dir = gallery.dir;
     const imageList = imageManifest[dir] || [];
@@ -274,72 +288,72 @@ const generateImageGrid = async (galleryKey) => {
     
     console.log(`📸 Loading ${imageList.length} images for ${gallery.title}`);
     
-    const images = imageList.map(imageData => {
-        // UPDATED: Pass full imageData object instead of individual parameters
+    // Create image objects with originalIndex
+    const images = imageList.map((imageData, originalIndex) => {
         const url = createImageUrl(dir, imageData);
         const docId = getDocIdFromUrl(url);
         const likes = likesCache[docId] || 0;
         
-        const card = document.createElement('div');
-        card.className = 'image-card';
-        card.dataset.gallery = galleryKey;
-        card.dataset.url = url;
-        card.dataset.category = gallery.title;
-        
-        const img = document.createElement('img');
-        img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-        img.dataset.src = url;
-        img.alt = `${gallery.title} - Image ${imageData.index}`;
-        img.style.opacity = '0';
-        img.style.transition = 'opacity 0.3s ease';
-        
-        // CRITICAL: Set aspect ratio to prevent layout jumping
-        // Use aspect ratio from manifest if available
-        if (imageData.aspectDecimal && imageData.aspectDecimal > 0) {
-            // Set aspect ratio using CSS custom property
-            img.style.aspectRatio = imageData.aspectDecimal;
-        } else if (imageData.width && imageData.height) {
-            // Fallback: calculate from dimensions
-            img.style.aspectRatio = imageData.width / imageData.height;
-        } else if (imageData.orientation === 'horizontal') {
-            // Fallback: use 16:9 for horizontal
-            img.style.aspectRatio = 16 / 9;
-        } else if (imageData.orientation === 'vertical') {
-            // Fallback: use 9:16 for vertical
-            img.style.aspectRatio = 9 / 16;
-        }
-        
-        // Set width to 100% so it fills the card and height adjusts automatically
-        img.style.width = '100%';
-        img.style.height = 'auto';
-        
-        const likeCount = document.createElement('div');
-        likeCount.className = 'card-like-count';
-        likeCount.innerHTML = `<i class="fas fa-heart"></i> <span>${likes}</span>`;
-        
-        card.appendChild(img);
-        card.appendChild(likeCount);
-        
-        card.addEventListener('click', () => openModal(url, gallery.title, galleryKey));
-        
-        setupLazyLoading(img);
-        
-        return { 
-            element: card, 
-            url: url, 
-            likes: likes,
+        return {
+            url,
+            likes,
+            originalIndex,
             gallery: galleryKey,
-            category: gallery.title
+            title: gallery.title,
+            alt: `${gallery.title} - Image ${imageData.index}`,
+            // Aspect ratio info for rendering
+            aspectRatio: imageData.aspectDecimal || 
+                        (imageData.width && imageData.height ? 
+                         imageData.width / imageData.height : 
+                         (imageData.orientation === 'vertical' ? 9/16 : 16/9)),
+            imageData: imageData
         };
     });
     
-    images.sort((a, b) => b.likes - a.likes);
-    galleryImages[galleryKey] = images;
-    
-    console.log(`✅ Gallery ${gallery.title} loaded (${images.length} images)`);
+    galleryImageData[galleryKey] = images;
+    console.log(`✅ Gallery ${gallery.title} data loaded`);
     return images;
 };
 
+/**
+ * Create an image card DOM element
+ */
+const createImageCard = (image, index) => {
+    const card = document.createElement('div');
+    card.className = 'image-card';
+    card.dataset.gallery = image.gallery;
+    card.dataset.url = image.url;
+    card.dataset.index = index;
+    card.dataset.category = image.title;
+    
+    const img = document.createElement('img');
+    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    img.dataset.src = image.url;
+    img.alt = image.alt;
+    img.style.opacity = '0';
+    img.style.transition = 'opacity 0.3s ease';
+    img.style.aspectRatio = image.aspectRatio;
+    img.style.width = '100%';
+    img.style.height = 'auto';
+    
+    const likeCount = document.createElement('div');
+    likeCount.className = 'card-like-count';
+    likeCount.innerHTML = `<i class="fas fa-heart"></i> <span>${image.likes}</span>`;
+    
+    card.appendChild(img);
+    card.appendChild(likeCount);
+    
+    card.addEventListener('click', () => openModal(image.url, image.title, image.gallery));
+    
+    setupLazyLoading(img);
+    
+    return card;
+};
+
+/**
+ * Render gallery with CSS Grid (NO TRANSPOSE NEEDED!)
+ * CSS Grid automatically lays out items left-to-right, top-to-bottom!
+ */
 const renderMasonryGrid = async (galleryKey) => {
     const grid = document.getElementById('masonry-grid');
     if (!grid) return;
@@ -347,12 +361,26 @@ const renderMasonryGrid = async (galleryKey) => {
     const loadingIndicator = document.getElementById('loading-indicator');
     if (loadingIndicator) loadingIndicator.classList.remove('hidden');
     
+    // Clear grid
     grid.innerHTML = '';
     
-    const images = await generateImageGrid(galleryKey);
+    // Get or load image data
+    let images = galleryImageData[galleryKey];
+    if (!images) {
+        images = await loadGalleryData(galleryKey);
+    }
     
-    images.forEach(({ element }) => {
-        grid.appendChild(element);
+    // Sort by likes (simple, no transpose needed with CSS Grid!)
+    const sortedImages = stableSortByLikes(images);
+    
+    // Store for modal navigation (in sorted order)
+    currentGalleryImages = sortedImages;
+    
+    // Create and append cards in sorted order
+    // CSS Grid will lay them out left-to-right, top-to-bottom automatically!
+    sortedImages.forEach((image, index) => {
+        const card = createImageCard(image, index);
+        grid.appendChild(card);
     });
     
     if (loadingIndicator) {
@@ -361,10 +389,13 @@ const renderMasonryGrid = async (galleryKey) => {
         }, 300);
     }
     
-    console.log(`✅ Rendered ${images.length} images for gallery: ${galleryKey}`);
+    console.log(`✅ Rendered ${sortedImages.length} images sorted by likes (CSS Grid)`);
 };
 
-// GALLERY DESCRIPTION
+// ============================================
+// EXISTING UI FUNCTIONS (UNCHANGED)
+// ============================================
+
 const switchGalleryDescription = (galleryKey) => {
     const descriptions = document.querySelectorAll('.gallery-description');
     descriptions.forEach(desc => {
@@ -376,7 +407,6 @@ const switchGalleryDescription = (galleryKey) => {
     });
 };
 
-// FILTERS
 const setupFilters = () => {
     const filterTabs = document.querySelectorAll('.filter-tab');
     
@@ -394,7 +424,6 @@ const setupFilters = () => {
     });
 };
 
-// BACK TO TOP
 const setupBackToTop = () => {
     const backToTopBtn = document.getElementById('back-to-top');
     if (!backToTopBtn) return;
@@ -412,7 +441,10 @@ const setupBackToTop = () => {
     });
 };
 
-// MODAL
+// ============================================
+// MODAL FUNCTIONS (UNCHANGED)
+// ============================================
+
 const modal = document.getElementById('modal');
 const modalImage = document.getElementById('modal-image');
 const likeBtn = document.getElementById('like-btn');
@@ -424,9 +456,8 @@ const openModal = (imageUrl, category = 'Image', galleryKey = currentGallery) =>
     currentModalImageUrl = imageUrl;
     modalImage.src = imageUrl;
     
-    // Get current gallery images and find index
-    const images = galleryImages[galleryKey] || [];
-    currentGalleryImages = images;
+    // Find index in current gallery's sorted order
+    const images = currentGalleryImages;
     currentModalImageIndex = images.findIndex(img => img.url === imageUrl);
     
     modal.removeAttribute('hidden');
@@ -439,7 +470,6 @@ const closeModal = () => {
     modal.setAttribute('hidden', '');
     currentModalImageUrl = null;
     currentModalImageIndex = -1;
-    currentGalleryImages = [];
     document.body.style.overflow = 'auto';
 };
 
@@ -480,7 +510,6 @@ const updateLikeButton = () => {
     
     if (count) count.textContent = likes;
     
-    // GDPR: Only check localStorage if functional cookies enabled
     let isLiked = false;
     if (window.FUNCTIONAL_COOKIES_ENABLED) {
         const likedKey = `liked_${docId}`;
@@ -498,10 +527,13 @@ const updateLikeButton = () => {
     }
 };
 
+// ============================================
+// LIKE HANDLING (SIMPLIFIED)
+// ============================================
+
 const toggleLike = async () => {
     if (!currentModalImageUrl || isProcessing) return;
     
-    // GDPR: Check if functional cookies are enabled
     if (!window.FUNCTIONAL_COOKIES_ENABLED) {
         alert('Please accept functional cookies to use the like feature.');
         return;
@@ -515,7 +547,6 @@ const toggleLike = async () => {
     const isCurrentlyLiked = localStorage.getItem(likedKey) === 'true';
     
     try {
-        // FIXED: Properly handle increment/decrement
         const increment_value = isCurrentlyLiked ? -1 : 1;
         const newLikes = await updateLike(currentModalImageUrl, increment_value);
         
@@ -527,29 +558,23 @@ const toggleLike = async () => {
                 localStorage.setItem(likedKey, 'true');
             }
             
-            // Update UI with the actual server value
+            // Update cache
             likesCache[docId] = newLikes;
-            updateLikeButton();
             
-            // Update grid - find the card and update its like count
-            const imageCard = document.querySelector(`.image-card[data-url="${currentModalImageUrl}"]`);
-            if (imageCard) {
-                const likeCountSpan = imageCard.querySelector('.card-like-count span');
-                if (likeCountSpan) {
-                    likeCountSpan.textContent = newLikes;
-                }
-            }
-            
-            // Update the cached gallery data for proper sorting
-            Object.keys(galleryImages).forEach(galleryKey => {
-                const images = galleryImages[galleryKey];
+            // Update image data in ALL galleries
+            Object.keys(galleryImageData).forEach(galleryKey => {
+                const images = galleryImageData[galleryKey];
                 const imageIndex = images.findIndex(img => img.url === currentModalImageUrl);
                 if (imageIndex !== -1) {
                     images[imageIndex].likes = newLikes;
-                    // Re-sort the gallery
-                    images.sort((a, b) => b.likes - a.likes);
                 }
             });
+            
+            // Update modal UI
+            updateLikeButton();
+            
+            // Re-render current gallery (will re-sort automatically)
+            await renderMasonryGrid(currentGallery);
         }
     } catch (error) {
         console.error('Error toggling like:', error);
@@ -560,50 +585,18 @@ const toggleLike = async () => {
     }
 };
 
-// TERMS MODAL
-const termsModal = document.getElementById('terms-modal');
-const termsBtn = document.getElementById('terms-btn');
-const termsClose = termsModal.querySelector('.modal-close');
+// ============================================
+// GDPR COOKIE CONSENT FUNCTIONS (UNCHANGED)
+// ============================================
 
-termsBtn.addEventListener('click', () => {
-    termsModal.removeAttribute('hidden');
-    document.body.style.overflow = 'hidden';
-});
-
-termsClose.addEventListener('click', () => {
-    termsModal.setAttribute('hidden', '');
-    document.body.style.overflow = 'auto';
-});
-
-termsModal.addEventListener('click', (e) => {
-    if (e.target === termsModal) {
-        termsModal.setAttribute('hidden', '');
-        document.body.style.overflow = 'auto';
-    }
-});
-
-// COOKIE SETTINGS BUTTON (in footer)
-const cookieSettingsBtn = document.getElementById('cookie-settings-btn');
-if (cookieSettingsBtn) {
-    cookieSettingsBtn.addEventListener('click', () => {
-        const cookieCustomize = document.getElementById('cookie-customize');
-        if (cookieCustomize) {
-            cookieCustomize.classList.remove('hidden');
-        }
-    });
-}
-
-// GDPR COOKIE CONSENT BANNER
 const initCookieBanner = () => {
     const savedPrefs = localStorage.getItem('cookiePreferences');
     
     if (savedPrefs) {
-        // User already made choice
         const prefs = JSON.parse(savedPrefs);
         console.log('📋 Applying cookie preferences:', prefs);
         applyCookiePreferences(prefs);
     } else {
-        // Show banner
         showCookieBanner();
     }
 };
@@ -633,7 +626,6 @@ const applyCookiePreferences = async (prefs) => {
     // Analytics cookies
     if (prefs.analytics) {
         window['ga-disable-G-5MGS0G4CDY'] = false;
-        // Import and initialize analytics
         import('https://www.gstatic.com/firebasejs/12.8.0/firebase-analytics.js')
             .then(({ getAnalytics }) => {
                 if (app) {
@@ -657,7 +649,35 @@ const applyCookiePreferences = async (prefs) => {
     console.log('💾 Verified saved preferences:', JSON.parse(saved));
 };
 
-// Cookie banner event listeners
+// ============================================
+// TERMS MODAL (UNCHANGED)
+// ============================================
+
+const termsModal = document.getElementById('terms-modal');
+const termsBtn = document.getElementById('terms-btn');
+const termsClose = termsModal.querySelector('.modal-close');
+
+termsBtn.addEventListener('click', () => {
+    termsModal.removeAttribute('hidden');
+    document.body.style.overflow = 'hidden';
+});
+
+termsClose.addEventListener('click', () => {
+    termsModal.setAttribute('hidden', '');
+    document.body.style.overflow = 'auto';
+});
+
+termsModal.addEventListener('click', (e) => {
+    if (e.target === termsModal) {
+        termsModal.setAttribute('hidden', '');
+        document.body.style.overflow = 'auto';
+    }
+});
+
+// ============================================
+// COOKIE EVENT LISTENERS (UNCHANGED)
+// ============================================
+
 document.addEventListener('DOMContentLoaded', () => {
     const cookieBanner = document.getElementById('cookie-banner');
     const cookieSettingsModal = document.getElementById('cookie-settings-modal');
@@ -709,7 +729,6 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
             
-            // GDPR: Clear functional data when rejecting
             clearFunctionalCookieData();
             
             if (cookieBanner) cookieBanner.setAttribute('hidden', '');
@@ -788,7 +807,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const marketingCheckbox = document.getElementById('marketing-cookies');
             
             const prefs = {
-                essential: true, // Always true
+                essential: true,
                 analytics: analyticsCheckbox?.checked || false,
                 functional: functionalCheckbox?.checked || false,
                 marketing: marketingCheckbox?.checked || false,
@@ -799,7 +818,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('💾 Saving cookie preferences:', prefs);
             localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
             
-            // GDPR: Clear functional data if being disabled
             if (!prefs.functional) {
                 clearFunctionalCookieData();
             }
@@ -814,7 +832,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Accept all from settings modal
     if (cookieAcceptAllBtn && cookieSettingsModal) {
         cookieAcceptAllBtn.addEventListener('click', async () => {
-            // First, check all the boxes
             const analyticsCheckbox = document.getElementById('analytics-cookies');
             const functionalCheckbox = document.getElementById('functional-cookies');
             const marketingCheckbox = document.getElementById('marketing-cookies');
@@ -843,7 +860,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Reject all from settings modal
     if (cookieRejectAllBtn && cookieSettingsModal) {
         cookieRejectAllBtn.addEventListener('click', () => {
-            // First, uncheck all optional boxes
             const analyticsCheckbox = document.getElementById('analytics-cookies');
             const functionalCheckbox = document.getElementById('functional-cookies');
             const marketingCheckbox = document.getElementById('marketing-cookies');
@@ -863,7 +879,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('🚫 Rejecting all optional cookies:', prefs);
             localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
             
-            // GDPR: Clear functional data when rejecting
             clearFunctionalCookieData();
             
             cookieSettingsModal.setAttribute('hidden', '');
@@ -873,7 +888,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// EVENT LISTENERS
+// ============================================
+// EVENT LISTENERS (UNCHANGED)
+// ============================================
+
 modalClose.addEventListener('click', closeModal);
 
 modal.addEventListener('click', (e) => {
@@ -900,7 +918,10 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// INIT
+// ============================================
+// INITIALIZATION (UPDATED)
+// ============================================
+
 const init = async () => {
     try {
         console.log('🚀 Initializing...');
@@ -911,21 +932,22 @@ const init = async () => {
         const loadingIndicator = document.getElementById('loading-indicator');
         if (loadingIndicator) loadingIndicator.classList.remove('hidden');
         
-        // Load manifest (doesn't require cookies)
-        const manifest = await loadManifest();
+        // Load manifest
+        await loadManifest();
         
         // Fetch likes only if functional cookies enabled
         if (window.FUNCTIONAL_COOKIES_ENABLED) {
             await fetchAllLikes();
         }
         
-        console.log('📊 Data loaded - rendering...');
-        
-        await renderMasonryGrid(currentGallery);
+        // Setup UI
         setupFilters();
         setupBackToTop();
         
-        console.log('✅ Initialized successfully');
+        // Initial render
+        await renderMasonryGrid(currentGallery);
+        
+        console.log('✅ Initialized successfully with CSS Grid');
     } catch (error) {
         console.error('❌ Init error:', error);
         
