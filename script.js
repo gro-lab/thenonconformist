@@ -326,6 +326,15 @@ const createImageCard = (image, index) => {
     card.dataset.index = index;
     card.dataset.category = image.title;
     
+    // Determine orientation based on aspect ratio
+    let orientation = 'square';
+    if (image.aspectRatio > 1.2) {
+        orientation = 'horizontal';
+    } else if (image.aspectRatio < 0.8) {
+        orientation = 'vertical';
+    }
+    card.dataset.orientation = orientation;
+    
     const img = document.createElement('img');
     img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
     img.dataset.src = image.url;
