@@ -953,7 +953,7 @@ document.addEventListener('DOMContentLoaded', () => {
             clearFunctionalCookieData();
             
             cookieSettingsModal.setAttribute('hidden', '');
-            document.body.style.overflow = 'auto');
+            document.body.style.overflow = 'auto';
             location.reload();
         });
     }
