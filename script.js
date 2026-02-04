@@ -1,4 +1,4 @@
-// THE NONCONFORMIST - FULLY GDPR-COMPLIANT VERSION WITH FIXED LIKE/UNLIKE AND CSS COLUMN SORTING
+// THE NONCONFORMIST - FULLY GDPR-COMPLIANT VERSION WITH FIXED LIKE/UNLIKE
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js';
 import {
@@ -70,34 +70,6 @@ const debounce = (fn, delay) => {
         clearTimeout(timeoutId);
         timeoutId = setTimeout(() => fn(...args), delay);
     };
-};
-
-// Get current CSS column count
-const getColumnCount = () => {
-    const grid = document.getElementById('masonry-grid');
-    if (!grid) return 4; // default fallback
-    const columnCount = window.getComputedStyle(grid).columnCount;
-    return columnCount === 'auto' ? 4 : parseInt(columnCount);
-};
-
-// Transpose sorted array from row-major to column-major for CSS columns
-const transposeForColumns = (sortedImages, columnCount) => {
-    if (sortedImages.length === 0 || columnCount <= 1) return sortedImages;
-    
-    const rowCount = Math.ceil(sortedImages.length / columnCount);
-    const transposed = [];
-    
-    // Fill column by column (what CSS columns need)
-    for (let col = 0; col < columnCount; col++) {
-        for (let row = 0; row < rowCount; row++) {
-            const index = row * columnCount + col;
-            if (index < sortedImages.length) {
-                transposed.push(sortedImages[index]);
-            }
-        }
-    }
-    
-    return transposed;
 };
 
 // GDPR: Clear functional cookie data when user rejects
@@ -284,7 +256,7 @@ const setupLazyLoading = (img) => {
     observer.observe(img);
 };
 
-// GALLERY GENERATION - UPDATED with transpose for CSS columns
+// GALLERY GENERATION - UPDATED to pass full imageData object
 const generateImageGrid = async (galleryKey) => {
     if (galleryImages[galleryKey]) {
         console.log(`✅ Gallery ${galleryKey} from cache`);
@@ -302,7 +274,7 @@ const generateImageGrid = async (galleryKey) => {
     
     console.log(`📸 Loading ${imageList.length} images for ${gallery.title}`);
     
-    const images = imageList.map((imageData, originalIndex) => {
+    const images = imageList.map(imageData => {
         // UPDATED: Pass full imageData object instead of individual parameters
         const url = createImageUrl(dir, imageData);
         const docId = getDocIdFromUrl(url);
@@ -357,24 +329,15 @@ const generateImageGrid = async (galleryKey) => {
             url: url, 
             likes: likes,
             gallery: galleryKey,
-            category: gallery.title,
-            originalIndex: originalIndex // Track original index for stable sorting
+            category: gallery.title
         };
     });
     
-    // Sort by likes (descending), with stable sort using original index
-    images.sort((a, b) => {
-        if (b.likes !== a.likes) return b.likes - a.likes;
-        return a.originalIndex - b.originalIndex; // Stable sort when likes are equal
-    });
+    images.sort((a, b) => b.likes - a.likes);
+    galleryImages[galleryKey] = images;
     
-    // Transpose for CSS columns to show horizontal rows
-    const columnCount = getColumnCount();
-    const transposedImages = transposeForColumns(images, columnCount);
-    galleryImages[galleryKey] = transposedImages;
-    
-    console.log(`✅ Gallery ${gallery.title} loaded (${images.length} images, ${columnCount} columns)`);
-    return transposedImages;
+    console.log(`✅ Gallery ${gallery.title} loaded (${images.length} images)`);
+    return images;
 };
 
 const renderMasonryGrid = async (galleryKey) => {
@@ -448,23 +411,6 @@ const setupBackToTop = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 };
-
-// Handle window resize - re-render if column count changes
-let lastColumnCount = getColumnCount();
-const handleResize = debounce(() => {
-    const newColumnCount = getColumnCount();
-    if (newColumnCount !== lastColumnCount) {
-        console.log(`📐 Column count changed: ${lastColumnCount} → ${newColumnCount}`);
-        lastColumnCount = newColumnCount;
-        
-        // Clear cache and re-render current gallery
-        galleryImages = {};
-        renderMasonryGrid(currentGallery);
-    }
-}, 150);
-
-window.addEventListener('resize', handleResize);
-window.addEventListener('orientationchange', handleResize);
 
 // MODAL
 const modal = document.getElementById('modal');
@@ -594,28 +540,14 @@ const toggleLike = async () => {
                 }
             }
             
-            // Update the cached gallery data and re-sort with transposition
+            // Update the cached gallery data for proper sorting
             Object.keys(galleryImages).forEach(galleryKey => {
                 const images = galleryImages[galleryKey];
                 const imageIndex = images.findIndex(img => img.url === currentModalImageUrl);
                 if (imageIndex !== -1) {
                     images[imageIndex].likes = newLikes;
-                    
-                    // Re-sort by likes with stable sort
-                    images.sort((a, b) => {
-                        if (b.likes !== a.likes) return b.likes - a.likes;
-                        return a.originalIndex - b.originalIndex;
-                    });
-                    
-                    // Re-transpose for CSS columns
-                    const columnCount = getColumnCount();
-                    const transposedImages = transposeForColumns(images, columnCount);
-                    galleryImages[galleryKey] = transposedImages;
-                    
-                    // Re-render the current gallery if it matches
-                    if (galleryKey === currentGallery) {
-                        renderMasonryGrid(galleryKey);
-                    }
+                    // Re-sort the gallery
+                    images.sort((a, b) => b.likes - a.likes);
                 }
             });
         }
