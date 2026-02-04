@@ -290,6 +290,7 @@ body {
     height: 100%;
     display: block;
     transition: all var(--transition-slow);
+    object-fit: cover;
 }
 
 .image-card:hover img {
