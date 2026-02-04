@@ -975,40 +975,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 // INIT
-const init = async () => {
-    try {
-        console.log('🚀 Initializing...');
-        
-        // Initialize cookie banner first
-        initCookieBanner();
-        
-        const loadingIndicator = document.getElementById('loading-indicator');
-        if (loadingIndicator) loadingIndicator.classList.remove('hidden');
-        
-        // Load manifest (doesn't require cookies)
-        const manifest = await loadManifest();
-        
-        // Fetch likes only if functional cookies enabled
-        if (window.FUNCTIONAL_COOKIES_ENABLED) {
-            await fetchAllLikes();
-        }
-        
-        console.log('📊 Data loaded - rendering...');
-        
-        await renderMasonryGrid(currentGallery);
-        setupFilters();
-        setupBackToTop();
-        
-        console.log('✅ Initialized successfully');
-    } catch (error) {
-        console.error('❌ Init error:', error);
-        
-        const loadingIndicator = document.getElementById('loading-indicator');
-        if (loadingIndicator) {
-            loadingIndicator.innerHTML = '<p>Error loading images. Please refresh.</p>';
-        }
-    }
-};
+
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
