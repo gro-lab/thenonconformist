@@ -144,9 +144,14 @@ const generateFallbackManifest = () => {
 
 // IMAGE URL - UPDATED to use originalName if available
 const createImageUrl = (dir, imageData) => {
-    // ✅ Use YOUR domain, not GitHub
+    const owner = 'gro-lab';
+    const repo = 'thenonconformist';
+    const branch = 'main';
+    
+    // Use originalName if available (new format), otherwise fall back to pattern
     const filename = imageData.originalName || `${dir}-${imageData.index}.${imageData.ext}`;
-    return `https://thenonconformist.xyz/images/${dir}/${filename}`;
+    
+    return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/${dir}/${filename}`;
 };
 
 const getDocIdFromUrl = (url) => {
