@@ -811,7 +811,7 @@ document.addEventListener('DOMContentLoaded', () => {
             loadCookiePreferencesIntoModal();
             cookieSettingsModal.removeAttribute('hidden');
             document.body.style.overflow = 'hidden';
-        });
+        }); 
     }
     
     // Open settings modal from floating button
