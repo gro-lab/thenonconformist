@@ -267,6 +267,19 @@ body {
     position: relative;
 }
 
+/* Span columns based on aspect ratio */
+.image-card[data-orientation="horizontal"] {
+    grid-column: span 2;
+}
+
+.image-card[data-orientation="vertical"] {
+    grid-column: span 1;
+}
+
+.image-card[data-orientation="square"] {
+    grid-column: span 1;
+}
+
 .image-card:hover {
     transform: translateY(-4px);
     box-shadow: var(--shadow-lg);
@@ -333,11 +346,17 @@ body {
     .masonry-grid {
         grid-template-columns: repeat(5, 1fr);
     }
+    .image-card[data-orientation="horizontal"] {
+        grid-column: span 2;
+    }
 }
 
 @media (max-width: 1399px) and (min-width: 1024px) {
     .masonry-grid {
         grid-template-columns: repeat(4, 1fr);
+    }
+    .image-card[data-orientation="horizontal"] {
+        grid-column: span 2;
     }
 }
 
@@ -345,11 +364,17 @@ body {
     .masonry-grid {
         grid-template-columns: repeat(3, 1fr);
     }
+    .image-card[data-orientation="horizontal"] {
+        grid-column: span 2;
+    }
 }
 
 @media (max-width: 767px) and (min-width: 480px) {
     .masonry-grid {
         grid-template-columns: repeat(2, 1fr);
+    }
+    .image-card[data-orientation="horizontal"] {
+        grid-column: span 2;
     }
     
     .masonry-wrapper {
@@ -360,6 +385,10 @@ body {
 @media (max-width: 479px) {
     .masonry-grid {
         grid-template-columns: repeat(2, 1fr);
+    }
+    /* On mobile, horizontal images still span both columns */
+    .image-card[data-orientation="horizontal"] {
+        grid-column: span 2;
     }
     
     .masonry-wrapper {
