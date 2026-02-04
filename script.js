@@ -810,7 +810,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (cookieBanner) cookieBanner.setAttribute('hidden', '');
             loadCookiePreferencesIntoModal();
             cookieSettingsModal.removeAttribute('hidden');
-            document.body.style.overflow = 'hidden');
+            document.body.style.overflow = 'hidden';
         });
     }
     
