@@ -202,7 +202,7 @@ body {
     cursor: pointer;
     transition: var(--transition-fast);
     color: var(--text-secondary);
-    width: 185px; 
+    width: 190px; 
 }
 
 .filter-tab:hover {
