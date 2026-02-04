@@ -343,7 +343,7 @@ const createImageCard = (image, index) => {
     img.style.transition = 'opacity 0.3s ease';
     img.style.aspectRatio = image.aspectRatio;
     img.style.width = '100%';
-    img.style.height = 'auto';
+    img.style.height = '100%';
     
     const likeCount = document.createElement('div');
     likeCount.className = 'card-like-count';
