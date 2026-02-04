@@ -253,7 +253,7 @@ body {
 
 .masonry-grid {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(8, 1fr);
     grid-gap: 16px;
     grid-auto-flow: dense;
 }
@@ -346,7 +346,7 @@ body {
 /* RESPONSIVE GRID BREAKPOINTS */
 @media (min-width: 1400px) {
     .masonry-grid {
-        grid-template-columns: repeat(6, 1fr);
+        grid-template-columns: repeat(7, 1fr);
     }
     .image-card[data-orientation="horizontal"] {
         grid-column: span 2;
