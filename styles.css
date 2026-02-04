@@ -1,4 +1,4 @@
-/* THE NONCONFORMIST - Updated Styles */
+/* THE NONCONFORMIST - Updated Styles with CSS Grid */
 
 :root {
     --bg-white: #ffffff;
@@ -245,20 +245,20 @@ body {
     font-style: italic;
 }
 
-/* MASONRY GRID */
+/* MASONRY GRID - NOW USING CSS GRID INSTEAD OF COLUMNS */
 .masonry-wrapper {
     margin: 0 auto;
     padding: 0 2rem 4rem;
 }
 
 .masonry-grid {
-    column-count: 5;
-    column-gap: 16px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    grid-gap: 16px;
+    grid-auto-flow: dense;
 }
 
 .image-card {
-    break-inside: avoid;
-    margin-bottom: 16px;
     background: white;
     border-radius: var(--border-radius-md);
     overflow: hidden;
@@ -307,7 +307,7 @@ body {
     background: rgba(255, 255, 255, 0.95);
     padding: 6px 12px;
     border-radius: 20px;
-    display: none;
+    display: flex;
     align-items: center;
     gap: 6px;
     font-size: 0.875rem;
@@ -328,27 +328,28 @@ body {
     color: var(--accent-red);
 }
 
+/* RESPONSIVE GRID BREAKPOINTS */
 @media (min-width: 1400px) {
     .masonry-grid {
-        column-count: 5;
+        grid-template-columns: repeat(5, 1fr);
     }
 }
 
 @media (max-width: 1399px) and (min-width: 1024px) {
     .masonry-grid {
-        column-count: 4;
+        grid-template-columns: repeat(4, 1fr);
     }
 }
 
 @media (max-width: 1023px) and (min-width: 768px) {
     .masonry-grid {
-        column-count: 3;
+        grid-template-columns: repeat(3, 1fr);
     }
 }
 
 @media (max-width: 767px) and (min-width: 480px) {
     .masonry-grid {
-        column-count: 2;
+        grid-template-columns: repeat(2, 1fr);
     }
     
     .masonry-wrapper {
@@ -358,7 +359,7 @@ body {
 
 @media (max-width: 479px) {
     .masonry-grid {
-        column-count: 2;
+        grid-template-columns: repeat(2, 1fr);
     }
     
     .masonry-wrapper {
