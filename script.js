@@ -256,44 +256,7 @@ const setupLazyLoading = (img) => {
     observer.observe(img);
 };
 
-// NEW: Calculate current column count based on CSS breakpoints
-const getCurrentColumnCount = () => {
-    const grid = document.getElementById('masonry-grid');
-    if (!grid) return 5; // Default for desktop
-    
-    const gridWidth = grid.offsetWidth;
-    
-    // Match the CSS breakpoints in styles.css
-    if (gridWidth >= 1400) return 5;
-    if (gridWidth >= 1024) return 4;
-    if (gridWidth >= 768) return 3;
-    if (gridWidth >= 480) return 2;
-    return 2; // Mobile default
-};
-
-// NEW: Transpose sorted array for CSS columns
-const transposeForColumns = (sortedImages, columnCount) => {
-    if (columnCount <= 1) return sortedImages;
-    
-    const rows = Math.ceil(sortedImages.length / columnCount);
-    const transposed = new Array(sortedImages.length);
-    
-    // Fill the transposed array
-    let index = 0;
-    for (let col = 0; col < columnCount; col++) {
-        for (let row = 0; row < rows; row++) {
-            const originalIndex = row * columnCount + col;
-            if (originalIndex < sortedImages.length) {
-                transposed[index] = sortedImages[originalIndex];
-                index++;
-            }
-        }
-    }
-    
-    return transposed;
-};
-
-// GALLERY GENERATION - UPDATED with stable sorting and originalIndex
+// GALLERY GENERATION - UPDATED to pass full imageData object
 const generateImageGrid = async (galleryKey) => {
     if (galleryImages[galleryKey]) {
         console.log(`✅ Gallery ${galleryKey} from cache`);
@@ -311,7 +274,7 @@ const generateImageGrid = async (galleryKey) => {
     
     console.log(`📸 Loading ${imageList.length} images for ${gallery.title}`);
     
-    const images = imageList.map((imageData, idx) => {
+    const images = imageList.map(imageData => {
         // UPDATED: Pass full imageData object instead of individual parameters
         const url = createImageUrl(dir, imageData);
         const docId = getDocIdFromUrl(url);
@@ -322,7 +285,6 @@ const generateImageGrid = async (galleryKey) => {
         card.dataset.gallery = galleryKey;
         card.dataset.url = url;
         card.dataset.category = gallery.title;
-        card.dataset.originalIndex = idx; // Store original index for stable sort
         
         const img = document.createElement('img');
         img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
@@ -367,27 +329,17 @@ const generateImageGrid = async (galleryKey) => {
             url: url, 
             likes: likes,
             gallery: galleryKey,
-            category: gallery.title,
-            originalIndex: idx, // For stable sorting when likes are equal
-            manifestIndex: imageData.index // From the manifest
+            category: gallery.title
         };
     });
     
-    // Stable sort: by likes descending, then by original position
-    images.sort((a, b) => {
-        if (b.likes !== a.likes) {
-            return b.likes - a.likes;
-        }
-        return a.originalIndex - b.originalIndex;
-    });
-    
+    images.sort((a, b) => b.likes - a.likes);
     galleryImages[galleryKey] = images;
     
     console.log(`✅ Gallery ${gallery.title} loaded (${images.length} images)`);
     return images;
 };
 
-// UPDATED: Render with transposed order for CSS columns
 const renderMasonryGrid = async (galleryKey) => {
     const grid = document.getElementById('masonry-grid');
     if (!grid) return;
@@ -399,23 +351,7 @@ const renderMasonryGrid = async (galleryKey) => {
     
     const images = await generateImageGrid(galleryKey);
     
-    // Get current column count and transpose
-    const columnCount = getCurrentColumnCount();
-    console.log(`📊 Using ${columnCount} columns for layout`);
-    
-    // Sort first (by likes, then original index)
-    const sortedImages = [...images].sort((a, b) => {
-        if (b.likes !== a.likes) {
-            return b.likes - a.likes;
-        }
-        return a.originalIndex - b.originalIndex;
-    });
-    
-    // Transpose for CSS columns
-    const transposedImages = transposeForColumns(sortedImages, columnCount);
-    
-    // Append in transposed order
-    transposedImages.forEach(({ element }) => {
+    images.forEach(({ element }) => {
         grid.appendChild(element);
     });
     
@@ -425,7 +361,7 @@ const renderMasonryGrid = async (galleryKey) => {
         }, 300);
     }
     
-    console.log(`✅ Rendered ${images.length} images (transposed for ${columnCount} columns)`);
+    console.log(`✅ Rendered ${images.length} images for gallery: ${galleryKey}`);
 };
 
 // GALLERY DESCRIPTION
@@ -473,19 +409,6 @@ const setupBackToTop = () => {
     
     backToTopBtn.addEventListener('click', () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-};
-
-// NEW: Resize handler for responsive column changes
-const setupResizeHandler = () => {
-    let resizeTimeout;
-    
-    window.addEventListener('resize', () => {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(async () => {
-            console.log('🔄 Window resized, re-rendering grid');
-            await renderMasonryGrid(currentGallery);
-        }, 250);
     });
 };
 
@@ -575,7 +498,6 @@ const updateLikeButton = () => {
     }
 };
 
-// UPDATED: toggleLike with proper re-rendering
 const toggleLike = async () => {
     if (!currentModalImageUrl || isProcessing) return;
     
@@ -624,16 +546,8 @@ const toggleLike = async () => {
                 const imageIndex = images.findIndex(img => img.url === currentModalImageUrl);
                 if (imageIndex !== -1) {
                     images[imageIndex].likes = newLikes;
-                    // Stable re-sort
-                    images.sort((a, b) => {
-                        if (b.likes !== a.likes) {
-                            return b.likes - a.likes;
-                        }
-                        return a.originalIndex - b.originalIndex;
-                    });
-                    
-                    // IMPORTANT: Re-render with new sorting
-                    renderMasonryGrid(galleryKey);
+                    // Re-sort the gallery
+                    images.sort((a, b) => b.likes - a.likes);
                 }
             });
         }
@@ -811,7 +725,7 @@ document.addEventListener('DOMContentLoaded', () => {
             loadCookiePreferencesIntoModal();
             cookieSettingsModal.removeAttribute('hidden');
             document.body.style.overflow = 'hidden';
-        }); 
+        });
     }
     
     // Open settings modal from floating button
@@ -1010,7 +924,6 @@ const init = async () => {
         await renderMasonryGrid(currentGallery);
         setupFilters();
         setupBackToTop();
-        setupResizeHandler(); // NEW: Add resize handler
         
         console.log('✅ Initialized successfully');
     } catch (error) {
