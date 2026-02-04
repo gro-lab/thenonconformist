@@ -256,7 +256,39 @@ const setupLazyLoading = (img) => {
     observer.observe(img);
 };
 
-// GALLERY GENERATION - UPDATED to pass full imageData object
+// NEW: Calculate current column count based on CSS breakpoints
+const getCurrentColumnCount = () => {
+    const grid = document.getElementById('masonry-grid');
+    if (!grid) return 5; // Default for desktop
+    
+    const gridWidth = grid.offsetWidth;
+    
+    // Match the CSS breakpoints in styles.css
+    if (gridWidth >= 1400) return 5;
+    if (gridWidth >= 1024) return 4;
+    if (gridWidth >= 768) return 3;
+    if (gridWidth >= 480) return 2;
+    return 2; // Mobile default
+};
+
+// FIXED: Simple stable sort without transpose
+const sortImagesByLikes = (images) => {
+    // Create a copy to avoid mutating the original
+    const sorted = [...images];
+    
+    // Stable sort: by likes descending, then by manifest index (original order)
+    sorted.sort((a, b) => {
+        if (b.likes !== a.likes) {
+            return b.likes - a.likes;
+        }
+        // When likes are equal, maintain original order
+        return a.manifestIndex - b.manifestIndex;
+    });
+    
+    return sorted;
+};
+
+// GALLERY GENERATION
 const generateImageGrid = async (galleryKey) => {
     if (galleryImages[galleryKey]) {
         console.log(`✅ Gallery ${galleryKey} from cache`);
@@ -274,8 +306,7 @@ const generateImageGrid = async (galleryKey) => {
     
     console.log(`📸 Loading ${imageList.length} images for ${gallery.title}`);
     
-    const images = imageList.map(imageData => {
-        // UPDATED: Pass full imageData object instead of individual parameters
+    const images = imageList.map((imageData, idx) => {
         const url = createImageUrl(dir, imageData);
         const docId = getDocIdFromUrl(url);
         const likes = likesCache[docId] || 0;
@@ -285,6 +316,9 @@ const generateImageGrid = async (galleryKey) => {
         card.dataset.gallery = galleryKey;
         card.dataset.url = url;
         card.dataset.category = gallery.title;
+        card.dataset.imageId = docId;
+        card.dataset.likes = likes;
+        card.dataset.manifestIndex = imageData.index;
         
         const img = document.createElement('img');
         img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
@@ -293,23 +327,17 @@ const generateImageGrid = async (galleryKey) => {
         img.style.opacity = '0';
         img.style.transition = 'opacity 0.3s ease';
         
-        // CRITICAL: Set aspect ratio to prevent layout jumping
-        // Use aspect ratio from manifest if available
+        // Use manifest aspect ratio
         if (imageData.aspectDecimal && imageData.aspectDecimal > 0) {
-            // Set aspect ratio using CSS custom property
             img.style.aspectRatio = imageData.aspectDecimal;
         } else if (imageData.width && imageData.height) {
-            // Fallback: calculate from dimensions
             img.style.aspectRatio = imageData.width / imageData.height;
         } else if (imageData.orientation === 'horizontal') {
-            // Fallback: use 16:9 for horizontal
             img.style.aspectRatio = 16 / 9;
         } else if (imageData.orientation === 'vertical') {
-            // Fallback: use 9:16 for vertical
             img.style.aspectRatio = 9 / 16;
         }
         
-        // Set width to 100% so it fills the card and height adjusts automatically
         img.style.width = '100%';
         img.style.height = 'auto';
         
@@ -329,17 +357,21 @@ const generateImageGrid = async (galleryKey) => {
             url: url, 
             likes: likes,
             gallery: galleryKey,
-            category: gallery.title
+            category: gallery.title,
+            manifestIndex: imageData.index,
+            imageId: docId
         };
     });
     
-    images.sort((a, b) => b.likes - a.likes);
-    galleryImages[galleryKey] = images;
+    // Sort by likes initially
+    const sortedImages = sortImagesByLikes(images);
+    galleryImages[galleryKey] = sortedImages;
     
-    console.log(`✅ Gallery ${gallery.title} loaded (${images.length} images)`);
-    return images;
+    console.log(`✅ Gallery ${gallery.title} loaded (${sortedImages.length} images)`);
+    return sortedImages;
 };
 
+// SIMPLIFIED: Render with sorted order (CSS columns will handle the rest)
 const renderMasonryGrid = async (galleryKey) => {
     const grid = document.getElementById('masonry-grid');
     if (!grid) return;
@@ -351,6 +383,7 @@ const renderMasonryGrid = async (galleryKey) => {
     
     const images = await generateImageGrid(galleryKey);
     
+    // Simply append in sorted order
     images.forEach(({ element }) => {
         grid.appendChild(element);
     });
@@ -498,6 +531,7 @@ const updateLikeButton = () => {
     }
 };
 
+// SIMPLIFIED: Update like without re-rendering the entire grid
 const toggleLike = async () => {
     if (!currentModalImageUrl || isProcessing) return;
     
@@ -515,7 +549,6 @@ const toggleLike = async () => {
     const isCurrentlyLiked = localStorage.getItem(likedKey) === 'true';
     
     try {
-        // FIXED: Properly handle increment/decrement
         const increment_value = isCurrentlyLiked ? -1 : 1;
         const newLikes = await updateLike(currentModalImageUrl, increment_value);
         
@@ -527,27 +560,62 @@ const toggleLike = async () => {
                 localStorage.setItem(likedKey, 'true');
             }
             
-            // Update UI with the actual server value
+            // Update cache
             likesCache[docId] = newLikes;
             updateLikeButton();
             
-            // Update grid - find the card and update its like count
-            const imageCard = document.querySelector(`.image-card[data-url="${currentModalImageUrl}"]`);
+            // Update the specific image card in the grid
+            const imageCard = document.querySelector(`.image-card[data-image-id="${docId}"]`);
             if (imageCard) {
                 const likeCountSpan = imageCard.querySelector('.card-like-count span');
                 if (likeCountSpan) {
                     likeCountSpan.textContent = newLikes;
                 }
+                // Update data attribute
+                imageCard.dataset.likes = newLikes;
             }
             
-            // Update the cached gallery data for proper sorting
+            // Update the cached gallery data
             Object.keys(galleryImages).forEach(galleryKey => {
                 const images = galleryImages[galleryKey];
-                const imageIndex = images.findIndex(img => img.url === currentModalImageUrl);
+                const imageIndex = images.findIndex(img => img.imageId === docId);
                 if (imageIndex !== -1) {
                     images[imageIndex].likes = newLikes;
-                    // Re-sort the gallery
-                    images.sort((a, b) => b.likes - a.likes);
+                    
+                    // Re-sort the cached array
+                    images.sort((a, b) => {
+                        if (b.likes !== a.likes) {
+                            return b.likes - a.likes;
+                        }
+                        return a.manifestIndex - b.manifestIndex;
+                    });
+                    
+                    // BUT: Don't re-render! Just update the DOM order
+                    // We'll move the updated card to its new position
+                    if (imageCard) {
+                        const grid = document.getElementById('masonry-grid');
+                        const currentCards = Array.from(grid.querySelectorAll('.image-card'));
+                        
+                        // Remove the card from its current position
+                        imageCard.remove();
+                        
+                        // Find where it should go based on the sorted cache
+                        const sortedCache = [...images];
+                        const newIndex = sortedCache.findIndex(img => img.imageId === docId);
+                        
+                        // Insert at the correct position
+                        if (newIndex >= 0 && newIndex < currentCards.length) {
+                            const targetCard = currentCards[newIndex] || grid.lastElementChild;
+                            if (targetCard) {
+                                grid.insertBefore(imageCard, targetCard);
+                            } else {
+                                grid.appendChild(imageCard);
+                            }
+                        } else {
+                            // If not found in current cards or new position is at end
+                            grid.appendChild(imageCard);
+                        }
+                    }
                 }
             });
         }
@@ -581,17 +649,6 @@ termsModal.addEventListener('click', (e) => {
         document.body.style.overflow = 'auto';
     }
 });
-
-// COOKIE SETTINGS BUTTON (in footer)
-const cookieSettingsBtn = document.getElementById('cookie-settings-btn');
-if (cookieSettingsBtn) {
-    cookieSettingsBtn.addEventListener('click', () => {
-        const cookieCustomize = document.getElementById('cookie-customize');
-        if (cookieCustomize) {
-            cookieCustomize.classList.remove('hidden');
-        }
-    });
-}
 
 // GDPR COOKIE CONSENT BANNER
 const initCookieBanner = () => {
