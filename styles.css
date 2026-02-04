@@ -1,4 +1,4 @@
-/* THE NONCONFORMIST - Updated Styles with CSS Grid */
+/* THE NONCONFORMIST - Updated Styles */
 
 :root {
     --bg-white: #ffffff;
@@ -245,39 +245,26 @@ body {
     font-style: italic;
 }
 
-/* MASONRY GRID - NOW USING CSS GRID INSTEAD OF COLUMNS */
+/* MASONRY GRID */
 .masonry-wrapper {
     margin: 0 auto;
     padding: 0 2rem 4rem;
 }
 
 .masonry-grid {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    grid-gap: 10px;
-    grid-auto-flow: dense;
+    column-count: 5;
+    column-gap: 16px;
 }
 
 .image-card {
+    break-inside: avoid;
+    margin-bottom: 16px;
     background: white;
     border-radius: var(--border-radius-md);
     overflow: hidden;
     cursor: pointer;
     transition: all var(--transition-normal);
     position: relative;
-}
-
-/* Span columns based on aspect ratio */
-.image-card[data-orientation="horizontal"] {
-    grid-column: span 3;
-}
-
-.image-card[data-orientation="vertical"] {
-    grid-column: span 2;
-}
-
-.image-card[data-orientation="square"] {
-    grid-column: span 2;
 }
 
 .image-card:hover {
@@ -287,10 +274,8 @@ body {
 
 .image-card img {
     width: 100%;
-    height: 100%;
     display: block;
     transition: all var(--transition-slow);
-    object-fit: cover;
 }
 
 .image-card:hover img {
@@ -317,15 +302,15 @@ body {
 
 .card-like-count {
     position: absolute;
-    bottom: 8px;
-    left: 8px;
+    bottom: 12px;
+    left: 12px;
     background: rgba(255, 255, 255, 0.95);
-    padding: 4px 8px;
-    border-radius: 16px;
-    display: flex;
+    padding: 6px 12px;
+    border-radius: 20px;
+    display: none;
     align-items: center;
-    gap: 4px;
-    font-size: 0.75rem;
+    gap: 6px;
+    font-size: 0.875rem;
     font-weight: 500;
     color: var(--text-primary);
     opacity: 0;
@@ -343,68 +328,27 @@ body {
     color: var(--accent-red);
 }
 
-/* RESPONSIVE GRID BREAKPOINTS - UPDATED FOR MORE DENSITY */
 @media (min-width: 1400px) {
     .masonry-grid {
-        grid-template-columns: repeat(6, 1fr);
-        grid-gap: 10px;
-    }
-    .image-card[data-orientation="horizontal"] {
-        grid-column: span 3;
-    }
-    .image-card[data-orientation="vertical"] {
-        grid-column: span 2;
-    }
-    .image-card[data-orientation="square"] {
-        grid-column: span 2;
+        column-count: 5;
     }
 }
 
 @media (max-width: 1399px) and (min-width: 1024px) {
     .masonry-grid {
-        grid-template-columns: repeat(5, 1fr);
-        grid-gap: 10px;
-    }
-    .image-card[data-orientation="horizontal"] {
-        grid-column: span 3;
-    }
-    .image-card[data-orientation="vertical"] {
-        grid-column: span 2;
-    }
-    .image-card[data-orientation="square"] {
-        grid-column: span 2;
+        column-count: 4;
     }
 }
 
 @media (max-width: 1023px) and (min-width: 768px) {
     .masonry-grid {
-        grid-template-columns: repeat(4, 1fr);
-        grid-gap: 8px;
-    }
-    .image-card[data-orientation="horizontal"] {
-        grid-column: span 2;
-    }
-    .image-card[data-orientation="vertical"] {
-        grid-column: span 2;
-    }
-    .image-card[data-orientation="square"] {
-        grid-column: span 2;
+        column-count: 3;
     }
 }
 
 @media (max-width: 767px) and (min-width: 480px) {
     .masonry-grid {
-        grid-template-columns: repeat(3, 1fr);
-        grid-gap: 8px;
-    }
-    .image-card[data-orientation="horizontal"] {
-        grid-column: span 3;
-    }
-    .image-card[data-orientation="vertical"] {
-        grid-column: span 2;
-    }
-    .image-card[data-orientation="square"] {
-        grid-column: span 2;
+        column-count: 2;
     }
     
     .masonry-wrapper {
@@ -414,18 +358,7 @@ body {
 
 @media (max-width: 479px) {
     .masonry-grid {
-        grid-template-columns: repeat(2, 1fr);
-        grid-gap: 6px;
-    }
-    /* On mobile, horizontal images still span both columns */
-    .image-card[data-orientation="horizontal"] {
-        grid-column: span 2;
-    }
-    .image-card[data-orientation="vertical"] {
-        grid-column: span 1;
-    }
-    .image-card[data-orientation="square"] {
-        grid-column: span 1;
+        column-count: 2;
     }
     
     .masonry-wrapper {
