@@ -819,7 +819,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cookieFloatBtn.addEventListener('click', () => {
             loadCookiePreferencesIntoModal();
             cookieSettingsModal.removeAttribute('hidden');
-            document.body.style.overflow = 'hidden');
+            document.body.style.overflow = 'hidden';
         });
     }
     
@@ -828,7 +828,7 @@ document.addEventListener('DOMContentLoaded', () => {
         footerCookieBtn.addEventListener('click', () => {
             loadCookiePreferencesIntoModal();
             cookieSettingsModal.removeAttribute('hidden');
-            document.body.style.overflow = 'hidden');
+            document.body.style.overflow = 'hidden';
         });
     }
     
