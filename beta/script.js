@@ -1,4 +1,4 @@
-// THE NONCONFORMIST - SIMPLIFIED VERSION WITH CSS GRID
+// THE NONCONFORMIST - WITH DEEPSEEK-STYLE GALLERY NAVIGATION
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js';
 import {
@@ -44,14 +44,34 @@ const initFirebase = async () => {
 
 // GALLERY CONFIG
 const galleries = {
-    'low': { title: 'Language of Windows', dir: 'LoW' },
-    'sol': { title: 'Snapshots of Life', dir: 'SoL' },
-    'r': { title: 'Reflections', dir: 'R' },
-    'sa': { title: 'Street Art', dir: 'SA' }
+    'low': { 
+        title: 'Language of Windows', 
+        dir: 'LoW',
+        subtitle: 'Exploring the silent stories behind glass',
+        color: '#FF6B35'
+    },
+    'sol': { 
+        title: 'Snapshots of Life', 
+        dir: 'SoL',
+        subtitle: 'Capturing the raw essence of everyday moments',
+        color: '#9D4EDD'
+    },
+    'r': { 
+        title: 'Reflections', 
+        dir: 'R',
+        subtitle: 'Where reality meets its mirror image',
+        color: '#06FFA5'
+    },
+    'sa': { 
+        title: 'Street Art', 
+        dir: 'SA',
+        subtitle: 'Urban expressions and vibrant creativity',
+        color: '#FFD23F'
+    }
 };
 
 // ============================================
-// SIMPLIFIED STATE (NO MORE COMPLEX CACHING)
+// STATE MANAGEMENT
 // ============================================
 
 let imageManifest = {};
@@ -63,26 +83,18 @@ let isProcessing = false;
 let currentGallery = 'low';
 let galleryImageData = {}; // Simple storage: galleryKey -> array of image objects
 
+// DeepSeek navigation state
+let isDragging = false;
+let startX = 0;
+let startY = 0;
+let scrollX = 0;
+let scrollY = 0;
+
 // GDPR: Functional cookies disabled by default until user explicitly accepts
 window.FUNCTIONAL_COOKIES_ENABLED = false;
 
 // ============================================
-// SIMPLIFIED SORTING (NO TRANSPOSE NEEDED WITH CSS GRID!)
-// ============================================
-
-/**
- * Stable sort by likes, then by original index
- * With CSS Grid, images render left-to-right, top-to-bottom automatically!
- */
-const stableSortByLikes = (items) => {
-    return [...items].sort((a, b) => {
-        if (b.likes !== a.likes) return b.likes - a.likes;
-        return a.originalIndex - b.originalIndex;
-    });
-};
-
-// ============================================
-// UTILITIES (UNCHANGED)
+// UTILITIES
 // ============================================
 
 const debounce = (fn, delay) => {
@@ -104,7 +116,21 @@ const clearFunctionalCookieData = () => {
     console.log('🗑️ Cleared functional cookie data');
 };
 
-// MANIFEST LOADING (UNCHANGED)
+// ============================================
+// STABLE SORT BY LIKES
+// ============================================
+
+const stableSortByLikes = (items) => {
+    return [...items].sort((a, b) => {
+        if (b.likes !== a.likes) return b.likes - a.likes;
+        return a.originalIndex - b.originalIndex;
+    });
+};
+
+// ============================================
+// MANIFEST LOADING
+// ============================================
+
 const loadManifest = async () => {
     try {
         const owner = 'gro-lab';
@@ -161,7 +187,10 @@ const generateFallbackManifest = () => {
     return manifest;
 };
 
-// IMAGE URL (UNCHANGED)
+// ============================================
+// IMAGE URL CREATION
+// ============================================
+
 const createImageUrl = (dir, imageData) => {
     const owner = 'gro-lab';
     const repo = 'thenonconformist';
@@ -175,7 +204,10 @@ const getDocIdFromUrl = (url) => {
     return btoa(url).replace(/[^a-zA-Z0-9]/g, '');
 };
 
-// FIRESTORE FUNCTIONS (UNCHANGED)
+// ============================================
+// FIRESTORE FUNCTIONS
+// ============================================
+
 const fetchAllLikes = async () => {
     try {
         if (!window.FUNCTIONAL_COOKIES_ENABLED || !db) {
@@ -234,7 +266,10 @@ const updateLike = async (url, increment_value) => {
     }
 };
 
-// LAZY LOADING (UNCHANGED)
+// ============================================
+// LAZY LOADING
+// ============================================
+
 const setupLazyLoading = (img) => {
     const options = {
         rootMargin: '400px',
@@ -270,12 +305,9 @@ const setupLazyLoading = (img) => {
 };
 
 // ============================================
-// SIMPLIFIED GALLERY FUNCTIONS (CSS GRID = NO TRANSPOSE!)
+// GALLERY DATA LOADING
 // ============================================
 
-/**
- * Load and prepare image data for a gallery
- */
 const loadGalleryData = async (galleryKey) => {
     const gallery = galleries[galleryKey];
     const dir = gallery.dir;
@@ -315,159 +347,309 @@ const loadGalleryData = async (galleryKey) => {
     return images;
 };
 
-/**
- * Create an image card DOM element
- */
-const createImageCard = (image, index) => {
-    const card = document.createElement('div');
-    card.className = 'image-card';
-    card.dataset.gallery = image.gallery;
-    card.dataset.url = image.url;
-    card.dataset.index = index;
-    card.dataset.category = image.title;
-    
-    // Determine orientation based on aspect ratio
-    let orientation = 'square';
-    if (image.aspectRatio > 1.2) {
-        orientation = 'horizontal';
-    } else if (image.aspectRatio < 0.8) {
-        orientation = 'vertical';
-    }
-    card.dataset.orientation = orientation;
-    
-    const img = document.createElement('img');
-    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-    img.dataset.src = image.url;
-    img.alt = image.alt;
-    img.style.opacity = '0';
-    img.style.transition = 'opacity 0.3s ease';
-    img.style.aspectRatio = image.aspectRatio;
-    img.style.width = '100%';
-    img.style.height = '100%';
-    
-    const likeCount = document.createElement('div');
-    likeCount.className = 'card-like-count';
-    likeCount.innerHTML = `<i class="fas fa-heart"></i> <span>${image.likes}</span>`;
-    
-    card.appendChild(img);
-    card.appendChild(likeCount);
-    
-    card.addEventListener('click', () => openModal(image.url, image.title, image.gallery));
-    
-    setupLazyLoading(img);
-    
-    return card;
-};
+// ============================================
+// GET MOST LIKED IMAGE FOR GALLERY COVER
+// ============================================
 
-/**
- * Render gallery with CSS Grid (NO TRANSPOSE NEEDED!)
- * CSS Grid automatically lays out items left-to-right, top-to-bottom!
- */
-const renderMasonryGrid = async (galleryKey) => {
-    const grid = document.getElementById('masonry-grid');
-    if (!grid) return;
+const getMostLikedImageUrl = (galleryKey) => {
+    const images = galleryImageData[galleryKey];
+    if (!images || images.length === 0) return '';
     
-    const loadingIndicator = document.getElementById('loading-indicator');
-    if (loadingIndicator) loadingIndicator.classList.remove('hidden');
-    
-    // Clear grid
-    grid.innerHTML = '';
-    
-    // Get or load image data
-    let images = galleryImageData[galleryKey];
-    if (!images) {
-        images = await loadGalleryData(galleryKey);
-    }
-    
-    // Sort by likes (simple, no transpose needed with CSS Grid!)
-    const sortedImages = stableSortByLikes(images);
-    
-    // Store for modal navigation (in sorted order)
-    currentGalleryImages = sortedImages;
-    
-    // Create and append cards in sorted order
-    // CSS Grid will lay them out left-to-right, top-to-bottom automatically!
-    sortedImages.forEach((image, index) => {
-        const card = createImageCard(image, index);
-        grid.appendChild(card);
-    });
-    
-    if (loadingIndicator) {
-        setTimeout(() => {
-            loadingIndicator.classList.add('hidden');
-        }, 300);
-    }
-    
-    console.log(`✅ Rendered ${sortedImages.length} images sorted by likes (CSS Grid)`);
+    const sorted = stableSortByLikes(images);
+    return sorted[0].url;
 };
 
 // ============================================
-// EXISTING UI FUNCTIONS (UNCHANGED)
+// DEEPSEEK-STYLE GALLERY SELECTOR
 // ============================================
 
-const switchGalleryDescription = (galleryKey) => {
-    const descriptions = document.querySelectorAll('.gallery-description');
-    descriptions.forEach(desc => {
-        if (desc.dataset.gallery === galleryKey) {
-            desc.classList.remove('hidden');
-        } else {
-            desc.classList.add('hidden');
+const setupGallerySelector = async () => {
+    // Load all gallery data
+    await Promise.all(Object.keys(galleries).map(key => loadGalleryData(key)));
+    
+    // Update gallery covers with most liked images and counts
+    Object.keys(galleries).forEach(key => {
+        const cover = document.querySelector(`.gallery-cover[data-gallery="${key}"]`);
+        const countElement = document.getElementById(`${key}-count`);
+        
+        if (cover && galleryImageData[key]) {
+            const mostLikedUrl = getMostLikedImageUrl(key);
+            if (mostLikedUrl) {
+                cover.style.backgroundImage = `linear-gradient(45deg, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.3)), url(${mostLikedUrl})`;
+            }
+        }
+        
+        if (countElement && galleryImageData[key]) {
+            const count = galleryImageData[key].length;
+            countElement.textContent = `${count} Works`;
         }
     });
-};
-
-const setupFilters = () => {
-    const filterTabs = document.querySelectorAll('.filter-tab');
     
-    filterTabs.forEach(tab => {
-        tab.addEventListener('click', async () => {
-            filterTabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            
-            const galleryKey = tab.dataset.gallery;
-            currentGallery = galleryKey;
-            
-            await renderMasonryGrid(galleryKey);
-            switchGalleryDescription(galleryKey);
+    // Setup click handlers
+    document.querySelectorAll('.gallery-cover').forEach(cover => {
+        cover.addEventListener('click', function() {
+            const galleryId = this.dataset.gallery;
+            openGallery(galleryId);
         });
     });
 };
 
-const setupBackToTop = () => {
-    const backToTopBtn = document.getElementById('back-to-top');
-    if (!backToTopBtn) return;
+const openGallery = (galleryId) => {
+    currentGallery = galleryId;
     
-    window.addEventListener('scroll', () => {
-        if (window.pageYOffset > 500) {
-            backToTopBtn.classList.add('visible');
-        } else {
-            backToTopBtn.classList.remove('visible');
+    const gallerySelector = document.getElementById('gallery-selector');
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const galleryContent = document.getElementById('gallery-content');
+    const currentGalleryTitle = document.getElementById('current-gallery-title');
+    const currentGallerySubtitle = document.getElementById('current-gallery-subtitle');
+    
+    // Show loading
+    loadingIndicator.classList.add('active');
+    
+    // Hide selector
+    gallerySelector.classList.add('hidden');
+    
+    // Update gallery header
+    currentGalleryTitle.textContent = galleries[galleryId].title;
+    currentGallerySubtitle.textContent = galleries[galleryId].subtitle;
+    
+    // Load gallery content after delay
+    setTimeout(() => {
+        loadGalleryContent(galleryId);
+        loadingIndicator.classList.remove('active');
+        galleryContent.classList.add('active');
+    }, 800);
+};
+
+const loadGalleryContent = (galleryId) => {
+    const masonryGrid = document.getElementById('masonry-grid');
+    const gallery = galleries[galleryId];
+    const images = galleryImageData[galleryId];
+    
+    // Clear existing content
+    masonryGrid.innerHTML = '';
+    
+    // Sort images by likes
+    const sortedImages = stableSortByLikes(images);
+    currentGalleryImages = sortedImages;
+    
+    // Create masonry items
+    sortedImages.forEach((image, index) => {
+        const masonryItem = document.createElement('div');
+        
+        // Determine orientation based on aspect ratio
+        let orientation = 'square';
+        if (image.aspectRatio > 1.2) {
+            orientation = 'horizontal';
+        } else if (image.aspectRatio < 0.8) {
+            orientation = 'vertical';
         }
+        
+        masonryItem.className = `masonry-item ${orientation}`;
+        
+        // Set staggered animation delay
+        masonryItem.style.animationDelay = `${index * 0.05}s`;
+        
+        masonryItem.style.backgroundImage = 
+            `linear-gradient(45deg, ${gallery.color}40, #00000080), url(${image.url})`;
+        
+        // Create overlay content
+        const overlay = document.createElement('div');
+        overlay.className = 'item-overlay';
+        overlay.style.opacity = '0';
+        overlay.style.transition = 'opacity 0.3s ease';
+        
+        // Show overlay on hover
+        masonryItem.addEventListener('mouseenter', () => {
+            overlay.style.opacity = '1';
+        });
+        
+        masonryItem.addEventListener('mouseleave', () => {
+            overlay.style.opacity = '0';
+        });
+        
+        overlay.innerHTML = `
+            <div class="item-category">${gallery.title}</div>
+            <div class="item-title">Image ${image.imageData.index}</div>
+            <div class="item-likes">♥ ${image.likes}</div>
+        `;
+        
+        // Click to open modal
+        masonryItem.addEventListener('click', () => {
+            openModal(image.url, gallery.title, galleryId, index);
+        });
+        
+        masonryItem.appendChild(overlay);
+        masonryGrid.appendChild(masonryItem);
     });
     
-    backToTopBtn.addEventListener('click', () => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
+    // Reset scroll position
+    scrollX = 0;
+    scrollY = 0;
+    updateCanvasTransform();
+};
+
+const closeGallery = () => {
+    const galleryContent = document.getElementById('gallery-content');
+    const gallerySelector = document.getElementById('gallery-selector');
+    
+    galleryContent.classList.remove('active');
+    
+    setTimeout(() => {
+        gallerySelector.classList.remove('hidden');
+        currentGallery = null;
+    }, 800);
 };
 
 // ============================================
-// MODAL FUNCTIONS (UNCHANGED)
+// DEEPSEEK-STYLE NAVIGATION
+// ============================================
+
+const updateCanvasTransform = () => {
+    const canvas = document.getElementById('infinite-canvas');
+    if (canvas) {
+        canvas.style.transform = `translate(${scrollX}px, ${scrollY}px)`;
+    }
+};
+
+const setupCanvasNavigation = () => {
+    const canvas = document.getElementById('infinite-canvas');
+    const galleryContent = document.getElementById('gallery-content');
+    
+    // Drag functionality
+    canvas.addEventListener('mousedown', startDrag);
+    canvas.addEventListener('touchstart', startDragTouch, { passive: false });
+    
+    function startDrag(e) {
+        if (!galleryContent.classList.contains('active')) return;
+        isDragging = true;
+        startX = e.clientX - scrollX;
+        startY = e.clientY - scrollY;
+        canvas.style.cursor = 'grabbing';
+        e.preventDefault();
+    }
+    
+    function startDragTouch(e) {
+        if (!galleryContent.classList.contains('active')) return;
+        if (e.touches.length === 1) {
+            isDragging = true;
+            startX = e.touches[0].clientX - scrollX;
+            startY = e.touches[0].clientY - scrollY;
+        }
+    }
+    
+    function onDrag(e) {
+        if (!isDragging || !galleryContent.classList.contains('active')) return;
+        
+        scrollX = e.clientX - startX;
+        scrollY = e.clientY - startY;
+        
+        // Apply boundary limits
+        const maxScroll = 1000;
+        scrollX = Math.max(-maxScroll, Math.min(maxScroll, scrollX));
+        scrollY = Math.max(-maxScroll, Math.min(maxScroll, scrollY));
+        
+        updateCanvasTransform();
+    }
+    
+    function onDragTouch(e) {
+        if (!isDragging || !galleryContent.classList.contains('active')) return;
+        if (e.touches.length === 1) {
+            scrollX = e.touches[0].clientX - startX;
+            scrollY = e.touches[0].clientY - startY;
+            
+            const maxScroll = 1000;
+            scrollX = Math.max(-maxScroll, Math.min(maxScroll, scrollX));
+            scrollY = Math.max(-maxScroll, Math.min(maxScroll, scrollY));
+            
+            updateCanvasTransform();
+        }
+    }
+    
+    function stopDrag() {
+        isDragging = false;
+        canvas.style.cursor = '';
+    }
+    
+    document.addEventListener('mousemove', onDrag);
+    document.addEventListener('touchmove', onDragTouch, { passive: false });
+    document.addEventListener('mouseup', stopDrag);
+    document.addEventListener('touchend', stopDrag);
+    
+    // Keyboard navigation
+    document.addEventListener('keydown', function(e) {
+        if (!galleryContent.classList.contains('active')) return;
+        
+        const scrollSpeed = 30;
+        
+        switch(e.key) {
+            case 'ArrowLeft':
+                scrollX += scrollSpeed;
+                break;
+            case 'ArrowRight':
+                scrollX -= scrollSpeed;
+                break;
+            case 'ArrowUp':
+                scrollY += scrollSpeed;
+                break;
+            case 'ArrowDown':
+                scrollY -= scrollSpeed;
+                break;
+            case 'Escape':
+                closeGallery();
+                return;
+        }
+        
+        const maxScroll = 1000;
+        scrollX = Math.max(-maxScroll, Math.min(maxScroll, scrollX));
+        scrollY = Math.max(-maxScroll, Math.min(maxScroll, scrollY));
+        
+        updateCanvasTransform();
+    });
+    
+    // Mouse wheel navigation
+    canvas.addEventListener('wheel', function(e) {
+        if (!galleryContent.classList.contains('active')) return;
+        
+        e.preventDefault();
+        
+        scrollX -= e.deltaX * 0.5;
+        scrollY -= e.deltaY * 0.5;
+        
+        const maxScroll = 1000;
+        scrollX = Math.max(-maxScroll, Math.min(maxScroll, scrollX));
+        scrollY = Math.max(-maxScroll, Math.min(maxScroll, scrollY));
+        
+        updateCanvasTransform();
+    }, { passive: false });
+};
+
+// ============================================
+// BACK BUTTON
+// ============================================
+
+const setupBackButton = () => {
+    const backButton = document.getElementById('back-button');
+    if (backButton) {
+        backButton.addEventListener('click', closeGallery);
+    }
+};
+
+// ============================================
+// MODAL FUNCTIONS
 // ============================================
 
 const modal = document.getElementById('modal');
-const modalImage = document.getElementById('modal-image');
+const modalImage = document.getElementById('modal-img');
 const likeBtn = document.getElementById('like-btn');
-const modalClose = modal.querySelector('.modal-close');
+const modalClose = document.getElementById('modal-close');
 const modalPrev = document.getElementById('modal-prev');
 const modalNext = document.getElementById('modal-next');
 
-const openModal = (imageUrl, category = 'Image', galleryKey = currentGallery) => {
+const openModal = (imageUrl, category = 'Image', galleryKey = currentGallery, imageIndex = 0) => {
     currentModalImageUrl = imageUrl;
+    currentModalImageIndex = imageIndex;
     modalImage.src = imageUrl;
-    
-    // Find index in current gallery's sorted order
-    const images = currentGalleryImages;
-    currentModalImageIndex = images.findIndex(img => img.url === imageUrl);
     
     modal.removeAttribute('hidden');
     document.body.style.overflow = 'hidden';
@@ -514,10 +696,10 @@ const updateLikeButton = () => {
     
     const docId = getDocIdFromUrl(currentModalImageUrl);
     const likes = likesCache[docId] || 0;
+    const likeCount = document.getElementById('like-count');
     const heart = likeBtn.querySelector('.heart');
-    const count = likeBtn.querySelector('.count');
     
-    if (count) count.textContent = likes;
+    if (likeCount) likeCount.textContent = likes;
     
     let isLiked = false;
     if (window.FUNCTIONAL_COOKIES_ENABLED) {
@@ -526,18 +708,17 @@ const updateLikeButton = () => {
     }
     
     if (heart) {
+        heart.textContent = isLiked ? '♥' : '♡';
         if (isLiked) {
-            heart.classList.remove('far');
-            heart.classList.add('fas', 'liked');
+            likeBtn.classList.add('liked');
         } else {
-            heart.classList.remove('fas', 'liked');
-            heart.classList.add('far');
+            likeBtn.classList.remove('liked');
         }
     }
 };
 
 // ============================================
-// LIKE HANDLING (SIMPLIFIED)
+// LIKE HANDLING
 // ============================================
 
 const toggleLike = async () => {
@@ -583,7 +764,7 @@ const toggleLike = async () => {
             updateLikeButton();
             
             // Re-render current gallery (will re-sort automatically)
-            await renderMasonryGrid(currentGallery);
+            loadGalleryContent(currentGallery);
         }
     } catch (error) {
         console.error('Error toggling like:', error);
@@ -595,7 +776,39 @@ const toggleLike = async () => {
 };
 
 // ============================================
-// GDPR COOKIE CONSENT FUNCTIONS (UNCHANGED)
+// MODAL EVENT LISTENERS
+// ============================================
+
+if (modalClose) modalClose.addEventListener('click', closeModal);
+
+if (modal) {
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeModal();
+        }
+    });
+}
+
+if (likeBtn) likeBtn.addEventListener('click', toggleLike);
+
+if (modalPrev) modalPrev.addEventListener('click', () => navigateModal('prev'));
+if (modalNext) modalNext.addEventListener('click', () => navigateModal('next'));
+
+// Keyboard
+document.addEventListener('keydown', (e) => {
+    if (!modal.hasAttribute('hidden')) {
+        if (e.key === 'Escape') {
+            closeModal();
+        } else if (e.key === 'ArrowLeft') {
+            navigateModal('prev');
+        } else if (e.key === 'ArrowRight') {
+            navigateModal('next');
+        }
+    }
+});
+
+// ============================================
+// GDPR COOKIE CONSENT FUNCTIONS
 // ============================================
 
 const initCookieBanner = () => {
@@ -619,8 +832,6 @@ const showCookieBanner = () => {
 
 const applyCookiePreferences = async (prefs) => {
     console.log('🔧 Applying cookie preferences:', prefs);
-    
-    // Essential cookies (always enabled)
     
     // Functional cookies (Firebase, likes, etc.)
     if (prefs.functional) {
@@ -652,39 +863,40 @@ const applyCookiePreferences = async (prefs) => {
     } else {
         console.log('❌ Marketing cookies disabled');
     }
-    
-    // Verify what was saved
-    const saved = localStorage.getItem('cookiePreferences');
-    console.log('💾 Verified saved preferences:', JSON.parse(saved));
 };
 
 // ============================================
-// TERMS MODAL (UNCHANGED)
+// TERMS MODAL
 // ============================================
 
 const termsModal = document.getElementById('terms-modal');
 const termsBtn = document.getElementById('terms-btn');
-const termsClose = termsModal.querySelector('.modal-close');
 
-termsBtn.addEventListener('click', () => {
-    termsModal.removeAttribute('hidden');
-    document.body.style.overflow = 'hidden';
-});
-
-termsClose.addEventListener('click', () => {
-    termsModal.setAttribute('hidden', '');
-    document.body.style.overflow = 'auto';
-});
-
-termsModal.addEventListener('click', (e) => {
-    if (e.target === termsModal) {
-        termsModal.setAttribute('hidden', '');
-        document.body.style.overflow = 'auto';
+if (termsBtn && termsModal) {
+    const termsClose = termsModal.querySelector('.modal-close');
+    
+    termsBtn.addEventListener('click', () => {
+        termsModal.removeAttribute('hidden');
+        document.body.style.overflow = 'hidden';
+    });
+    
+    if (termsClose) {
+        termsClose.addEventListener('click', () => {
+            termsModal.setAttribute('hidden', '');
+            document.body.style.overflow = 'auto';
+        });
     }
-});
+    
+    termsModal.addEventListener('click', (e) => {
+        if (e.target === termsModal) {
+            termsModal.setAttribute('hidden', '');
+            document.body.style.overflow = 'auto';
+        }
+    });
+}
 
 // ============================================
-// COOKIE EVENT LISTENERS (UNCHANGED)
+// COOKIE EVENT LISTENERS
 // ============================================
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -898,72 +1110,29 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ============================================
-// EVENT LISTENERS (UNCHANGED)
-// ============================================
-
-modalClose.addEventListener('click', closeModal);
-
-modal.addEventListener('click', (e) => {
-    if (e.target === modal) {
-        closeModal();
-    }
-});
-
-likeBtn.addEventListener('click', toggleLike);
-
-modalPrev.addEventListener('click', () => navigateModal('prev'));
-modalNext.addEventListener('click', () => navigateModal('next'));
-
-// Keyboard
-document.addEventListener('keydown', (e) => {
-    if (!modal.hasAttribute('hidden')) {
-        if (e.key === 'Escape') {
-            closeModal();
-        } else if (e.key === 'ArrowLeft') {
-            navigateModal('prev');
-        } else if (e.key === 'ArrowRight') {
-            navigateModal('next');
-        }
-    }
-});
-
-// ============================================
-// INITIALIZATION (UPDATED)
+// INITIALIZATION
 // ============================================
 
 const init = async () => {
     try {
-        console.log('🚀 Initializing...');
+        console.log('🚀 Initializing The Nonconformist...');
         
         // Initialize cookie banner first
         initCookieBanner();
         
-        const loadingIndicator = document.getElementById('loading-indicator');
-        if (loadingIndicator) loadingIndicator.classList.remove('hidden');
-        
         // Load manifest
         await loadManifest();
         
-        // Fetch likes only if functional cookies enabled
-        if (window.FUNCTIONAL_COOKIES_ENABLED) {
-            await fetchAllLikes();
-        }
+        // Setup gallery selector (loads all galleries)
+        await setupGallerySelector();
         
-        // Setup UI
-        setupFilters();
-        setupBackToTop();
+        // Setup DeepSeek navigation
+        setupCanvasNavigation();
+        setupBackButton();
         
-        // Initial render
-        await renderMasonryGrid(currentGallery);
-        
-        console.log('✅ Initialized successfully with CSS Grid');
+        console.log('✅ Initialization complete');
     } catch (error) {
         console.error('❌ Init error:', error);
-        
-        const loadingIndicator = document.getElementById('loading-indicator');
-        if (loadingIndicator) {
-            loadingIndicator.innerHTML = '<p>Error loading images. Please refresh.</p>';
-        }
     }
 };
 
@@ -973,6 +1142,7 @@ if (document.readyState === 'loading') {
     init();
 }
 
+// Service Worker for image caching
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
