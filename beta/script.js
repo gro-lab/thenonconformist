@@ -916,7 +916,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Floating button
     const cookieFloatBtn = document.getElementById('cookie-float-btn');
-    const footerCookieBtn = document.getElementById('footer-cookie-btn');
     
     // Accept All from banner
     if (cookieAcceptBtn) {
@@ -971,15 +970,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Open settings modal from floating button
     if (cookieFloatBtn && cookieSettingsModal) {
         cookieFloatBtn.addEventListener('click', () => {
-            loadCookiePreferencesIntoModal();
-            cookieSettingsModal.removeAttribute('hidden');
-            document.body.style.overflow = 'hidden';
-        });
-    }
-    
-    // Open settings modal from footer
-    if (footerCookieBtn && cookieSettingsModal) {
-        footerCookieBtn.addEventListener('click', () => {
             loadCookiePreferencesIntoModal();
             cookieSettingsModal.removeAttribute('hidden');
             document.body.style.overflow = 'hidden';
