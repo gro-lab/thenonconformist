@@ -119,7 +119,7 @@ body {
 /* Gallery cover items */
 .gallery-cover {
     position: relative;
-    min-height: 400px;
+    min-height: 550px;
     border-radius: 16px;
     overflow: hidden;
     cursor: pointer;
