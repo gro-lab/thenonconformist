@@ -267,44 +267,6 @@ const updateLike = async (url, increment_value) => {
 };
 
 // ============================================
-// LAZY LOADING
-// ============================================
-
-const setupLazyLoading = (img) => {
-    const options = {
-        rootMargin: '400px',
-        threshold: 0.01
-    };
-    
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const image = entry.target;
-                const src = image.dataset.src;
-                
-                if (src && !image.classList.contains('loaded')) {
-                    const preloader = new Image();
-                    preloader.onload = () => {
-                        image.src = src;
-                        image.classList.add('loaded');
-                        image.style.opacity = '1';
-                    };
-                    preloader.onerror = () => {
-                        console.warn(`Failed to load: ${src}`);
-                        image.remove();
-                    };
-                    preloader.src = src;
-                }
-                
-                observer.unobserve(image);
-            }
-        });
-    }, options);
-    
-    observer.observe(img);
-};
-
-// ============================================
 // GALLERY DATA LOADING
 // ============================================
 
