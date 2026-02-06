@@ -117,7 +117,7 @@ const clearFunctionalCookieData = () => {
 };
 
 // ============================================
-// STABLE SORT BY LIKES
+// STABLE SORT BY LIKES - UPDATED FOR GRID ORDER
 // ============================================
 
 const stableSortByLikes = (items) => {
@@ -360,7 +360,7 @@ const getMostLikedImageUrl = (galleryKey) => {
 };
 
 // ============================================
-// DEEPSEEK-STYLE GALLERY SELECTOR
+// GALLERY SELECTOR
 // ============================================
 
 const setupGallerySelector = async () => {
@@ -375,7 +375,7 @@ const setupGallerySelector = async () => {
         if (cover && galleryImageData[key]) {
             const mostLikedUrl = getMostLikedImageUrl(key);
             if (mostLikedUrl) {
-                cover.style.backgroundImage = `linear-gradient(45deg, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.3)), url(${mostLikedUrl})`;
+                cover.style.backgroundImage = `url(${mostLikedUrl})`;
             }
         }
         
@@ -429,11 +429,11 @@ const loadGalleryContent = (galleryId) => {
     // Clear existing content
     masonryGrid.innerHTML = '';
     
-    // Sort images by likes
+    // Sort images by likes (most liked first)
     const sortedImages = stableSortByLikes(images);
     currentGalleryImages = sortedImages;
     
-    // Create masonry items
+    // Create masonry items in order (top-left to bottom-right by likes)
     sortedImages.forEach((image, index) => {
         const masonryItem = document.createElement('div');
         
@@ -448,25 +448,14 @@ const loadGalleryContent = (galleryId) => {
         masonryItem.className = `masonry-item ${orientation}`;
         
         // Set staggered animation delay
-        masonryItem.style.animationDelay = `${index * 0.05}s`;
+        masonryItem.style.animationDelay = `${index * 0.03}s`;
         
-        masonryItem.style.backgroundImage = 
-            `linear-gradient(45deg, ${gallery.color}40, #00000080), url(${image.url})`;
+        // Set background image WITHOUT gradient
+        masonryItem.style.backgroundImage = `url(${image.url})`;
         
         // Create overlay content
         const overlay = document.createElement('div');
         overlay.className = 'item-overlay';
-        overlay.style.opacity = '0';
-        overlay.style.transition = 'opacity 0.3s ease';
-        
-        // Show overlay on hover
-        masonryItem.addEventListener('mouseenter', () => {
-            overlay.style.opacity = '1';
-        });
-        
-        masonryItem.addEventListener('mouseleave', () => {
-            overlay.style.opacity = '0';
-        });
         
         overlay.innerHTML = `
             <div class="item-category">${gallery.title}</div>
@@ -866,36 +855,6 @@ const applyCookiePreferences = async (prefs) => {
 };
 
 // ============================================
-// TERMS MODAL
-// ============================================
-
-const termsModal = document.getElementById('terms-modal');
-const termsBtn = document.getElementById('terms-btn');
-
-if (termsBtn && termsModal) {
-    const termsClose = termsModal.querySelector('.modal-close');
-    
-    termsBtn.addEventListener('click', () => {
-        termsModal.removeAttribute('hidden');
-        document.body.style.overflow = 'hidden';
-    });
-    
-    if (termsClose) {
-        termsClose.addEventListener('click', () => {
-            termsModal.setAttribute('hidden', '');
-            document.body.style.overflow = 'auto';
-        });
-    }
-    
-    termsModal.addEventListener('click', (e) => {
-        if (e.target === termsModal) {
-            termsModal.setAttribute('hidden', '');
-            document.body.style.overflow = 'auto';
-        }
-    });
-}
-
-// ============================================
 // COOKIE EVENT LISTENERS
 // ============================================
 
@@ -1062,7 +1021,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('✅ Accepting all cookies from modal:', prefs);
             localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
             cookieSettingsModal.setAttribute('hidden', '');
-            document.body.style.overflow = 'auto';
+            document.body.style.overflow = 'auto');
             await applyCookiePreferences(prefs);
             location.reload();
         });
@@ -1093,7 +1052,7 @@ document.addEventListener('DOMContentLoaded', () => {
             clearFunctionalCookieData();
             
             cookieSettingsModal.setAttribute('hidden', '');
-            document.body.style.overflow = 'auto';
+            document.body.style.overflow = 'auto');
             location.reload();
         });
     }
