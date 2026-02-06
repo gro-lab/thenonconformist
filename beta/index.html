@@ -226,11 +226,64 @@
             <h3>We value your privacy</h3>
             <p>We use cookies to enhance your browsing experience.</p>
             <div class="cookie-actions">
+                <button id="cookie-settings-btn" class="cookie-btn cookie-btn-secondary">Settings</button>
                 <button id="cookie-reject-btn" class="cookie-btn cookie-btn-secondary">Reject All</button>
                 <button id="cookie-accept-btn" class="cookie-btn cookie-btn-primary">Accept All</button>
             </div>
         </div>
     </div>
+
+    <!-- Cookie Settings Modal -->
+    <div id="cookie-settings-modal" class="modal cookie-modal" hidden>
+        <button class="modal-close" id="cookie-modal-close">×</button>
+        <div class="modal-content cookie-settings-content">
+            <h2>Cookie Settings</h2>
+            <p class="cookie-intro">We use cookies to improve your browsing experience.</p>
+            
+            <div class="cookie-categories">
+                <div class="cookie-category">
+                    <div class="cookie-category-header">
+                        <div class="cookie-category-info">
+                            <h3>Essential Cookies</h3>
+                            <span class="cookie-badge required">Always Active</span>
+                        </div>
+                        <label class="cookie-toggle disabled">
+                            <input type="checkbox" checked disabled>
+                            <span class="cookie-slider"></span>
+                        </label>
+                    </div>
+                    <p class="cookie-category-description">
+                        These cookies are necessary for the website to function.
+                    </p>
+                </div>
+
+                <div class="cookie-category">
+                    <div class="cookie-category-header">
+                        <div class="cookie-category-info">
+                            <h3>Functional Cookies</h3>
+                            <span class="cookie-badge optional">Optional</span>
+                        </div>
+                        <label class="cookie-toggle">
+                            <input type="checkbox" id="functional-cookies">
+                            <span class="cookie-slider"></span>
+                        </label>
+                    </div>
+                    <p class="cookie-category-description">
+                        Remembers which images you've liked.
+                    </p>
+                </div>
+            </div>
+
+            <div class="cookie-modal-actions">
+                <button id="cookie-save-btn" class="cookie-btn cookie-btn-primary">Save Preferences</button>
+                <button id="cookie-accept-all-btn" class="cookie-btn cookie-btn-secondary">Accept All</button>
+                <button id="cookie-reject-all-btn" class="cookie-btn cookie-btn-secondary">Reject All</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cookie Settings Floating Button -->
+    <button class="cookie-float-btn" id="cookie-float-btn" title="Cookie Settings">🍪</button>
 
     <script type="module" src="script.js"></script>
 </body>
