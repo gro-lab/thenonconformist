@@ -78,6 +78,7 @@ let startX = 0;
 let startY = 0;
 let scrollX = 0;
 let scrollY = 0;
+let scrollLimits = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
 
 window.FUNCTIONAL_COOKIES_ENABLED = false;
 
@@ -256,6 +257,46 @@ const getMostLikedImageUrl = (galleryKey) => {
     return sorted[0].url;
 };
 
+// Calculate scroll limits based on grid size
+const calculateScrollLimits = () => {
+    const grid = document.getElementById('masonry-grid');
+    const canvas = document.getElementById('infinite-canvas');
+    const viewport = document.getElementById('gallery-content');
+    
+    if (!grid || !canvas || !viewport) return;
+    
+    const gridRect = grid.getBoundingClientRect();
+    const canvasRect = canvas.getBoundingClientRect();
+    const viewportRect = viewport.getBoundingClientRect();
+    
+    // Calculate content width/height
+    const contentWidth = gridRect.width;
+    const contentHeight = gridRect.height;
+    const viewportWidth = viewportRect.width;
+    const viewportHeight = viewportRect.height;
+    
+    // Calculate padding
+    const canvasStyle = window.getComputedStyle(canvas);
+    const paddingLeft = parseInt(canvasStyle.paddingLeft) || 20;
+    const paddingRight = parseInt(canvasStyle.paddingRight) || 20;
+    const paddingTop = parseInt(canvasStyle.paddingTop) || 120;
+    const paddingBottom = parseInt(canvasStyle.paddingBottom) || 80;
+    
+    // Calculate actual scrollable area
+    const scrollableWidth = Math.max(0, contentWidth - viewportWidth + paddingLeft + paddingRight);
+    const scrollableHeight = Math.max(0, contentHeight - viewportHeight + paddingTop + paddingBottom);
+    
+    // Set limits (allow scrolling in both directions)
+    scrollLimits = {
+        minX: -scrollableWidth,
+        maxX: scrollableWidth,
+        minY: -scrollableHeight,
+        maxY: scrollableHeight
+    };
+    
+    console.log('📐 Scroll limits calculated:', scrollLimits);
+};
+
 // GALLERY SELECTOR
 const setupGallerySelector = async () => {
     await Promise.all(Object.keys(galleries).map(key => loadGalleryData(key)));
@@ -360,9 +401,18 @@ const loadGalleryContent = (galleryId) => {
         masonryGrid.appendChild(masonryItem);
     });
     
+    // Reset scroll position to center
     scrollX = 0;
     scrollY = 0;
-    updateCanvasTransform();
+    
+    // Wait for images to load, then calculate scroll limits
+    setTimeout(() => {
+        calculateScrollLimits();
+        updateCanvasTransform();
+    }, 100);
+    
+    // Also calculate after a bit more time for slower images
+    setTimeout(calculateScrollLimits, 500);
 };
 
 const closeGallery = () => {
@@ -416,10 +466,9 @@ const setupCanvasNavigation = () => {
         scrollX = e.clientX - startX;
         scrollY = e.clientY - startY;
         
-        // Increased scroll limits to see all pictures
-        const maxScroll = 2000;
-        scrollX = Math.max(-maxScroll, Math.min(maxScroll, scrollX));
-        scrollY = Math.max(-maxScroll, Math.min(maxScroll, scrollY));
+        // Apply dynamic scroll limits
+        scrollX = Math.max(scrollLimits.minX, Math.min(scrollLimits.maxX, scrollX));
+        scrollY = Math.max(scrollLimits.minY, Math.min(scrollLimits.maxY, scrollY));
         
         updateCanvasTransform();
     }
@@ -430,9 +479,9 @@ const setupCanvasNavigation = () => {
             scrollX = e.touches[0].clientX - startX;
             scrollY = e.touches[0].clientY - startY;
             
-            const maxScroll = 2000;
-            scrollX = Math.max(-maxScroll, Math.min(maxScroll, scrollX));
-            scrollY = Math.max(-maxScroll, Math.min(maxScroll, scrollY));
+            // Apply dynamic scroll limits
+            scrollX = Math.max(scrollLimits.minX, Math.min(scrollLimits.maxX, scrollX));
+            scrollY = Math.max(scrollLimits.minY, Math.min(scrollLimits.maxY, scrollY));
             
             updateCanvasTransform();
         }
@@ -471,9 +520,9 @@ const setupCanvasNavigation = () => {
                 return;
         }
         
-        const maxScroll = 2000;
-        scrollX = Math.max(-maxScroll, Math.min(maxScroll, scrollX));
-        scrollY = Math.max(-maxScroll, Math.min(maxScroll, scrollY));
+        // Apply dynamic scroll limits
+        scrollX = Math.max(scrollLimits.minX, Math.min(scrollLimits.maxX, scrollX));
+        scrollY = Math.max(scrollLimits.minY, Math.min(scrollLimits.maxY, scrollY));
         
         updateCanvasTransform();
     });
@@ -486,12 +535,19 @@ const setupCanvasNavigation = () => {
         scrollX -= e.deltaX * 0.5;
         scrollY -= e.deltaY * 0.5;
         
-        const maxScroll = 2000;
-        scrollX = Math.max(-maxScroll, Math.min(maxScroll, scrollX));
-        scrollY = Math.max(-maxScroll, Math.min(maxScroll, scrollY));
+        // Apply dynamic scroll limits
+        scrollX = Math.max(scrollLimits.minX, Math.min(scrollLimits.maxX, scrollX));
+        scrollY = Math.max(scrollLimits.minY, Math.min(scrollLimits.maxY, scrollY));
         
         updateCanvasTransform();
     }, { passive: false });
+    
+    // Recalculate scroll limits on window resize
+    window.addEventListener('resize', () => {
+        if (galleryContent.classList.contains('active')) {
+            setTimeout(calculateScrollLimits, 100);
+        }
+    });
 };
 
 const setupBackButton = () => {
