@@ -482,6 +482,11 @@ const loadGalleryContent = (galleryId) => {
         masonryItem.appendChild(overlay);
         masonryGrid.appendChild(masonryItem);
     });
+    
+    // Reset scroll position
+    scrollX = 0;
+    scrollY = 0;
+    updateCanvasTransform();
 };
 
 const closeGallery = () => {
@@ -501,22 +506,122 @@ const closeGallery = () => {
 // ============================================
 
 const updateCanvasTransform = () => {
-    // Not needed with scrollable grid
+    const canvas = document.getElementById('infinite-canvas');
+    if (canvas) {
+        canvas.style.transform = `translate(${scrollX}px, ${scrollY}px)`;
+    }
 };
 
 const setupCanvasNavigation = () => {
     const canvas = document.getElementById('infinite-canvas');
     const galleryContent = document.getElementById('gallery-content');
     
-    // Keyboard navigation for escape key
+    // Drag functionality
+    canvas.addEventListener('mousedown', startDrag);
+    canvas.addEventListener('touchstart', startDragTouch, { passive: false });
+    
+    function startDrag(e) {
+        if (!galleryContent.classList.contains('active')) return;
+        isDragging = true;
+        startX = e.clientX - scrollX;
+        startY = e.clientY - scrollY;
+        canvas.style.cursor = 'grabbing';
+        e.preventDefault();
+    }
+    
+    function startDragTouch(e) {
+        if (!galleryContent.classList.contains('active')) return;
+        if (e.touches.length === 1) {
+            isDragging = true;
+            startX = e.touches[0].clientX - scrollX;
+            startY = e.touches[0].clientY - scrollY;
+        }
+    }
+    
+    function onDrag(e) {
+        if (!isDragging || !galleryContent.classList.contains('active')) return;
+        
+        scrollX = e.clientX - startX;
+        scrollY = e.clientY - startY;
+        
+        // Apply boundary limits
+        const maxScroll = 1000;
+        scrollX = Math.max(-maxScroll, Math.min(maxScroll, scrollX));
+        scrollY = Math.max(-maxScroll, Math.min(maxScroll, scrollY));
+        
+        updateCanvasTransform();
+    }
+    
+    function onDragTouch(e) {
+        if (!isDragging || !galleryContent.classList.contains('active')) return;
+        if (e.touches.length === 1) {
+            scrollX = e.touches[0].clientX - startX;
+            scrollY = e.touches[0].clientY - startY;
+            
+            const maxScroll = 1000;
+            scrollX = Math.max(-maxScroll, Math.min(maxScroll, scrollX));
+            scrollY = Math.max(-maxScroll, Math.min(maxScroll, scrollY));
+            
+            updateCanvasTransform();
+        }
+    }
+    
+    function stopDrag() {
+        isDragging = false;
+        canvas.style.cursor = '';
+    }
+    
+    document.addEventListener('mousemove', onDrag);
+    document.addEventListener('touchmove', onDragTouch, { passive: false });
+    document.addEventListener('mouseup', stopDrag);
+    document.addEventListener('touchend', stopDrag);
+    
+    // Keyboard navigation
     document.addEventListener('keydown', function(e) {
         if (!galleryContent.classList.contains('active')) return;
         
-        if (e.key === 'Escape') {
-            closeGallery();
-            return;
+        const scrollSpeed = 30;
+        
+        switch(e.key) {
+            case 'ArrowLeft':
+                scrollX += scrollSpeed;
+                break;
+            case 'ArrowRight':
+                scrollX -= scrollSpeed;
+                break;
+            case 'ArrowUp':
+                scrollY += scrollSpeed;
+                break;
+            case 'ArrowDown':
+                scrollY -= scrollSpeed;
+                break;
+            case 'Escape':
+                closeGallery();
+                return;
         }
+        
+        const maxScroll = 1000;
+        scrollX = Math.max(-maxScroll, Math.min(maxScroll, scrollX));
+        scrollY = Math.max(-maxScroll, Math.min(maxScroll, scrollY));
+        
+        updateCanvasTransform();
     });
+    
+    // Mouse wheel navigation
+    canvas.addEventListener('wheel', function(e) {
+        if (!galleryContent.classList.contains('active')) return;
+        
+        e.preventDefault();
+        
+        scrollX -= e.deltaX * 0.5;
+        scrollY -= e.deltaY * 0.5;
+        
+        const maxScroll = 1000;
+        scrollX = Math.max(-maxScroll, Math.min(maxScroll, scrollX));
+        scrollY = Math.max(-maxScroll, Math.min(maxScroll, scrollY));
+        
+        updateCanvasTransform();
+    }, { passive: false });
 };
 
 // ============================================
