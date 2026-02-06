@@ -47,26 +47,25 @@ const galleries = {
     'low': { 
         title: 'Language of Windows', 
         dir: 'LoW',
-        subtitle: 'Sometimes we look through them, sometimes at them. They let the light in, and keep the cold out. Sometimes we express ourselves with them, sometimes we reflect in them. As does the world around us. They talk about history, or the future yet to come. They tell their stories - stories of humanity, past, present and future. The Language of Windows has been talking for decade and are still talking now. They frame our perception of the world, creating boundaries between interior and exterior spaces.',
+        subtitle: 'Exploring the silent stories behind glass',
         color: '#FF6B35'
     },
     'sol': { 
         title: 'Snapshots of Life', 
         dir: 'SoL',
-        subtitle: 'What are you thinking about? Are you happy or sad? Where are you going? Are you in a hurry or are you just wandering? What are you talking about? What is making you laugh? What are you telling me or not telling me? Are you comming or going? Who are your friends? Who are you? Are you dreaming, remembering or forgetting? Do you feel you belong or are you rejected? Are you in love or feel alone in this world? These are the snapshots of life. Life unfolds in fleeting moments that often pass unnoticed.',
+        subtitle: 'Capturing the raw essence of everyday moments',
         color: '#9D4EDD'
     },
     'r': { 
         title: 'Reflections', 
         dir: 'R',
-        subtitle: 'What is real and what is not? Reflections are the mirror image of reality. Combining the two, making a collage of both, creates a new interesting reality. Seeing the world from a brand new angle. Creating abstract art based on reality. Reflections create parallel realities, distorting and reimagining the world around us.',
+        subtitle: 'Where reality meets its mirror image',
         color: '#06FFA5'
     },
     'sa': { 
         title: 'Street Art', 
         dir: 'SA',
-        subtitle: 'From "Punk`s Not Dead" to a muriel the size of a football field, Street Art is the most accessible form of art. It`s there to inspire the senses, to give color to the world and it`s just there when you need it. Because Art is a Human Right. Urban walls serve as canvases for voices that demand to be heard.
-',
+        subtitle: 'Urban expressions and vibrant creativity',
         color: '#FFD23F'
     }
 };
@@ -90,8 +89,6 @@ let startX = 0;
 let startY = 0;
 let scrollX = 0;
 let scrollY = 0;
-let maxScrollX = 0;
-let maxScrollY = 0;
 
 // GDPR: Functional cookies disabled by default until user explicitly accepts
 window.FUNCTIONAL_COOKIES_ENABLED = false;
@@ -120,53 +117,7 @@ const clearFunctionalCookieData = () => {
 };
 
 // ============================================
-// PREVENT PULL-TO-REFRESH
-// ============================================
-
-const preventPullToRefresh = () => {
-    // Prevent default touch behaviors that cause pull-to-refresh
-    document.addEventListener('touchmove', function(e) {
-        if (e.scale !== 1) {
-            e.preventDefault();
-        }
-    }, { passive: false });
-    
-    // Prevent overscroll behavior
-    document.body.style.overscrollBehavior = 'none';
-    
-    // Disable elastic scrolling on iOS
-    document.body.style.webkitOverflowScrolling = 'touch';
-};
-
-// ============================================
-// CALCULATE SCROLL BOUNDARIES
-// ============================================
-
-const calculateScrollBoundaries = () => {
-    const masonryGrid = document.getElementById('masonry-grid');
-    const infiniteCanvas = document.getElementById('infinite-canvas');
-    
-    if (!masonryGrid || !infiniteCanvas) return;
-    
-    // Get the grid dimensions
-    const gridRect = masonryGrid.getBoundingClientRect();
-    const canvasRect = infiniteCanvas.getBoundingClientRect();
-    
-    // Calculate max scroll values - allow scrolling beyond boundaries
-    maxScrollX = Math.max(0, gridRect.width - canvasRect.width + 200);
-    maxScrollY = Math.max(0, gridRect.height - canvasRect.height + 200);
-    
-    console.log(`📏 Scroll boundaries: X=${maxScrollX}, Y=${maxScrollY}`);
-    
-    // Apply boundaries to current scroll position
-    scrollX = Math.max(-maxScrollX, Math.min(maxScrollX, scrollX));
-    scrollY = Math.max(-maxScrollY, Math.min(maxScrollY, scrollY));
-    
-    updateCanvasTransform();
-};
-
-// ============================================
-// STABLE SORT BY LIKES - UPDATED FOR GRID ORDER
+// STABLE SORT BY LIKES
 // ============================================
 
 const stableSortByLikes = (items) => {
@@ -316,6 +267,44 @@ const updateLike = async (url, increment_value) => {
 };
 
 // ============================================
+// LAZY LOADING
+// ============================================
+
+const setupLazyLoading = (img) => {
+    const options = {
+        rootMargin: '400px',
+        threshold: 0.01
+    };
+    
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const image = entry.target;
+                const src = image.dataset.src;
+                
+                if (src && !image.classList.contains('loaded')) {
+                    const preloader = new Image();
+                    preloader.onload = () => {
+                        image.src = src;
+                        image.classList.add('loaded');
+                        image.style.opacity = '1';
+                    };
+                    preloader.onerror = () => {
+                        console.warn(`Failed to load: ${src}`);
+                        image.remove();
+                    };
+                    preloader.src = src;
+                }
+                
+                observer.unobserve(image);
+            }
+        });
+    }, options);
+    
+    observer.observe(img);
+};
+
+// ============================================
 // GALLERY DATA LOADING
 // ============================================
 
@@ -371,7 +360,7 @@ const getMostLikedImageUrl = (galleryKey) => {
 };
 
 // ============================================
-// GALLERY SELECTOR
+// DEEPSEEK-STYLE GALLERY SELECTOR
 // ============================================
 
 const setupGallerySelector = async () => {
@@ -386,7 +375,7 @@ const setupGallerySelector = async () => {
         if (cover && galleryImageData[key]) {
             const mostLikedUrl = getMostLikedImageUrl(key);
             if (mostLikedUrl) {
-                cover.style.backgroundImage = `url(${mostLikedUrl})`;
+                cover.style.backgroundImage = `linear-gradient(45deg, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.3)), url(${mostLikedUrl})`;
             }
         }
         
@@ -429,15 +418,7 @@ const openGallery = (galleryId) => {
         loadGalleryContent(galleryId);
         loadingIndicator.classList.remove('active');
         galleryContent.classList.add('active');
-        
-        // Calculate scroll boundaries after content is loaded
-        setTimeout(() => {
-            calculateScrollBoundaries();
-        }, 100);
     }, 800);
-    
-    // Prevent pull-to-refresh when gallery is active
-    document.body.classList.add('gallery-active');
 };
 
 const loadGalleryContent = (galleryId) => {
@@ -448,11 +429,11 @@ const loadGalleryContent = (galleryId) => {
     // Clear existing content
     masonryGrid.innerHTML = '';
     
-    // Sort images by likes (most liked first)
+    // Sort images by likes
     const sortedImages = stableSortByLikes(images);
     currentGalleryImages = sortedImages;
     
-    // Create masonry items in order (top-left to bottom-right by likes)
+    // Create masonry items
     sortedImages.forEach((image, index) => {
         const masonryItem = document.createElement('div');
         
@@ -467,14 +448,25 @@ const loadGalleryContent = (galleryId) => {
         masonryItem.className = `masonry-item ${orientation}`;
         
         // Set staggered animation delay
-        masonryItem.style.animationDelay = `${index * 0.03}s`;
+        masonryItem.style.animationDelay = `${index * 0.05}s`;
         
-        // Set background image WITHOUT gradient
+        // No gradient overlay - just the image
         masonryItem.style.backgroundImage = `url(${image.url})`;
         
         // Create overlay content
         const overlay = document.createElement('div');
         overlay.className = 'item-overlay';
+        overlay.style.opacity = '0';
+        overlay.style.transition = 'opacity 0.3s ease';
+        
+        // Show overlay on hover
+        masonryItem.addEventListener('mouseenter', () => {
+            overlay.style.opacity = '1';
+        });
+        
+        masonryItem.addEventListener('mouseleave', () => {
+            overlay.style.opacity = '0';
+        });
         
         overlay.innerHTML = `
             <div class="item-category">${gallery.title}</div>
@@ -502,9 +494,6 @@ const closeGallery = () => {
     const gallerySelector = document.getElementById('gallery-selector');
     
     galleryContent.classList.remove('active');
-    
-    // Re-enable pull-to-refresh
-    document.body.classList.remove('gallery-active');
     
     setTimeout(() => {
         gallerySelector.classList.remove('hidden');
@@ -546,7 +535,6 @@ const setupCanvasNavigation = () => {
             isDragging = true;
             startX = e.touches[0].clientX - scrollX;
             startY = e.touches[0].clientY - scrollY;
-            e.preventDefault(); // Prevent pull-to-refresh
         }
     }
     
@@ -556,9 +544,10 @@ const setupCanvasNavigation = () => {
         scrollX = e.clientX - startX;
         scrollY = e.clientY - startY;
         
-        // Apply dynamic boundary limits
-        scrollX = Math.max(-maxScrollX, Math.min(maxScrollX, scrollX));
-        scrollY = Math.max(-maxScrollY, Math.min(maxScrollY, scrollY));
+        // Apply boundary limits
+        const maxScroll = 1000;
+        scrollX = Math.max(-maxScroll, Math.min(maxScroll, scrollX));
+        scrollY = Math.max(-maxScroll, Math.min(maxScroll, scrollY));
         
         updateCanvasTransform();
     }
@@ -569,12 +558,11 @@ const setupCanvasNavigation = () => {
             scrollX = e.touches[0].clientX - startX;
             scrollY = e.touches[0].clientY - startY;
             
-            // Apply dynamic boundary limits
-            scrollX = Math.max(-maxScrollX, Math.min(maxScrollX, scrollX));
-            scrollY = Math.max(-maxScrollY, Math.min(maxScrollY, scrollY));
+            const maxScroll = 1000;
+            scrollX = Math.max(-maxScroll, Math.min(maxScroll, scrollX));
+            scrollY = Math.max(-maxScroll, Math.min(maxScroll, scrollY));
             
             updateCanvasTransform();
-            e.preventDefault(); // Prevent pull-to-refresh
         }
     }
     
@@ -612,9 +600,9 @@ const setupCanvasNavigation = () => {
                 return;
         }
         
-        // Apply dynamic boundary limits
-        scrollX = Math.max(-maxScrollX, Math.min(maxScrollX, scrollX));
-        scrollY = Math.max(-maxScrollY, Math.min(maxScrollY, scrollY));
+        const maxScroll = 1000;
+        scrollX = Math.max(-maxScroll, Math.min(maxScroll, scrollX));
+        scrollY = Math.max(-maxScroll, Math.min(maxScroll, scrollY));
         
         updateCanvasTransform();
     });
@@ -628,19 +616,12 @@ const setupCanvasNavigation = () => {
         scrollX -= e.deltaX * 0.5;
         scrollY -= e.deltaY * 0.5;
         
-        // Apply dynamic boundary limits
-        scrollX = Math.max(-maxScrollX, Math.min(maxScrollX, scrollX));
-        scrollY = Math.max(-maxScrollY, Math.min(maxScrollY, scrollY));
+        const maxScroll = 1000;
+        scrollX = Math.max(-maxScroll, Math.min(maxScroll, scrollX));
+        scrollY = Math.max(-maxScroll, Math.min(maxScroll, scrollY));
         
         updateCanvasTransform();
     }, { passive: false });
-    
-    // Handle window resize
-    window.addEventListener('resize', debounce(() => {
-        if (galleryContent.classList.contains('active')) {
-            calculateScrollBoundaries();
-        }
-    }, 250));
 };
 
 // ============================================
@@ -885,6 +866,36 @@ const applyCookiePreferences = async (prefs) => {
 };
 
 // ============================================
+// TERMS MODAL
+// ============================================
+
+const termsModal = document.getElementById('terms-modal');
+const termsBtn = document.getElementById('terms-btn');
+
+if (termsBtn && termsModal) {
+    const termsClose = termsModal.querySelector('.modal-close');
+    
+    termsBtn.addEventListener('click', () => {
+        termsModal.removeAttribute('hidden');
+        document.body.style.overflow = 'hidden';
+    });
+    
+    if (termsClose) {
+        termsClose.addEventListener('click', () => {
+            termsModal.setAttribute('hidden', '');
+            document.body.style.overflow = 'auto';
+        });
+    }
+    
+    termsModal.addEventListener('click', (e) => {
+        if (e.target === termsModal) {
+            termsModal.setAttribute('hidden', '');
+            document.body.style.overflow = 'auto';
+        }
+    });
+}
+
+// ============================================
 // COOKIE EVENT LISTENERS
 // ============================================
 
@@ -1098,9 +1109,6 @@ const init = async () => {
         
         // Initialize cookie banner first
         initCookieBanner();
-        
-        // Prevent pull-to-refresh
-        preventPullToRefresh();
         
         // Load manifest
         await loadManifest();
