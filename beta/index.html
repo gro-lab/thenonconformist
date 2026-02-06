@@ -139,135 +139,149 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <header class="header">
-        <div class="header-content">
-            <div class="logo">
-                <h1>THE NONCONFORMIST</h1>
-                <span class="tagline">Art is a human right</span>
-            </div>
-            <nav class="header-nav">
-                <a href="https://www.instagram.com/then0nc0nformist/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" class="social-link">
-                    <span>Instagram</span>
-                </a>
-                <a href="https://www.facebook.com/then0nc0nformist" target="_blank" rel="noopener noreferrer" aria-label="Facebook" class="social-link">
-                    <span>Facebook</span>
-                </a>
-                <a href="mailto:then-onconformist@outlook.com" aria-label="Email" class="contact-link">
-                    <span>Email</span>
-                </a>
-            </nav>
-        </div>
-    </header>
 
-    <main>
-        <section class="hero">
-            <div class="hero-content">
-                <h2 class="hero-title">About The Nonconformist</h2>
-                <p class="hero-subtitle">Welcome to my world! The world of A Nonconformist. In my work, as in life, I don't look for perfection. I look for emotions. I want images to tell stories: evocative and inspiring. Building a connection to your own story. There is beauty everywhere if you just open your mind and heart to see it. Besides beauty, I'm looking for truth and honesty. Capturing the world in all its glory and misery. See the colors and wonder. Use your imagination to see the best of humanity.</p><br/>
-                <p class="hero-subtitle">If you visit my Instagram you can follow my daily chronicle of life in pictures.</p>
-            </div>
-        </section>
-
-        <div class="filter-tabs">
-            <button class="filter-tab active" data-gallery="low">
-               
-                <span>Language of Windows</span>
-            </button>
-            <button class="filter-tab" data-gallery="sol">
-                
-                <span>Snapshots of Life</span>
-            </button>
-            <button class="filter-tab" data-gallery="r">
-                
-                <span>Reflections</span>
-            </button>
-            <button class="filter-tab" data-gallery="sa">
-                
-                <span>Street Art</span>
-            </button>
-        </div>
-
-        <div class="gallery-description-wrapper">
-            <div class="gallery-description" data-gallery="low">
-                <p>Sometimes we look through them, sometimes at them. They let the light in, and keep the cold out. Sometimes we express ourselves with them, sometimes we reflect in them. As does the world around us. They talk about history, or the future yet to come. They tell their stories - stories of humanity, past, present and future. The Language of Windows has been talking for decade and are still talking now. They frame our perception of the world, creating boundaries between interior and exterior spaces.</p>
-            </div>
-            <div class="gallery-description hidden" data-gallery="sol">
-                <p>What are you thinking about? Are you happy or sad? Where are you going? Are you in a hurry or are you just wandering? What are you talking about? What is making you laugh? What are you telling me or not telling me? Are you comming or going? Who are your friends? Who are you? Are you dreaming, remembering or forgetting? Do you feel you belong or are you rejected? Are you in love or feel alone in this world? These are the snapshots of life. Life unfolds in fleeting moments that often pass unnoticed.</p>
-            </div>
-            <div class="gallery-description hidden" data-gallery="r">
-                <p>What is real and what is not? Reflections are the mirror image of reality. Combining the two, making a collage of both, creates a new interesting reality. Seeing the world from a brand new angle. Creating abstract art based on reality. Reflections create parallel realities, distorting and reimagining the world around us.</p>
-            </div>
-            <div class="gallery-description hidden" data-gallery="sa">
-                <p>From 'Punk's not dead' to a muriel the size of a football field, Street Art is the most accessible form of art. It's there to inspire the senses, to give color to the world and it's just there when you need it. Because Art is a Human Right. Urban walls serve as canvases for voices that demand to be heard.</p>
+    <!-- Gallery Selector View -->
+    <div id="gallery-selector" class="gallery-selector">
+        <div class="gallery-cover" data-gallery="low">
+            <div class="gallery-cover-content">
+                <div class="gallery-title">Language of Windows</div>
+                <div class="gallery-count" id="low-count">Loading...</div>
             </div>
         </div>
-
-        <div class="masonry-wrapper">
-            <div class="masonry-grid" id="masonry-grid"></div>
+        
+        <div class="gallery-cover" data-gallery="sol">
+            <div class="gallery-cover-content">
+                <div class="gallery-title">Snapshots of Life</div>
+                <div class="gallery-count" id="sol-count">Loading...</div>
+            </div>
         </div>
-
-        <div class="loading-indicator" id="loading-indicator">
-            <div class="spinner"></div>
-            <p>Loading beautiful moments...</p>
+        
+        <div class="gallery-cover" data-gallery="r">
+            <div class="gallery-cover-content">
+                <div class="gallery-title">Reflections</div>
+                <div class="gallery-count" id="r-count">Loading...</div>
+            </div>
         </div>
+        
+        <div class="gallery-cover" data-gallery="sa">
+            <div class="gallery-cover-content">
+                <div class="gallery-title">Street Art</div>
+                <div class="gallery-count" id="sa-count">Loading...</div>
+            </div>
+        </div>
+    </div>
 
-        <button class="back-to-top" id="back-to-top" aria-label="Back to top">
-            ↑
+    <!-- Loading Indicator -->
+    <div id="loading-indicator" class="loading-indicator">
+        <div class="loading-spinner"></div>
+        <p>Loading beautiful moments...</p>
+    </div>
+
+    <!-- Gallery Content View -->
+    <div id="gallery-content" class="gallery-content">
+        <!-- Back Button -->
+        <button id="back-button" class="back-button">
+            <span>←</span> Back to Galleries
         </button>
-    </main>
 
-    <div id="modal" class="modal" hidden aria-modal="true" role="dialog">
-        <button class="modal-close" aria-label="Close image">
-            <i class="fas fa-times"></i>
-        </button>
-        <div class="modal-content">
-            <div class="modal-image-wrapper">
-                <img id="modal-image" src="" alt="Full-size image view">
-                <div class="modal-like-overlay">
-                    <button class="action-btn like-btn" id="like-btn" aria-label="Like this image">
-                        <i class="far fa-heart heart"></i>
-                        <span class="count">0</span>
-                    </button>
-                </div>
+        <!-- Gallery Header -->
+        <div id="gallery-header" class="gallery-header">
+            <h2 id="current-gallery-title"></h2>
+            <p id="current-gallery-subtitle"></p>
+        </div>
+
+        <!-- Infinite Canvas -->
+        <div id="infinite-canvas" class="infinite-canvas">
+            <div id="masonry-grid" class="masonry-grid">
+                <!-- Images will be dynamically inserted here -->
             </div>
         </div>
-        <button class="modal-nav modal-prev" id="modal-prev" aria-label="Previous image">
-            <i class="fas fa-chevron-left"></i>
-        </button>
-        <button class="modal-nav modal-next" id="modal-next" aria-label="Next image">
-            <i class="fas fa-chevron-right"></i>
+
+        <!-- Navigation Hint -->
+        <div class="navigation-hint">
+            <p>Drag to explore • Arrow keys to navigate • Scroll to move</p>
+        </div>
+    </div>
+
+    <!-- Modal for Full Image View -->
+    <div id="modal" class="modal" hidden>
+        <button class="modal-close" id="modal-close" aria-label="Close">×</button>
+        <div class="modal-navigation">
+            <button class="modal-nav-btn modal-prev" id="modal-prev" aria-label="Previous">❮</button>
+            <button class="modal-nav-btn modal-next" id="modal-next" aria-label="Next">❯</button>
+        </div>
+        <img id="modal-img" alt="Full size image" class="modal-img">
+        <button id="like-btn" class="like-btn" aria-label="Like this image">
+            <span class="heart">♡</span>
+            <span id="like-count">0</span>
         </button>
     </div>
 
-    <div id="terms-modal" class="modal terms-modal" hidden>
-        <button class="modal-close" aria-label="Close terms">
-            <i class="fas fa-times"></i>
-        </button>
-        <div class="modal-content terms-content">
-            <h2>Privacy Policy & Terms</h2>
-            <div class="terms-text">
-                <h3>1. Data We Collect</h3>
-                <p><strong>Essential:</strong> No personal data is collected without your consent. We use Firebase Firestore to store anonymous image like counts (not tied to individual users).</p>
+    <!-- Terms Modal -->
+    <div id="terms-modal" class="modal" hidden>
+        <button class="modal-close" aria-label="Close">×</button>
+        <div class="modal-content">
+            <h2>Terms & Conditions</h2>
+            <div class="terms-content">
+                <h3>1. Acceptance of Terms</h3>
+                <p>By accessing and using this website, you accept and agree to be bound by these Terms and Conditions.</p>
                 
-                <h3>2. Cookies & Consent</h3>
-                <p><strong>Your Choice:</strong> We only use analytics and functional cookies <strong>after you explicitly accept them</strong>. You can withdraw consent at any time using the cookie settings button.</p>
-                <p><strong>Essential Cookies:</strong> Required for the website to function (session management, security).</p>
-                <p><strong>Functional Cookies:</strong> Enable the "like" feature using localStorage. If rejected, likes are disabled.</p>
-                <p><strong>Analytics Cookies:</strong> Firebase Analytics (Google) - only loaded after consent. Used to understand visitor behavior.</p>
+                <h3>2. Intellectual Property</h3>
+                <p>All photographs and content on this site are the property of The Nonconformist and are protected by copyright law. Unauthorized use, reproduction, or distribution is prohibited.</p>
                 
-                <h3>3. Your GDPR Rights</h3>
+                <h3>3. Use License</h3>
+                <p>Permission is granted to temporarily view the materials on this website for personal, non-commercial viewing only. This is the grant of a license, not a transfer of title.</p>
+                
+                <h3>4. Disclaimer</h3>
+                <p>The materials on this website are provided on an 'as is' basis. The Nonconformist makes no warranties, expressed or implied, and hereby disclaims all other warranties.</p>
+                
+                <h3>5. Limitations</h3>
+                <p>In no event shall The Nonconformist or its suppliers be liable for any damages arising out of the use or inability to use the materials on this website.</p>
+                
+                <h3>6. Privacy</h3>
+                <p>Your use of this website is also governed by our Privacy Policy. We use cookies and Firebase for analytics and functionality. You can manage your preferences via the cookie settings.</p>
+                
+                <h3>7. Modifications</h3>
+                <p>The Nonconformist may revise these terms at any time without notice. By using this website, you agree to be bound by the current version of these Terms and Conditions.</p>
+                
+                <h3>8. Contact</h3>
+                <p>For questions about these Terms, please contact us via the email link in the header.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Privacy Policy Modal -->
+    <div id="privacy-modal" class="modal" hidden>
+        <button class="modal-close" aria-label="Close">×</button>
+        <div class="modal-content">
+            <h2>Privacy Policy</h2>
+            <div class="terms-content">
+                <p><strong>Effective Date:</strong> February 6, 2026</p>
+                
+                <h3>1. Introduction</h3>
+                <p>We respect your privacy. This policy explains how we collect, use, and protect your data in compliance with GDPR and other privacy regulations.</p>
+                
+                <h3>2. Data We Collect</h3>
+                <p><strong>Essential cookies:</strong> Required for the website to function (session management).</p>
+                <p><strong>Analytics cookies (Firebase):</strong> Only loaded after your explicit consent. Collects anonymous usage data (pages viewed, time spent). Data may be transferred to the US.</p>
+                <p><strong>Functional cookies (localStorage):</strong> Only loaded after your consent. Remembers which images you've liked.</p>
+                
+                <h3>3. Legal Basis</h3>
+                <p>We process data based on:</p>
+                <ul>
+                    <li><strong>Your consent</strong> (GDPR Art. 6(1)(a)) for analytics and functional cookies</li>
+                    <li><strong>Legitimate interest</strong> (GDPR Art. 6(1)(f)) for essential cookies</li>
+                </ul>
+                
+                <h3>4. Your Rights</h3>
                 <p>You have the right to:</p>
                 <ul>
-                    <li>Access your data (though we don't store personal identifiers)</li>
+                    <li>Access your data</li>
+                    <li>Rectify inaccurate data</li>
+                    <li>Request deletion of your data</li>
+                    <li>Object to data processing</li>
                     <li>Withdraw consent at any time</li>
-                    <li>Object to processing</li>
-                    <li>Request deletion (where technically feasible)</li>
                 </ul>
-                <p><strong>Important:</strong> Like data is stored as anonymous aggregates per image. We cannot identify or delete a specific user's likes without a device-specific identifier.</p>
-                
-                <h3>4. Data Retention</h3>
-                <p>Like counts: Stored indefinitely unless you request deletion.<br>
-                Analytics data: Retained for 14 months as per Google's default policy.</p>
                 
                 <h3>5. Contact</h3>
                 <p>For data requests or privacy concerns, contact us via the email link in the header.</p>
@@ -399,35 +413,8 @@
         <i class="fas fa-cookie-bite"></i>
     </button>
 
-    <footer class="footer">
-        <div class="footer-content">
-            <div class="footer-section">
-                <h3>The Nonconformist</h3>
-                <p>Art is a human right</p>
-            </div>
-            <div class="footer-section">
-                <h4>Connect</h4>
-                <div class="footer-social">
-                    <a href="https://www.instagram.com/then0nc0nformist/" target="_blank" rel="noopener noreferrer">
-                        <span>Instagram</span>
-                    </a>
-                    <a href="https://www.facebook.com/then0nc0nformist" target="_blank" rel="noopener noreferrer">
-                        <span>Facebook</span>
-                    </a>
-                </div>
-            </div>
-            <div class="footer-section">
-                <h4>Legal</h4>
-                <button id="terms-btn" class="terms-link">Terms & Conditions</button>
-                <button id="footer-cookie-btn" class="terms-link">Cookie Settings</button>
-            </div>
-        </div>
-        <div class="footer-bottom">
-            <p>&copy; 2026 The Nonconformist. All rights reserved.</p>
-        </div>
-    </footer>
-
     <!-- Load JavaScript -->
-    <script src="script.js" type="module"></script>
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>
