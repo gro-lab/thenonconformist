@@ -89,6 +89,8 @@ let startX = 0;
 let startY = 0;
 let scrollX = 0;
 let scrollY = 0;
+let maxScrollX = 0;
+let maxScrollY = 0;
 
 // GDPR: Functional cookies disabled by default until user explicitly accepts
 window.FUNCTIONAL_COOKIES_ENABLED = false;
@@ -114,6 +116,52 @@ const clearFunctionalCookieData = () => {
         }
     });
     console.log('🗑️ Cleared functional cookie data');
+};
+
+// ============================================
+// PREVENT PULL-TO-REFRESH
+// ============================================
+
+const preventPullToRefresh = () => {
+    // Prevent default touch behaviors that cause pull-to-refresh
+    document.addEventListener('touchmove', function(e) {
+        if (e.scale !== 1) {
+            e.preventDefault();
+        }
+    }, { passive: false });
+    
+    // Prevent overscroll behavior
+    document.body.style.overscrollBehavior = 'none';
+    
+    // Disable elastic scrolling on iOS
+    document.body.style.webkitOverflowScrolling = 'touch';
+};
+
+// ============================================
+// CALCULATE SCROLL BOUNDARIES
+// ============================================
+
+const calculateScrollBoundaries = () => {
+    const masonryGrid = document.getElementById('masonry-grid');
+    const infiniteCanvas = document.getElementById('infinite-canvas');
+    
+    if (!masonryGrid || !infiniteCanvas) return;
+    
+    // Get the grid dimensions
+    const gridRect = masonryGrid.getBoundingClientRect();
+    const canvasRect = infiniteCanvas.getBoundingClientRect();
+    
+    // Calculate max scroll values - allow scrolling beyond boundaries
+    maxScrollX = Math.max(0, gridRect.width - canvasRect.width + 200);
+    maxScrollY = Math.max(0, gridRect.height - canvasRect.height + 200);
+    
+    console.log(`📏 Scroll boundaries: X=${maxScrollX}, Y=${maxScrollY}`);
+    
+    // Apply boundaries to current scroll position
+    scrollX = Math.max(-maxScrollX, Math.min(maxScrollX, scrollX));
+    scrollY = Math.max(-maxScrollY, Math.min(maxScrollY, scrollY));
+    
+    updateCanvasTransform();
 };
 
 // ============================================
@@ -380,7 +428,15 @@ const openGallery = (galleryId) => {
         loadGalleryContent(galleryId);
         loadingIndicator.classList.remove('active');
         galleryContent.classList.add('active');
+        
+        // Calculate scroll boundaries after content is loaded
+        setTimeout(() => {
+            calculateScrollBoundaries();
+        }, 100);
     }, 800);
+    
+    // Prevent pull-to-refresh when gallery is active
+    document.body.classList.add('gallery-active');
 };
 
 const loadGalleryContent = (galleryId) => {
@@ -446,6 +502,9 @@ const closeGallery = () => {
     
     galleryContent.classList.remove('active');
     
+    // Re-enable pull-to-refresh
+    document.body.classList.remove('gallery-active');
+    
     setTimeout(() => {
         gallerySelector.classList.remove('hidden');
         currentGallery = null;
@@ -486,6 +545,7 @@ const setupCanvasNavigation = () => {
             isDragging = true;
             startX = e.touches[0].clientX - scrollX;
             startY = e.touches[0].clientY - scrollY;
+            e.preventDefault(); // Prevent pull-to-refresh
         }
     }
     
@@ -495,10 +555,9 @@ const setupCanvasNavigation = () => {
         scrollX = e.clientX - startX;
         scrollY = e.clientY - startY;
         
-        // Apply boundary limits
-        const maxScroll = 1000;
-        scrollX = Math.max(-maxScroll, Math.min(maxScroll, scrollX));
-        scrollY = Math.max(-maxScroll, Math.min(maxScroll, scrollY));
+        // Apply dynamic boundary limits
+        scrollX = Math.max(-maxScrollX, Math.min(maxScrollX, scrollX));
+        scrollY = Math.max(-maxScrollY, Math.min(maxScrollY, scrollY));
         
         updateCanvasTransform();
     }
@@ -509,11 +568,12 @@ const setupCanvasNavigation = () => {
             scrollX = e.touches[0].clientX - startX;
             scrollY = e.touches[0].clientY - startY;
             
-            const maxScroll = 1000;
-            scrollX = Math.max(-maxScroll, Math.min(maxScroll, scrollX));
-            scrollY = Math.max(-maxScroll, Math.min(maxScroll, scrollY));
+            // Apply dynamic boundary limits
+            scrollX = Math.max(-maxScrollX, Math.min(maxScrollX, scrollX));
+            scrollY = Math.max(-maxScrollY, Math.min(maxScrollY, scrollY));
             
             updateCanvasTransform();
+            e.preventDefault(); // Prevent pull-to-refresh
         }
     }
     
@@ -551,9 +611,9 @@ const setupCanvasNavigation = () => {
                 return;
         }
         
-        const maxScroll = 1000;
-        scrollX = Math.max(-maxScroll, Math.min(maxScroll, scrollX));
-        scrollY = Math.max(-maxScroll, Math.min(maxScroll, scrollY));
+        // Apply dynamic boundary limits
+        scrollX = Math.max(-maxScrollX, Math.min(maxScrollX, scrollX));
+        scrollY = Math.max(-maxScrollY, Math.min(maxScrollY, scrollY));
         
         updateCanvasTransform();
     });
@@ -567,12 +627,19 @@ const setupCanvasNavigation = () => {
         scrollX -= e.deltaX * 0.5;
         scrollY -= e.deltaY * 0.5;
         
-        const maxScroll = 1000;
-        scrollX = Math.max(-maxScroll, Math.min(maxScroll, scrollX));
-        scrollY = Math.max(-maxScroll, Math.min(maxScroll, scrollY));
+        // Apply dynamic boundary limits
+        scrollX = Math.max(-maxScrollX, Math.min(maxScrollX, scrollX));
+        scrollY = Math.max(-maxScrollY, Math.min(maxScrollY, scrollY));
         
         updateCanvasTransform();
     }, { passive: false });
+    
+    // Handle window resize
+    window.addEventListener('resize', debounce(() => {
+        if (galleryContent.classList.contains('active')) {
+            calculateScrollBoundaries();
+        }
+    }, 250));
 };
 
 // ============================================
@@ -1030,6 +1097,9 @@ const init = async () => {
         
         // Initialize cookie banner first
         initCookieBanner();
+        
+        // Prevent pull-to-refresh
+        preventPullToRefresh();
         
         // Load manifest
         await loadManifest();
