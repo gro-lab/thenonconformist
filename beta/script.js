@@ -1021,7 +1021,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('✅ Accepting all cookies from modal:', prefs);
             localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
             cookieSettingsModal.setAttribute('hidden', '');
-            document.body.style.overflow = 'auto');
+            document.body.style.overflow = 'auto';
             await applyCookiePreferences(prefs);
             location.reload();
         });
@@ -1052,7 +1052,7 @@ document.addEventListener('DOMContentLoaded', () => {
             clearFunctionalCookieData();
             
             cookieSettingsModal.setAttribute('hidden', '');
-            document.body.style.overflow = 'auto');
+            document.body.style.overflow = 'auto';
             location.reload();
         });
     }
