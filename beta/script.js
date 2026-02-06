@@ -47,25 +47,26 @@ const galleries = {
     'low': { 
         title: 'Language of Windows', 
         dir: 'LoW',
-        subtitle: 'Exploring the silent stories behind glass',
+        subtitle: 'Sometimes we look through them, sometimes at them. They let the light in, and keep the cold out. Sometimes we express ourselves with them, sometimes we reflect in them. As does the world around us. They talk about history, or the future yet to come. They tell their stories - stories of humanity, past, present and future. The Language of Windows has been talking for decade and are still talking now. They frame our perception of the world, creating boundaries between interior and exterior spaces.',
         color: '#FF6B35'
     },
     'sol': { 
         title: 'Snapshots of Life', 
         dir: 'SoL',
-        subtitle: 'Capturing the raw essence of everyday moments',
+        subtitle: 'What are you thinking about? Are you happy or sad? Where are you going? Are you in a hurry or are you just wandering? What are you talking about? What is making you laugh? What are you telling me or not telling me? Are you comming or going? Who are your friends? Who are you? Are you dreaming, remembering or forgetting? Do you feel you belong or are you rejected? Are you in love or feel alone in this world? These are the snapshots of life. Life unfolds in fleeting moments that often pass unnoticed.',
         color: '#9D4EDD'
     },
     'r': { 
         title: 'Reflections', 
         dir: 'R',
-        subtitle: 'Where reality meets its mirror image',
+        subtitle: 'What is real and what is not? Reflections are the mirror image of reality. Combining the two, making a collage of both, creates a new interesting reality. Seeing the world from a brand new angle. Creating abstract art based on reality. Reflections create parallel realities, distorting and reimagining the world around us.',
         color: '#06FFA5'
     },
     'sa': { 
         title: 'Street Art', 
         dir: 'SA',
-        subtitle: 'Urban expressions and vibrant creativity',
+        subtitle: 'From "Punk`s Not Dead" to a muriel the size of a football field, Street Art is the most accessible form of art. It`s there to inspire the senses, to give color to the world and it`s just there when you need it. Because Art is a Human Right. Urban walls serve as canvases for voices that demand to be heard.
+',
         color: '#FFD23F'
     }
 };
