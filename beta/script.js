@@ -162,16 +162,18 @@ const getDocIdFromUrl = (url) => {
 const fetchAllLikes = async () => {
     try {
         if (!window.FUNCTIONAL_COOKIES_ENABLED || !db) {
+            console.log('⚠️ Functional cookies not enabled or Firebase not initialized, skipping likes fetch');
             return {};
         }
         
+        console.log('📊 Fetching all likes from Firestore...');
         const querySnapshot = await getDocs(collection(db, 'image_likes'));
         const likes = {};
         querySnapshot.forEach((doc) => {
             likes[doc.id] = doc.data().likes || 0;
         });
         likesCache = likes;
-        console.log(`❤️ Loaded ${Object.keys(likes).length} likes`);
+        console.log(`❤️ Loaded ${Object.keys(likes).length} likes from Firestore`);
         return likes;
     } catch (error) {
         console.error('Error fetching likes:', error);
@@ -182,6 +184,7 @@ const fetchAllLikes = async () => {
 const updateLike = async (url, increment_value) => {
     try {
         if (!window.FUNCTIONAL_COOKIES_ENABLED || !db) {
+            console.log('⚠️ Functional cookies not enabled, cannot update likes');
             return null;
         }
         
@@ -228,7 +231,10 @@ const loadGalleryData = async (galleryKey) => {
     const images = imageList.map((imageData, originalIndex) => {
         const url = createImageUrl(dir, imageData);
         const docId = getDocIdFromUrl(url);
-        const likes = likesCache[docId] || 0;
+        // Default to 0 if likesCache doesn't have it yet
+        const likes = likesCache[docId] !== undefined ? likesCache[docId] : 0;
+        
+        console.log(`📷 ${galleryKey} image ${imageData.index}: ${likes} likes`);
         
         return {
             url,
@@ -299,6 +305,9 @@ const calculateScrollLimits = () => {
 
 // GALLERY SELECTOR
 const setupGallerySelector = async () => {
+    console.log('🔄 Setting up gallery selector...');
+    
+    // Load all gallery data first
     await Promise.all(Object.keys(galleries).map(key => loadGalleryData(key)));
     
     Object.keys(galleries).forEach(key => {
@@ -324,6 +333,8 @@ const setupGallerySelector = async () => {
             openGallery(galleryId);
         });
     });
+    
+    console.log('✅ Gallery selector setup complete');
 };
 
 const openGallery = (galleryId) => {
@@ -353,11 +364,21 @@ const loadGalleryContent = (galleryId) => {
     const gallery = galleries[galleryId];
     const images = galleryImageData[galleryId];
     
+    if (!images || images.length === 0) {
+        console.error(`No images found for gallery: ${galleryId}`);
+        return;
+    }
+    
     masonryGrid.innerHTML = '';
     
     // Sort by likes DESCENDING (most likes first)
     const sortedImages = stableSortByLikes(images);
     currentGalleryImages = sortedImages;
+    
+    console.log(`🎨 Rendering ${sortedImages.length} images for ${galleryId}, sorted by likes:`);
+    sortedImages.forEach((image, idx) => {
+        console.log(`  ${idx + 1}: ${image.likes} likes - ${image.url}`);
+    });
     
     sortedImages.forEach((image, index) => {
         const masonryItem = document.createElement('div');
@@ -707,7 +728,7 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// COOKIES
+// COOKIES - GDPR COMPLIANT
 const initCookieBanner = () => {
     const savedPrefs = localStorage.getItem('cookiePreferences');
     
@@ -727,13 +748,17 @@ const showCookieBanner = () => {
 };
 
 const applyCookiePreferences = async (prefs) => {
+    console.log('🍪 Applying cookie preferences:', prefs);
     if (prefs.functional) {
         window.FUNCTIONAL_COOKIES_ENABLED = true;
         await initFirebase();
         await fetchAllLikes();
+    } else {
+        window.FUNCTIONAL_COOKIES_ENABLED = false;
     }
 };
 
+// Initialize cookie event listeners
 document.addEventListener('DOMContentLoaded', () => {
     const cookieBanner = document.getElementById('cookie-banner');
     const cookieSettingsModal = document.getElementById('cookie-settings-modal');
@@ -846,19 +871,40 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// INIT
+// INIT - FIXED ORDER OF OPERATIONS
 const init = async () => {
     try {
+        console.log('🚀 Initializing The Nonconformist...');
+        
+        // 1. Initialize cookie preferences FIRST
         initCookieBanner();
+        
+        // 2. Load image manifest
         await loadManifest();
+        
+        // 3. If functional cookies are enabled, initialize Firebase and fetch likes BEFORE gallery setup
+        if (window.FUNCTIONAL_COOKIES_ENABLED) {
+            console.log('🔐 Functional cookies enabled, initializing Firebase...');
+            await initFirebase();
+            await fetchAllLikes();
+        } else {
+            console.log('🔐 Functional cookies not enabled, using default likes (0)');
+        }
+        
+        // 4. Setup gallery selector with proper likes data
         await setupGallerySelector();
+        
+        // 5. Setup navigation
         setupCanvasNavigation();
         setupBackButton();
+        
+        console.log('✅ Initialization complete');
     } catch (error) {
-        console.error('Init error:', error);
+        console.error('❌ Init error:', error);
     }
 };
 
+// Start initialization
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
 } else {
