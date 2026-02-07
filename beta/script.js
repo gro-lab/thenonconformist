@@ -458,9 +458,9 @@ const closeGallery = () => {
 
 // CANVAS NAVIGATION
 const updateCanvasTransform = () => {
-    const container = document.getElementById('canvas-transform-container');
-    if (container) {
-        container.style.transform = `translate(${scrollX}px, ${scrollY}px)`;
+    const canvas = document.getElementById('infinite-canvas');
+    if (canvas) {
+        canvas.style.transform = `translate(${scrollX}px, ${scrollY}px)`;
     }
 };
 
@@ -942,7 +942,7 @@ const init = async () => {
 };
 
 // Start initialization
-if (document.readyState === 'loading') {
+if (document.readyState === 'loading') { 
     document.addEventListener('DOMContentLoaded', init);
 } else {
     init();
