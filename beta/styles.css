@@ -47,7 +47,6 @@ body {
     background: linear-gradient(120deg, var(--accent-orange), var(--accent-purple));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    margin-bottom: 20px;
 }
 
 .site-subtitle {
