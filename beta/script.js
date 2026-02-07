@@ -458,9 +458,9 @@ const closeGallery = () => {
 
 // CANVAS NAVIGATION
 const updateCanvasTransform = () => {
-    const canvas = document.getElementById('infinite-canvas');
-    if (canvas) {
-        canvas.style.transform = `translate(${scrollX}px, ${scrollY}px)`;
+    const container = document.getElementById('canvas-transform-container');
+    if (container) {
+        container.style.transform = `translate(${scrollX}px, ${scrollY}px)`;
     }
 };
 
