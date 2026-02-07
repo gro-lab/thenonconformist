@@ -289,7 +289,7 @@ body {
 .gallery-header h2 {
     font-size: 2.5rem;
     font-weight: 800;
-    background: linear-gradient(90deg, var(--accent-purple), var(--accent-orange));
+    background: linear-gradient(90deg,  var(--accent-orange), var(--accent-purple));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     margin: 0;
