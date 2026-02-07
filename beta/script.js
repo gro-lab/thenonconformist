@@ -942,7 +942,7 @@ const init = async () => {
 };
 
 // Start initialization
-if (document.readyState === 'loading') {
+if (document.readyState === 'loading') { 
     document.addEventListener('DOMContentLoaded', init);
 } else {
     init();
