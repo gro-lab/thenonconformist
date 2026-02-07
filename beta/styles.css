@@ -65,7 +65,7 @@ body {
 .gallery-selector {
     max-width: 1400px;
     margin: 0 auto;
-    padding: 40px 30px 80px;
+    padding: 40px 30px 20px;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 30px;
@@ -119,10 +119,32 @@ body {
     font-size: 1.8em;
     font-weight: 800;
     margin-bottom: 15px;
+    word-wrap: break-word;
+}
+
+/* Inverted gradients per gallery based on background */
+.gallery-title-low {
+    background: linear-gradient(90deg, #9d4edd, #ff6b35);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.gallery-title-sol {
     background: linear-gradient(90deg, #ff6b35, #9d4edd);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    word-wrap: break-word;
+}
+
+.gallery-title-r {
+    background: linear-gradient(90deg, #9d4edd, #ff6b35);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.gallery-title-sa {
+    background: linear-gradient(90deg, #ff6b35, #9d4edd);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 .gallery-description-text {
@@ -139,6 +161,26 @@ body {
     opacity: 0.8;
     letter-spacing: 2px;
     text-transform: uppercase;
+}
+
+/* Terms Footer */
+.terms-footer {
+    text-align: center;
+    padding: 40px 20px 60px;
+}
+
+.terms-link {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+    text-decoration: underline;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.terms-link:hover {
+    color: var(--accent-orange);
 }
 
 /* Loading */
@@ -269,7 +311,7 @@ body {
     cursor: grabbing;
 }
 
-/* Masonry - NO GAPS */
+/* Masonry - NO GAPS, Fixed Sizing */
 .masonry-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -295,14 +337,18 @@ body {
     to { opacity: 1; }
 }
 
+/* Horizontal pictures span 3 columns to have same height as vertical */
 .masonry-item.horizontal {
+    grid-column: span 3;
     aspect-ratio: 16/9;
 }
 
+/* Vertical pictures are the reference size */
 .masonry-item.vertical {
     aspect-ratio: 9/16;
 }
 
+/* Square pictures have same width as vertical */
 .masonry-item.square {
     aspect-ratio: 1/1;
 }
@@ -444,6 +490,49 @@ body {
 
 .like-btn.liked .heart {
     color: #ff4757;
+}
+
+/* Terms Modal */
+.terms-modal {
+    z-index: 400;
+}
+
+.terms-content {
+    max-width: 800px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.terms-text {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.terms-text h3 {
+    color: #ffffff;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    font-size: 1.25rem;
+}
+
+.terms-text h4 {
+    color: rgba(255, 255, 255, 0.9);
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+}
+
+.terms-text p {
+    margin-bottom: 1rem;
+    line-height: 1.7;
+}
+
+.terms-text ul {
+    margin: 0.5rem 0 1rem 1.5rem;
+    line-height: 1.7;
+}
+
+.terms-text li {
+    margin-bottom: 0.5rem;
 }
 
 /* Cookie Banner */
@@ -664,7 +753,7 @@ body {
     
     .gallery-selector {
         grid-template-columns: 1fr;
-        padding: 20px 20px 60px;
+        padding: 20px 20px 20px;
         gap: 20px;
     }
     
@@ -678,6 +767,10 @@ body {
     
     .gallery-description-text {
         font-size: 0.85em;
+    }
+    
+    .terms-footer {
+        padding: 30px 20px 50px;
     }
     
     .back-button {
@@ -705,6 +798,10 @@ body {
         grid-template-columns: repeat(2, 1fr);
         gap: 0;
         padding: 0;
+    }
+    
+    .masonry-item.horizontal {
+        grid-column: span 2;
     }
     
     .infinite-canvas {

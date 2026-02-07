@@ -133,6 +133,7 @@
     }
     </script>
     
+    
     <!-- ============================================ -->
     <!-- STYLESHEET -->
     <!-- ============================================ -->
@@ -147,12 +148,11 @@
             <br/><br/>If you visit my <a href="https://www.instagram.com/then0nc0nformist/" target="_blank" rel="noopener noreferrer">Instagram</a> or <a href="https://www.facebook.com/then0nc0nformist/" target="_blank" rel="noopener noreferrer">Facebook</a> you can follow my daily chronicle of life in pictures.<br/><a href="mailto:then-onconformist@outlook.com">Email</a> me for more!</a>
         </p>
     </div>
-
-    <!-- Gallery Selector View -->
+ <!-- Gallery Selector View -->
     <div id="gallery-selector" class="gallery-selector">
         <div class="gallery-cover" data-gallery="low">
             <div class="gallery-cover-content">
-                <div class="gallery-title">Language of Windows</div>
+                <div class="gallery-title gallery-title-low">Language of Windows</div>
                 <div class="gallery-description-text">Sometimes we look through them, sometimes at them. They let the light in, and keep the cold out. Sometimes we express ourselves with them, sometimes we reflect in them. As does the world around us. They talk about history, or the future yet to come. They tell their stories - stories of humanity, past, present and future. The Language of Windows has been talking for decades and are still talking now. They frame our perception of the world, creating boundaries between interior and exterior spaces.</div>
                 <div class="gallery-count" id="low-count">Loading...</div>
             </div>
@@ -160,7 +160,7 @@
         
         <div class="gallery-cover" data-gallery="sol">
             <div class="gallery-cover-content">
-                <div class="gallery-title">Snapshots of Life</div>
+                <div class="gallery-title gallery-title-sol">Snapshots of Life</div>
                 <div class="gallery-description-text">What are you thinking about? Are you happy or sad? Where are you going? Are you in a hurry or are you just wandering? What are you talking about? What is making you laugh? What are you telling me or not telling me? Are you coming or going? Who are your friends? Who are you? Are you dreaming, remembering or forgetting? Do you feel you belong or are you rejected? Are you in love or feel alone in this world? These are the snapshots of life. Life unfolds in fleeting moments that often pass unnoticed.</div>
                 <div class="gallery-count" id="sol-count">Loading...</div>
             </div>
@@ -168,7 +168,7 @@
         
         <div class="gallery-cover" data-gallery="r">
             <div class="gallery-cover-content">
-                <div class="gallery-title">Reflections</div>
+                <div class="gallery-title gallery-title-r">Reflections</div>
                 <div class="gallery-description-text">What is real and what is not? Reflections are the mirror image of reality. Combining the two, making a collage of both, creates a new interesting reality. Seeing the world from a brand new angle. Creating abstract art based on reality. Reflections create parallel realities, distorting and reimagining the world around us.</div>
                 <div class="gallery-count" id="r-count">Loading...</div>
             </div>
@@ -176,11 +176,16 @@
         
         <div class="gallery-cover" data-gallery="sa">
             <div class="gallery-cover-content">
-                <div class="gallery-title">Street Art</div>
+                <div class="gallery-title gallery-title-sa">Street Art</div>
                 <div class="gallery-description-text">From 'Punk's not dead' to a mural the size of a football field, Street Art is the most accessible form of art. It's there to inspire the senses, to give color to the world and it's just there when you need it. Because Art is a Human Right. Urban walls serve as canvases for voices that demand to be heard.</div>
                 <div class="gallery-count" id="sa-count">Loading...</div>
             </div>
         </div>
+    </div>
+
+    <!-- Terms Link -->
+    <div class="terms-footer">
+        <button id="terms-link" class="terms-link">Terms & Conditions / Privacy Policy</button>
     </div>
 
     <!-- Loading Indicator -->
@@ -217,6 +222,121 @@
             <span class="heart">♡</span>
             <span id="like-count">0</span>
         </button>
+    </div>
+
+    <!-- Terms Modal -->
+    <div id="terms-modal" class="modal terms-modal" hidden>
+        <button class="modal-close" id="terms-modal-close">×</button>
+        <div class="modal-content terms-content">
+            <h2>Terms & Conditions / Privacy Policy</h2>
+            <div class="terms-text">
+                <h3>1. Data Controller</h3>
+                <p>This website is operated by a private individual, the author and curator of the artistic project The Nonconformist.</p>
+                <ul>
+                    <li><strong>Data Controller:</strong> Peter Grosspersky</li>
+                    <li><strong>Country:</strong> Romania</li>
+                    <li><strong>Contact email:</strong> then-onconformist@outlook.com</li>
+                </ul>
+                <p>Under Regulation (EU) 2016/679 (GDPR), the above person acts as the data controller responsible for the processing of personal data through this website.</p>
+
+                <h3>2. About The Nonconformist</h3>
+                <p>The Nonconformist is a non-commercial artistic project and online photography portfolio. The website does not sell products, does not require user accounts, and does not provide paid services.</p>
+
+                <h3>3. What personal data is collected</h3>
+                <p>This website processes a minimal amount of data, strictly necessary for its functionality.</p>
+                
+                <h4>3.1. Local Storage (browser storage)</h4>
+                <p>With your explicit consent, the website may store the following in your browser:</p>
+                <ul>
+                    <li>your cookie / storage preferences</li>
+                    <li>local information related to the "like" feature (to prevent repeated likes from the same browser)</li>
+                </ul>
+                <p>These data:</p>
+                <ul>
+                    <li>remain on your device</li>
+                    <li>are not used to identify you</li>
+                    <li>are not shared with third parties</li>
+                </ul>
+
+                <h4>3.2. Firebase (Google) processing</h4>
+                <p>If you enable optional functionality, the website uses Firebase Firestore, a service provided by Google, to:</p>
+                <ul>
+                    <li>store the total number of likes for each image</li>
+                    <li>without user accounts</li>
+                    <li>without profiling</li>
+                    <li>without linking likes to individual users</li>
+                </ul>
+                <p>Stored data includes only:</p>
+                <ul>
+                    <li>image URL</li>
+                    <li>like count</li>
+                    <li>technical timestamps</li>
+                </ul>
+                <p>Firebase may process technical data such as IP address or connection metadata, in accordance with Google's own privacy policies.</p>
+
+                <h3>4. What we do NOT collect</h3>
+                <p>❌ This website does not collect:</p>
+                <ul>
+                    <li>names</li>
+                    <li>email addresses</li>
+                    <li>user accounts</li>
+                    <li>authentication data</li>
+                    <li>behavioral tracking</li>
+                    <li>analytics</li>
+                    <li>advertising data</li>
+                    <li>newsletters</li>
+                </ul>
+
+                <h3>5. Legal basis for processing</h3>
+                <p>Personal data is processed only based on your consent, in accordance with:</p>
+                <ul>
+                    <li>Article 6(1)(a) GDPR – consent</li>
+                </ul>
+                <p>You may withdraw your consent at any time via the cookie settings.</p>
+
+                <h3>6. Cookies and similar technologies</h3>
+                <p>This website does not use advertising or tracking cookies.</p>
+                <p>Only:</p>
+                <ul>
+                    <li>essential technologies</li>
+                    <li>local storage for preferences and the "like" feature</li>
+                </ul>
+                <p>Optional functionality is disabled by default and activated only after consent.</p>
+
+                <h3>7. International data transfers</h3>
+                <p>Firebase is a service provided by Google LLC (United States). Google relies on Standard Contractual Clauses (SCCs) approved by the European Commission for international data transfers.</p>
+
+                <h3>8. Data retention</h3>
+                <ul>
+                    <li>Local preferences remain stored until you clear them from your browser</li>
+                    <li>Like-related data is stored indefinitely or until the project is discontinued</li>
+                </ul>
+
+                <h3>9. Your rights</h3>
+                <p>Under the GDPR, you have the right to:</p>
+                <ul>
+                    <li>access your data</li>
+                    <li>request deletion</li>
+                    <li>withdraw consent</li>
+                    <li>object to processing</li>
+                </ul>
+                <p>To exercise these rights, contact: 📧 then-onconformist@outlook.com</p>
+
+                <h3>10. Changes to this policy</h3>
+                <p>This Privacy Policy may be updated from time to time. The current version will always be available on this website.</p>
+
+                <h3>11. Contact</h3>
+                <p>For any questions regarding privacy or data protection: 📧 then-onconformist@outlook.com</p>
+
+                <h3>✔️ GDPR approach</h3>
+                <p>This website follows the principles of:</p>
+                <ul>
+                    <li>data minimization</li>
+                    <li>transparency</li>
+                    <li>user control</li>
+                </ul>
+            </div>
+        </div>
     </div>
 
     <!-- Cookie Banner -->

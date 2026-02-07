@@ -871,6 +871,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// TERMS MODAL
+const termsModal = document.getElementById('terms-modal');
+const termsLink = document.getElementById('terms-link');
+const termsModalClose = document.getElementById('terms-modal-close');
+
+if (termsLink && termsModal) {
+    termsLink.addEventListener('click', () => {
+        termsModal.removeAttribute('hidden');
+        document.body.style.overflow = 'hidden';
+    });
+}
+
+if (termsModalClose && termsModal) {
+    termsModalClose.addEventListener('click', () => {
+        termsModal.setAttribute('hidden', '');
+        document.body.style.overflow = 'auto';
+    });
+}
+
+if (termsModal) {
+    termsModal.addEventListener('click', (e) => {
+        if (e.target === termsModal) {
+            termsModal.setAttribute('hidden', '');
+            document.body.style.overflow = 'auto';
+        }
+    });
+}
+
+
 // INIT - FIXED ORDER OF OPERATIONS
 const init = async () => {
     try {
