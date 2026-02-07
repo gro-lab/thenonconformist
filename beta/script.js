@@ -345,9 +345,13 @@ const openGallery = (galleryId) => {
     const galleryContent = document.getElementById('gallery-content');
     const currentGalleryTitle = document.getElementById('current-gallery-title');
     const currentGallerySubtitle = document.getElementById('current-gallery-subtitle');
+    const siteIntro = document.querySelector('.site-intro');
+    const termsFooter = document.querySelector('.terms-footer');
     
     loadingIndicator.classList.add('active');
     gallerySelector.classList.add('hidden');
+    if (siteIntro) siteIntro.classList.add('hidden');
+    if (termsFooter) termsFooter.classList.add('hidden');
     
     currentGalleryTitle.textContent = galleries[galleryId].title;
     currentGallerySubtitle.textContent = galleries[galleryId].subtitle;
@@ -439,11 +443,15 @@ const loadGalleryContent = (galleryId) => {
 const closeGallery = () => {
     const galleryContent = document.getElementById('gallery-content');
     const gallerySelector = document.getElementById('gallery-selector');
+    const siteIntro = document.querySelector('.site-intro');
+    const termsFooter = document.querySelector('.terms-footer');
     
     galleryContent.classList.remove('active');
     
     setTimeout(() => {
         gallerySelector.classList.remove('hidden');
+        if (siteIntro) siteIntro.classList.remove('hidden');
+        if (termsFooter) termsFooter.classList.remove('hidden');
         currentGallery = null;
     }, 800);
 };
