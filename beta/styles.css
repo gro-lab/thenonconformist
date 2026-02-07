@@ -133,7 +133,7 @@ body {
 
 /* Inverted gradients per gallery based on background */
 .gallery-title-low {
-    background: linear-gradient(90deg, #9d4edd, #ff6b35);
+    background: linear-gradient(90deg, #ff6b35, #9d4edd);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
@@ -145,7 +145,7 @@ body {
 }
 
 .gallery-title-r {
-    background: linear-gradient(90deg, #9d4edd, #ff6b35);
+    background: linear-gradient(90deg, #ff6b35, #9d4edd);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
