@@ -66,9 +66,6 @@
     <!-- ============================================ -->
     <!-- EXTERNAL CONNECTIONS - GDPR COMPLIANT -->
     <!-- ============================================ -->
-    <!-- ✅ GDPR FIX: Third-party connections (Firebase/Google) are loaded -->
-    <!-- dynamically ONLY AFTER user consent in script.js -->
-    <!-- Images hosted on GitHub - functional requirement, minimal privacy impact -->
     <link rel="dns-prefetch" href="https://raw.githubusercontent.com">
     
     <!-- ============================================ -->
@@ -199,6 +196,12 @@
         <button id="back-button" class="back-button">
             <span>←</span> Back to Galleries
         </button>
+        
+        <!-- Thumbnail View Toggle Button -->
+        <button id="thumbnail-view-btn" class="thumbnail-view-btn">
+            <span class="thumbnail-icon">⊞</span> Thumbnail View
+        </button>
+        
         <div id="infinite-canvas" class="infinite-canvas">
             <div id="gallery-header" class="gallery-header">
                 <h2 id="current-gallery-title"></h2>
@@ -213,12 +216,27 @@
         </div>
     </div>
 
+    <!-- Thumbnail Grid Overlay -->
+    <div id="thumbnail-overlay" class="thumbnail-overlay" hidden>
+        <div class="thumbnail-overlay-header">
+            <h3 id="thumbnail-overlay-title">Gallery Overview</h3>
+            <button id="thumbnail-close-btn" class="thumbnail-close-btn">✕</button>
+        </div>
+        <div class="thumbnail-grid-container">
+            <div id="thumbnail-grid" class="thumbnail-grid"></div>
+            <div id="viewport-indicator" class="viewport-indicator"></div>
+        </div>
+        <div class="thumbnail-info">
+            <span id="thumbnail-position">1 / 100</span>
+        </div>
+    </div>
+
     <!-- Modal -->
     <div id="modal" class="modal" hidden>
         <button class="modal-close" id="modal-close">×</button>
         <div class="modal-navigation">
-            <button class="modal-nav-btn modal-prev" id="modal-prev">❮</button>
-            <button class="modal-nav-btn modal-next" id="modal-next">❯</button>
+            <button class="modal-nav-btn modal-prev" id="modal-prev">◄</button>
+            <button class="modal-nav-btn modal-next" id="modal-next">►</button>
         </div>
         <img id="modal-img" alt="Full size image" class="modal-img">
         <button id="like-btn" class="like-btn">
