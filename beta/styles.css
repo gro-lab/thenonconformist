@@ -616,6 +616,7 @@ body {
     border-radius: 6px;
     transition: all 0.3s ease;
     box-shadow: 0 0 20px rgba(242, 140, 40, 0.4);
+    height: 120px !important;
 }
 
 .thumbnail-info {
@@ -1065,6 +1066,10 @@ body {
         width: 60px;
         height: 60px;
     }
+    
+    .viewport-indicator {
+        height: 100px !important;
+    }
 }
 
 @media (max-width: 480px) {
@@ -1083,6 +1088,10 @@ body {
     .thumbnail-grid-item {
         width: 50px;
         height: 50px;
+    }
+    
+    .viewport-indicator {
+        height: 80px !important;
     }
 }
 
