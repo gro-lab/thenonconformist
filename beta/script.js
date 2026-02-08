@@ -805,20 +805,37 @@ const updateViewportIndicator = () => {
     
     if (!indicator || !thumbnailContainer || !thumbnailGrid) return;
     
-    // Calculate visible area relative to total grid
-    const containerRect = thumbnailContainer.getBoundingClientRect();
-    const gridRect = thumbnailGrid.getBoundingClientRect();
+    // Get the first thumbnail to calculate column width
+    const firstThumbnail = thumbnailGrid.querySelector('.thumbnail-grid-item');
+    if (!firstThumbnail) return;
     
+    const thumbnailRect = firstThumbnail.getBoundingClientRect();
+    const thumbnailWidth = thumbnailRect.width;
+    
+    // Get grid styles to find gap
+    const gridStyles = window.getComputedStyle(thumbnailGrid);
+    const gap = parseInt(gridStyles.gap) || 8;
+    
+    // Calculate how many columns fit in the visible container width
+    const containerRect = thumbnailContainer.getBoundingClientRect();
+    const containerWidth = containerRect.width - 60; // Account for padding
+    const columnsVisible = Math.floor((containerWidth + gap) / (thumbnailWidth + gap));
+    
+    // Calculate total columns in grid
+    const totalThumbnails = thumbnailGrid.querySelectorAll('.thumbnail-grid-item').length;
+    const gridRect = thumbnailGrid.getBoundingClientRect();
+    const totalColumns = Math.round(gridRect.width / (thumbnailWidth + gap));
+    
+    // Calculate indicator width based on visible columns
+    const indicatorWidth = (columnsVisible / totalColumns) * gridRect.width;
+    
+    // Calculate horizontal position
     const scrollLeft = thumbnailContainer.scrollLeft;
     const scrollWidth = thumbnailContainer.scrollWidth;
-    const clientWidth = thumbnailContainer.clientWidth;
-    
-    // Calculate indicator dimensions and position
-    const indicatorWidth = (clientWidth / scrollWidth) * gridRect.width;
     const indicatorLeft = (scrollLeft / scrollWidth) * gridRect.width;
     
+    // Set indicator dimensions and position
     indicator.style.width = `${indicatorWidth}px`;
-    indicator.style.height = `${containerRect.height - 60}px`;
     indicator.style.left = `${indicatorLeft + 30}px`;
     indicator.style.top = '30px';
 };
@@ -869,6 +886,13 @@ const setupThumbnailView = () => {
             }
         });
     }
+    
+    // Update viewport indicator on window resize
+    window.addEventListener('resize', () => {
+        if (thumbnailViewActive) {
+            setTimeout(updateViewportIndicator, 100);
+        }
+    });
 };
 
 // MODAL
