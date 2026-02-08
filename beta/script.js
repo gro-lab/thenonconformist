@@ -2,7 +2,7 @@
 // ✅ Firebase SDK loaded dynamically ONLY after user consent
 
 // ============================================
-// FIREBASE - LOADED DYNAMICALLY AFTER CONSENT
+// FIREBASE - LOADED DYNAMICALLY AFTER CONSENT  
 // ============================================
 let firebaseModules = null;
 let app = null;
@@ -11,14 +11,12 @@ let db = null;
 // Dynamic Firebase loader - only called after consent
 const loadFirebaseSDK = async () => {
     if (firebaseModules) {
-        console.log('✅ Firebase SDK already loaded');
         return firebaseModules;
     }
     
     console.log('📦 Loading Firebase SDK dynamically...');
     
     try {
-        // Load Firebase modules only when needed
         const [appModule, firestoreModule] = await Promise.all([
             import('https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js'),
             import('https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js')
@@ -45,14 +43,9 @@ const loadFirebaseSDK = async () => {
     }
 };
 
-// Firebase initialization - only after SDK is loaded
 const initFirebase = async () => {
-    if (app) {
-        console.log('✅ Firebase already initialized');
-        return;
-    }
+    if (app) return;
     
-    // Ensure SDK is loaded first
     const firebase = await loadFirebaseSDK();
     
     // FIREBASE CONFIG (measurementId removed - no Google Analytics)
@@ -132,9 +125,7 @@ window.FUNCTIONAL_COOKIES_ENABLED = false;
 // STABLE SORT BY LIKES - DESCENDING ORDER
 const stableSortByLikes = (items) => {
     return [...items].sort((a, b) => {
-        // Sort by likes descending (most likes first)
         if (b.likes !== a.likes) return b.likes - a.likes;
-        // If same likes, maintain original order
         return a.originalIndex - b.originalIndex;
     });
 };
@@ -208,14 +199,12 @@ const getDocIdFromUrl = (url) => {
 // FIRESTORE - GDPR COMPLIANT
 const fetchAllLikes = async () => {
     try {
-        if (!window.FUNCTIONAL_COOKIES_ENABLED || !db) {
+        if (!window.FUNCTIONAL_COOKIES_ENABLED || !db || !firebaseModules) {
             console.log('⚠️ Functional cookies not enabled or Firebase not initialized, skipping likes fetch');
             return {};
         }
         
         console.log('📊 Fetching all likes from Firestore...');
-        
-        // ✅ GDPR FIX: Use dynamically loaded Firebase modules
         const firebase = firebaseModules;
         const querySnapshot = await firebase.getDocs(firebase.collection(db, 'image_likes'));
         const likes = {};
@@ -233,12 +222,11 @@ const fetchAllLikes = async () => {
 
 const updateLike = async (url, increment_value) => {
     try {
-        if (!window.FUNCTIONAL_COOKIES_ENABLED || !db) {
+        if (!window.FUNCTIONAL_COOKIES_ENABLED || !db || !firebaseModules) {
             console.log('⚠️ Functional cookies not enabled, cannot update likes');
             return null;
         }
         
-        // ✅ GDPR FIX: Use dynamically loaded Firebase modules
         const firebase = firebaseModules;
         const docId = getDocIdFromUrl(url);
         const docRef = firebase.doc(db, 'image_likes', docId);
@@ -283,7 +271,6 @@ const loadGalleryData = async (galleryKey) => {
     const images = imageList.map((imageData, originalIndex) => {
         const url = createImageUrl(dir, imageData);
         const docId = getDocIdFromUrl(url);
-        // Default to 0 if likesCache doesn't have it yet
         const likes = likesCache[docId] !== undefined ? likesCache[docId] : 0;
         
         console.log(`📷 ${galleryKey} image ${imageData.index}: ${likes} likes`);
@@ -293,319 +280,359 @@ const loadGalleryData = async (galleryKey) => {
             likes,
             originalIndex,
             gallery: galleryKey,
-            width: imageData.width,
-            height: imageData.height,
-            aspectRatio: imageData.aspectRatio,
-            orientation: imageData.orientation,
-            aspectDecimal: imageData.aspectDecimal
+            title: gallery.title,
+            alt: `${gallery.title} - Image ${imageData.index}`,
+            aspectRatio: imageData.aspectDecimal || 
+                        (imageData.width && imageData.height ? 
+                         imageData.width / imageData.height : 
+                         (imageData.orientation === 'vertical' ? 9/16 : 16/9)),
+            imageData: imageData
         };
     });
     
-    const sortedImages = stableSortByLikes(images);
-    console.log(`✅ Loaded ${sortedImages.length} images for ${gallery.title}, sorted by likes`);
-    
-    return sortedImages;
+    galleryImageData[galleryKey] = images;
+    return images;
 };
 
-// SETUP GALLERY SELECTOR
-const setupGallerySelector = async () => {
-    const gallerySelector = document.getElementById('gallery-selector');
-    const galleryCovers = document.querySelectorAll('.gallery-cover');
+const getMostLikedImageUrl = (galleryKey) => {
+    const images = galleryImageData[galleryKey];
+    if (!images || images.length === 0) return '';
     
-    // Load counts for all galleries
-    for (const key of Object.keys(galleries)) {
-        const countElement = document.getElementById(`${key}-count`);
-        const galleryData = await loadGalleryData(key);
-        galleryImageData[key] = galleryData;
-        
-        if (countElement) {
-            countElement.textContent = `${galleryData.length} images`;
-        }
-    }
-    
-    // Add click handlers
-    galleryCovers.forEach(cover => {
-        cover.addEventListener('click', async () => {
-            const galleryKey = cover.dataset.gallery;
-            await openGallery(galleryKey);
-        });
-    });
+    const sorted = stableSortByLikes(images);
+    return sorted[0].url;
 };
 
-// OPEN GALLERY
-const openGallery = async (galleryKey) => {
-    currentGallery = galleryKey;
-    const gallery = galleries[galleryKey];
-    const gallerySelector = document.getElementById('gallery-selector');
-    const galleryContent = document.getElementById('gallery-content');
-    const galleryTitle = document.getElementById('current-gallery-title');
-    const gallerySubtitle = document.getElementById('current-gallery-subtitle');
-    const loadingIndicator = document.getElementById('loading-indicator');
-    
-    // Show loading
-    if (loadingIndicator) {
-        loadingIndicator.style.display = 'flex';
-    }
-    
-    // Hide selector, show content
-    gallerySelector.style.display = 'none';
-    galleryContent.style.display = 'block';
-    
-    // Set title and subtitle
-    if (galleryTitle) {
-        galleryTitle.textContent = gallery.title;
-        galleryTitle.style.color = gallery.color;
-    }
-    if (gallerySubtitle) {
-        gallerySubtitle.textContent = gallery.subtitle;
-    }
-    
-    // Load gallery images
-    const images = galleryImageData[galleryKey] || await loadGalleryData(galleryKey);
-    currentGalleryImages = images;
-    
-    // Render masonry grid
-    renderMasonryGrid(images);
-    
-    // Hide loading
-    setTimeout(() => {
-        if (loadingIndicator) {
-            loadingIndicator.style.display = 'none';
-        }
-    }, 500);
-    
-    // Reset scroll position
-    resetCanvasPosition();
-};
-
-// RENDER MASONRY GRID
-const renderMasonryGrid = (images) => {
+// Calculate scroll limits based on grid size
+const calculateScrollLimits = () => {
     const grid = document.getElementById('masonry-grid');
-    if (!grid) return;
+    const canvas = document.getElementById('infinite-canvas');
+    const viewport = document.getElementById('gallery-content');
     
-    grid.innerHTML = '';
+    if (!grid || !canvas || !viewport) return;
     
-    images.forEach((imageData, index) => {
-        const item = document.createElement('div');
-        item.className = 'masonry-item';
-        
-        const img = document.createElement('img');
-        img.dataset.src = imageData.url;
-        img.alt = `Image ${index + 1}`;
-        img.className = 'masonry-img lazy-load';
-        
-        // Add loading placeholder
-        img.style.background = 'linear-gradient(45deg, #2a2a2a 25%, #333 25%, #333 50%, #2a2a2a 50%, #2a2a2a 75%, #333 75%, #333)';
-        img.style.backgroundSize = '20px 20px';
-        
-        // Add click handler
-        img.addEventListener('click', () => {
-            openModal(imageData.url, index);
-        });
-        
-        item.appendChild(img);
-        grid.appendChild(item);
-    });
+    const gridRect = grid.getBoundingClientRect();
+    const canvasRect = canvas.getBoundingClientRect();
+    const viewportRect = viewport.getBoundingClientRect();
     
-    // Initialize lazy loading
-    initLazyLoading();
+    const contentWidth = gridRect.width;
+    const contentHeight = gridRect.height;
+    const viewportWidth = viewportRect.width;
+    const viewportHeight = viewportRect.height;
+    
+    const canvasStyle = window.getComputedStyle(canvas);
+    const paddingLeft = parseInt(canvasStyle.paddingLeft) || 20;
+    const paddingRight = parseInt(canvasStyle.paddingRight) || 20;
+    const paddingTop = parseInt(canvasStyle.paddingTop) || 120;
+    const paddingBottom = parseInt(canvasStyle.paddingBottom) || 80;
+    
+    const scrollableWidth = Math.max(0, contentWidth - viewportWidth + paddingLeft + paddingRight);
+    const scrollableHeight = Math.max(0, contentHeight - viewportHeight + paddingTop + paddingBottom);
+    
+    scrollLimits = {
+        minX: -scrollableWidth,
+        maxX: scrollableWidth,
+        minY: -scrollableHeight,
+        maxY: scrollableHeight
+    };
+    
+    console.log('📐 Scroll limits calculated:', scrollLimits);
 };
 
-// LAZY LOADING
-const initLazyLoading = () => {
-    const lazyImages = document.querySelectorAll('.lazy-load');
+// GALLERY SELECTOR
+const setupGallerySelector = async () => {
+    console.log('🔄 Setting up gallery selector...');
     
-    const imageObserver = new IntersectionObserver((entries, observer) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const img = entry.target;
-                const src = img.dataset.src;
-                
-                if (src) {
-                    img.src = src;
-                    img.classList.add('loaded');
-                    observer.unobserve(img);
-                }
+    await Promise.all(Object.keys(galleries).map(key => loadGalleryData(key)));
+    
+    Object.keys(galleries).forEach(key => {
+        const cover = document.querySelector(`.gallery-cover[data-gallery="${key}"]`);
+        const countElement = document.getElementById(`${key}-count`);
+        
+        if (cover && galleryImageData[key]) {
+            const mostLikedUrl = getMostLikedImageUrl(key);
+            if (mostLikedUrl) {
+                cover.style.backgroundImage = `url(${mostLikedUrl})`;
             }
-        });
-    }, {
-        rootMargin: '200px'
+        }
+        
+        if (countElement && galleryImageData[key]) {
+            const count = galleryImageData[key].length;
+            countElement.textContent = `${count} Works`;
+        }
     });
     
-    lazyImages.forEach(img => imageObserver.observe(img));
+    document.querySelectorAll('.gallery-cover').forEach(cover => {
+        cover.addEventListener('click', function() {
+            const galleryId = this.dataset.gallery;
+            openGallery(galleryId);
+        });
+    });
+    
+    console.log('✅ Gallery selector setup complete');
+};
+
+const openGallery = (galleryId) => {
+    currentGallery = galleryId;
+    
+    const gallerySelector = document.getElementById('gallery-selector');
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const galleryContent = document.getElementById('gallery-content');
+    const currentGalleryTitle = document.getElementById('current-gallery-title');
+    const currentGallerySubtitle = document.getElementById('current-gallery-subtitle');
+    const siteIntro = document.querySelector('.site-intro');
+    const termsFooter = document.querySelector('.terms-footer');
+    
+    loadingIndicator.classList.add('active');
+    gallerySelector.classList.add('hidden');
+    if (siteIntro) siteIntro.classList.add('hidden');
+    if (termsFooter) termsFooter.classList.add('hidden');
+    
+    currentGalleryTitle.textContent = galleries[galleryId].title;
+    currentGallerySubtitle.textContent = galleries[galleryId].subtitle;
+    
+    setTimeout(() => {
+        loadGalleryContent(galleryId);
+        loadingIndicator.classList.remove('active');
+        galleryContent.classList.add('active');
+    }, 800);
+};
+
+const loadGalleryContent = (galleryId) => {
+    const masonryGrid = document.getElementById('masonry-grid');
+    const gallery = galleries[galleryId];
+    const images = galleryImageData[galleryId];
+    
+    if (!images || images.length === 0) {
+        console.error(`No images found for gallery: ${galleryId}`);
+        return;
+    }
+    
+    masonryGrid.innerHTML = '';
+    
+    const sortedImages = stableSortByLikes(images);
+    currentGalleryImages = sortedImages;
+    
+    console.log(`🎨 Rendering ${sortedImages.length} images for ${galleryId}, sorted by likes:`);
+    sortedImages.forEach((image, idx) => {
+        console.log(`  ${idx + 1}: ${image.likes} likes - ${image.url}`);
+    });
+    
+    sortedImages.forEach((image, index) => {
+        const masonryItem = document.createElement('div');
+        
+        let orientation = 'square';
+        if (image.aspectRatio > 1.2) {
+            orientation = 'horizontal';
+        } else if (image.aspectRatio < 0.8) {
+            orientation = 'vertical';
+        }
+        
+        masonryItem.className = `masonry-item ${orientation}`;
+        masonryItem.style.animationDelay = `${index * 0.05}s`;
+        masonryItem.style.backgroundImage = `url(${image.url})`;
+        
+        const overlay = document.createElement('div');
+        overlay.className = 'item-overlay';
+        overlay.style.opacity = '0';
+        
+        masonryItem.addEventListener('mouseenter', () => {
+            overlay.style.opacity = '1';
+        });
+        
+        masonryItem.addEventListener('mouseleave', () => {
+            overlay.style.opacity = '0';
+        });
+        
+        overlay.innerHTML = `
+            <div class="item-category">${gallery.title}</div>
+            <div class="item-title">Image ${image.imageData.index}</div>
+            <div class="item-likes">♥ ${image.likes}</div>
+        `;
+        
+        masonryItem.addEventListener('click', () => {
+            openModal(image.url, gallery.title, galleryId, index);
+        });
+        
+        masonryItem.appendChild(overlay);
+        masonryGrid.appendChild(masonryItem);
+    });
+    
+    scrollX = 0;
+    scrollY = 0;
+    
+    setTimeout(() => {
+        calculateScrollLimits();
+        updateCanvasTransform();
+    }, 100);
+    
+    setTimeout(calculateScrollLimits, 500);
+};
+
+const closeGallery = () => {
+    const galleryContent = document.getElementById('gallery-content');
+    const gallerySelector = document.getElementById('gallery-selector');
+    const siteIntro = document.querySelector('.site-intro');
+    const termsFooter = document.querySelector('.terms-footer');
+    
+    galleryContent.classList.remove('active');
+    
+    setTimeout(() => {
+        gallerySelector.classList.remove('hidden');
+        if (siteIntro) siteIntro.classList.remove('hidden');
+        if (termsFooter) termsFooter.classList.remove('hidden');
+        currentGallery = null;
+    }, 800);
 };
 
 // CANVAS NAVIGATION
-const setupCanvasNavigation = () => {
-    const canvas = document.getElementById('infinite-canvas');
-    const container = document.getElementById('canvas-transform-container');
-    
-    if (!canvas || !container) return;
-    
-    // Mouse/Touch drag
-    canvas.addEventListener('mousedown', handleDragStart);
-    canvas.addEventListener('touchstart', handleDragStart, { passive: false });
-    
-    document.addEventListener('mousemove', handleDragMove);
-    document.addEventListener('touchmove', handleDragMove, { passive: false });
-    
-    document.addEventListener('mouseup', handleDragEnd);
-    document.addEventListener('touchend', handleDragEnd);
-    
-    // Keyboard navigation
-    document.addEventListener('keydown', handleKeyboardNav);
-    
-    // Wheel/scroll
-    canvas.addEventListener('wheel', handleWheel, { passive: false });
-};
-
-const handleDragStart = (e) => {
-    isDragging = true;
-    const clientX = e.type === 'mousedown' ? e.clientX : e.touches[0].clientX;
-    const clientY = e.type === 'mousedown' ? e.clientY : e.touches[0].clientY;
-    
-    startX = clientX - scrollX;
-    startY = clientY - scrollY;
-};
-
-const handleDragMove = (e) => {
-    if (!isDragging) return;
-    
-    e.preventDefault();
-    const clientX = e.type === 'mousemove' ? e.clientX : e.touches[0].clientX;
-    const clientY = e.type === 'mousemove' ? e.clientY : e.touches[0].clientY;
-    
-    scrollX = clientX - startX;
-    scrollY = clientY - startY;
-    
-    // Apply constraints
-    scrollX = Math.max(scrollLimits.minX, Math.min(scrollLimits.maxX, scrollX));
-    scrollY = Math.max(scrollLimits.minY, Math.min(scrollLimits.maxY, scrollY));
-    
-    updateCanvasPosition();
-};
-
-const handleDragEnd = () => {
-    isDragging = false;
-};
-
-const handleKeyboardNav = (e) => {
-    if (!document.getElementById('gallery-content') || document.getElementById('gallery-content').style.display === 'none') return;
-    
-    const step = 100;
-    
-    switch (e.key) {
-        case 'ArrowLeft':
-            scrollX += step;
-            break;
-        case 'ArrowRight':
-            scrollX -= step;
-            break;
-        case 'ArrowUp':
-            scrollY += step;
-            break;
-        case 'ArrowDown':
-            scrollY -= step;
-            break;
-        default:
-            return;
-    }
-    
-    e.preventDefault();
-    scrollX = Math.max(scrollLimits.minX, Math.min(scrollLimits.maxX, scrollX));
-    scrollY = Math.max(scrollLimits.minY, Math.min(scrollLimits.maxY, scrollY));
-    updateCanvasPosition();
-};
-
-const handleWheel = (e) => {
-    e.preventDefault();
-    
-    scrollX -= e.deltaX;
-    scrollY -= e.deltaY;
-    
-    scrollX = Math.max(scrollLimits.minX, Math.min(scrollLimits.maxX, scrollX));
-    scrollY = Math.max(scrollLimits.minY, Math.min(scrollLimits.maxY, scrollY));
-    
-    updateCanvasPosition();
-};
-
-const updateCanvasPosition = () => {
+const updateCanvasTransform = () => {
     const container = document.getElementById('canvas-transform-container');
     if (container) {
         container.style.transform = `translate(${scrollX}px, ${scrollY}px)`;
     }
 };
 
-const resetCanvasPosition = () => {
-    scrollX = 0;
-    scrollY = 0;
-    updateCanvasPosition();
-    calculateScrollLimits();
-};
-
-const calculateScrollLimits = () => {
+const setupCanvasNavigation = () => {
     const canvas = document.getElementById('infinite-canvas');
-    const container = document.getElementById('canvas-transform-container');
-    
-    if (!canvas || !container) return;
-    
-    const canvasRect = canvas.getBoundingClientRect();
-    const containerRect = container.getBoundingClientRect();
-    
-    const maxScrollX = canvasRect.width - containerRect.width;
-    const maxScrollY = canvasRect.height - containerRect.height;
-    
-    scrollLimits = {
-        minX: -Math.max(0, containerRect.width - canvasRect.width),
-        maxX: Math.max(0, maxScrollX),
-        minY: -Math.max(0, containerRect.height - canvasRect.height),
-        maxY: Math.max(0, maxScrollY)
-    };
-};
-
-// BACK BUTTON
-const setupBackButton = () => {
-    const backButton = document.getElementById('back-button');
-    const gallerySelector = document.getElementById('gallery-selector');
     const galleryContent = document.getElementById('gallery-content');
     
+    canvas.addEventListener('mousedown', startDrag);
+    canvas.addEventListener('touchstart', startDragTouch, { passive: false });
+    
+    function startDrag(e) {
+        if (!galleryContent.classList.contains('active')) return;
+        isDragging = true;
+        startX = e.clientX - scrollX;
+        startY = e.clientY - scrollY;
+        canvas.style.cursor = 'grabbing';
+        e.preventDefault();
+    }
+    
+    function startDragTouch(e) {
+        if (!galleryContent.classList.contains('active')) return;
+        if (e.touches.length === 1) {
+            isDragging = true;
+            startX = e.touches[0].clientX - scrollX;
+            startY = e.touches[0].clientY - scrollY;
+        }
+    }
+    
+    function onDrag(e) {
+        if (!isDragging || !galleryContent.classList.contains('active')) return;
+        
+        scrollX = e.clientX - startX;
+        scrollY = e.clientY - startY;
+        
+        scrollX = Math.max(scrollLimits.minX, Math.min(scrollLimits.maxX, scrollX));
+        scrollY = Math.max(scrollLimits.minY, Math.min(scrollLimits.maxY, scrollY));
+        
+        updateCanvasTransform();
+    }
+    
+    function onDragTouch(e) {
+        if (!isDragging || !galleryContent.classList.contains('active')) return;
+        if (e.touches.length === 1) {
+            scrollX = e.touches[0].clientX - startX;
+            scrollY = e.touches[0].clientY - startY;
+            
+            scrollX = Math.max(scrollLimits.minX, Math.min(scrollLimits.maxX, scrollX));
+            scrollY = Math.max(scrollLimits.minY, Math.min(scrollLimits.maxY, scrollY));
+            
+            updateCanvasTransform();
+        }
+    }
+    
+    function stopDrag() {
+        isDragging = false;
+        canvas.style.cursor = '';
+    }
+    
+    document.addEventListener('mousemove', onDrag);
+    document.addEventListener('touchmove', onDragTouch, { passive: false });
+    document.addEventListener('mouseup', stopDrag);
+    document.addEventListener('touchend', stopDrag);
+    
+    document.addEventListener('keydown', function(e) {
+        if (!galleryContent.classList.contains('active')) return;
+        
+        const scrollSpeed = 30;
+        
+        switch(e.key) {
+            case 'ArrowLeft':
+                scrollX += scrollSpeed;
+                break;
+            case 'ArrowRight':
+                scrollX -= scrollSpeed;
+                break;
+            case 'ArrowUp':
+                scrollY += scrollSpeed;
+                break;
+            case 'ArrowDown':
+                scrollY -= scrollSpeed;
+                break;
+            case 'Escape':
+                closeGallery();
+                return;
+        }
+        
+        scrollX = Math.max(scrollLimits.minX, Math.min(scrollLimits.maxX, scrollX));
+        scrollY = Math.max(scrollLimits.minY, Math.min(scrollLimits.maxY, scrollY));
+        
+        updateCanvasTransform();
+    });
+    
+    canvas.addEventListener('wheel', function(e) {
+        if (!galleryContent.classList.contains('active')) return;
+        
+        e.preventDefault();
+        
+        scrollX -= e.deltaX * 0.5;
+        scrollY -= e.deltaY * 0.5;
+        
+        scrollX = Math.max(scrollLimits.minX, Math.min(scrollLimits.maxX, scrollX));
+        scrollY = Math.max(scrollLimits.minY, Math.min(scrollLimits.maxY, scrollY));
+        
+        updateCanvasTransform();
+    }, { passive: false });
+    
+    window.addEventListener('resize', () => {
+        if (galleryContent.classList.contains('active')) {
+            setTimeout(calculateScrollLimits, 100);
+        }
+    });
+};
+
+const setupBackButton = () => {
+    const backButton = document.getElementById('back-button');
     if (backButton) {
-        backButton.addEventListener('click', () => {
-            galleryContent.style.display = 'none';
-            gallerySelector.style.display = 'grid';
-        });
+        backButton.addEventListener('click', closeGallery);
     }
 };
 
 // MODAL
 const modal = document.getElementById('modal');
-const modalImg = document.getElementById('modal-img');
-const modalClose = document.getElementById('modal-close');
+const modalImage = document.getElementById('modal-img');
 const likeBtn = document.getElementById('like-btn');
-const likeCount = document.getElementById('like-count');
+const modalClose = document.getElementById('modal-close');
 const modalPrev = document.getElementById('modal-prev');
 const modalNext = document.getElementById('modal-next');
 
-const openModal = (imageUrl, index) => {
+const openModal = (imageUrl, category = 'Image', galleryKey = currentGallery, imageIndex = 0) => {
     currentModalImageUrl = imageUrl;
-    currentModalImageIndex = index;
+    currentModalImageIndex = imageIndex;
+    modalImage.src = imageUrl;
     
-    if (modal && modalImg) {
-        modalImg.src = imageUrl;
-        modal.removeAttribute('hidden');
-        document.body.style.overflow = 'hidden';
-        
-        updateLikeButton();
-    }
+    modal.removeAttribute('hidden');
+    document.body.style.overflow = 'hidden';
+    updateLikeButton();
+    updateNavButtons();
 };
 
 const closeModal = () => {
-    if (modal) {
-        modal.setAttribute('hidden', '');
-        document.body.style.overflow = 'auto';
-        currentModalImageUrl = null;
-        currentModalImageIndex = -1;
-    }
+    modal.setAttribute('hidden', '');
+    currentModalImageUrl = null;
+    currentModalImageIndex = -1;
+    document.body.style.overflow = 'auto';
 };
 
 const navigateModal = (direction) => {
@@ -617,84 +644,88 @@ const navigateModal = (direction) => {
         currentModalImageIndex = (currentModalImageIndex + 1) % currentGalleryImages.length;
     }
     
-    const imageData = currentGalleryImages[currentModalImageIndex];
-    currentModalImageUrl = imageData.url;
-    
-    if (modalImg) {
-        modalImg.src = imageData.url;
-    }
+    const nextImage = currentGalleryImages[currentModalImageIndex];
+    currentModalImageUrl = nextImage.url;
+    modalImage.src = nextImage.url;
     
     updateLikeButton();
+    updateNavButtons();
+};
+
+const updateNavButtons = () => {
+    if (currentGalleryImages.length <= 1) {
+        modalPrev.style.display = 'none';
+        modalNext.style.display = 'none';
+    } else {
+        modalPrev.style.display = 'flex';
+        modalNext.style.display = 'flex';
+    }
 };
 
 const updateLikeButton = () => {
-    if (!likeBtn || !likeCount || !currentModalImageUrl) return;
+    if (!currentModalImageUrl) return;
     
     const docId = getDocIdFromUrl(currentModalImageUrl);
     const likes = likesCache[docId] || 0;
-    const liked = hasLiked();
-    
-    likeCount.textContent = likes;
-    
+    const likeCount = document.getElementById('like-count');
     const heart = likeBtn.querySelector('.heart');
+    
+    if (likeCount) likeCount.textContent = likes;
+    
+    let isLiked = false;
+    if (window.FUNCTIONAL_COOKIES_ENABLED) {
+        const likedKey = `liked_${docId}`;
+        isLiked = localStorage.getItem(likedKey) === 'true';
+    }
+    
     if (heart) {
-        heart.textContent = liked ? '♥' : '♡';
-        likeBtn.classList.toggle('liked', liked);
+        heart.textContent = isLiked ? '♥' : '♡';
+        if (isLiked) {
+            likeBtn.classList.add('liked');
+        } else {
+            likeBtn.classList.remove('liked');
+        }
     }
 };
 
-const hasLiked = () => {
-    const likedImages = JSON.parse(localStorage.getItem('likedImages') || '[]');
-    return likedImages.includes(currentModalImageUrl);
-};
-
-const markAsLiked = (url) => {
-    const likedImages = JSON.parse(localStorage.getItem('likedImages') || '[]');
-    likedImages.push(url);
-    localStorage.setItem('likedImages', JSON.stringify(likedImages));
-};
-
-const unmarkAsLiked = (url) => {
-    const likedImages = JSON.parse(localStorage.getItem('likedImages') || '[]');
-    const filtered = likedImages.filter(img => img !== url);
-    localStorage.setItem('likedImages', JSON.stringify(filtered));
-};
-
 const toggleLike = async () => {
-    if (isProcessing || !currentModalImageUrl) return;
+    if (!currentModalImageUrl || isProcessing) return;
+    
     if (!window.FUNCTIONAL_COOKIES_ENABLED) {
         alert('Please accept functional cookies to use the like feature.');
         return;
     }
     
+    isProcessing = true;
+    likeBtn.disabled = true;
+    
+    const docId = getDocIdFromUrl(currentModalImageUrl);
+    const likedKey = `liked_${docId}`;
+    const isCurrentlyLiked = localStorage.getItem(likedKey) === 'true';
+    
     try {
-        isProcessing = true;
-        likeBtn.disabled = true;
-        
-        const isCurrentlyLiked = hasLiked();
         const increment_value = isCurrentlyLiked ? -1 : 1;
         const newLikes = await updateLike(currentModalImageUrl, increment_value);
         
         if (newLikes !== null) {
             if (isCurrentlyLiked) {
-                unmarkAsLiked(currentModalImageUrl);
+                localStorage.removeItem(likedKey);
             } else {
-                markAsLiked(currentModalImageUrl);
+                localStorage.setItem(likedKey, 'true');
             }
+            
+            likesCache[docId] = newLikes;
+            
+            Object.keys(galleryImageData).forEach(galleryKey => {
+                const images = galleryImageData[galleryKey];
+                const imageIndex = images.findIndex(img => img.url === currentModalImageUrl);
+                if (imageIndex !== -1) {
+                    images[imageIndex].likes = newLikes;
+                }
+            });
             
             updateLikeButton();
-            
-            // Re-sort and re-render gallery
-            const images = await loadGalleryData(currentGallery);
-            galleryImageData[currentGallery] = images;
-            currentGalleryImages = images;
-            renderMasonryGrid(images);
-            
-            // Update count in selector
-            const countElement = document.getElementById(`${currentGallery}-count`);
-            if (countElement) {
-                countElement.textContent = `${images.length} images`;
-            }
+            loadGalleryContent(currentGallery);
         }
     } catch (error) {
         console.error('Error toggling like:', error);
@@ -749,24 +780,11 @@ const showCookieBanner = () => {
 
 const applyCookiePreferences = async (prefs) => {
     console.log('🍪 Applying cookie preferences:', prefs);
-    
     if (prefs.functional) {
-        console.log('✅ Functional cookies enabled - loading Firebase');
         window.FUNCTIONAL_COOKIES_ENABLED = true;
-        
-        try {
-            // ✅ GDPR FIX: Load Firebase SDK and initialize ONLY after consent
-            await initFirebase();
-            await fetchAllLikes();
-            console.log('✅ Firebase fully operational');
-        } catch (error) {
-            console.error('❌ Failed to initialize Firebase:', error);
-            window.FUNCTIONAL_COOKIES_ENABLED = false;
-        }
+        await initFirebase();
+        await fetchAllLikes();
     } else {
-        console.log('⛔ Functional cookies disabled');
-        // ✅ GDPR FIX: Tear down Firebase on consent withdrawal
-        teardownFirebase();
         window.FUNCTIONAL_COOKIES_ENABLED = false;
     }
 };
@@ -808,10 +826,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 timestamp: new Date().toISOString()
             };
             localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
-            
-            // ✅ GDPR FIX: Tear down Firebase immediately
             teardownFirebase();
-            
             if (cookieBanner) cookieBanner.setAttribute('hidden', '');
             location.reload();
         });
@@ -882,10 +897,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 timestamp: new Date().toISOString()
             };
             localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
-            
-            // ✅ GDPR FIX: Tear down Firebase immediately
             teardownFirebase();
-            
             cookieSettingsModal.setAttribute('hidden', '');
             location.reload();
         });
@@ -920,19 +932,14 @@ if (termsModal) {
     });
 }
 
-
-// INIT - FIXED ORDER OF OPERATIONS
+// INIT
 const init = async () => {
     try {
         console.log('🚀 Initializing The Nonconformist...');
         
-        // 1. Initialize cookie preferences FIRST
         initCookieBanner();
-        
-        // 2. Load image manifest
         await loadManifest();
         
-        // 3. If functional cookies are enabled, initialize Firebase and fetch likes BEFORE gallery setup
         if (window.FUNCTIONAL_COOKIES_ENABLED) {
             console.log('🔐 Functional cookies enabled, initializing Firebase...');
             await initFirebase();
@@ -941,10 +948,7 @@ const init = async () => {
             console.log('🔐 Functional cookies not enabled, using default likes (0)');
         }
         
-        // 4. Setup gallery selector with proper likes data
         await setupGallerySelector();
-        
-        // 5. Setup navigation
         setupCanvasNavigation();
         setupBackButton();
         
@@ -954,7 +958,6 @@ const init = async () => {
     }
 };
 
-// Start initialization
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
 } else {
