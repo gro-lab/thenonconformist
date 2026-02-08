@@ -1,79 +1,128 @@
-// THE NONCONFORMIST - SIMPLIFIED VERSION WITH CSS GRID
+// THE NONCONFORMIST - GDPR Compliant Version
+// ✅ Firebase SDK loaded dynamically ONLY after user consent
 
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js';
-import {
-    getFirestore,
-    collection,
-    doc,
-    getDoc,
-    setDoc,
-    updateDoc,
-    increment,
-    getDocs,
-    serverTimestamp
-} from 'https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js';
-
-// FIREBASE CONFIG
-const firebaseConfig = {
-    apiKey: "AIzaSyBMt3p3OCOUcMb4mdpfaCEhzxhlsRSTej8",
-    authDomain: "thenonconformistdotxyz.firebaseapp.com",
-    projectId: "thenonconformistdotxyz",
-    storageBucket: "thenonconformistdotxyz.firebasestorage.app",
-    messagingSenderId: "552037212425",
-    appId: "1:552037212425:web:b0ddaed6ebbc34442f73d8",
-    measurementId: "G-5MGS0G4CDY"
-};
-
-// GDPR: Default analytics disabled until explicit consent
-window['ga-disable-G-5MGS0G4CDY'] = true;
-
-// ⚠️ CRITICAL GDPR FIX: Firebase NOT initialized by default
-// Only initialized after functional cookie consent
+// ============================================
+// FIREBASE - LOADED DYNAMICALLY AFTER CONSENT  
+// ============================================
+let firebaseModules = null;
 let app = null;
 let db = null;
-let analytics = null;
 
-// Initialize Firebase only when user consents to functional cookies
-const initFirebase = async () => {
-    if (app) return; // Already initialized
+// Dynamic Firebase loader - only called after consent
+const loadFirebaseSDK = async () => {
+    if (firebaseModules) {
+        return firebaseModules;
+    }
     
-    app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
-    console.log('✅ Firebase initialized after consent');
+    console.log('📦 Loading Firebase SDK dynamically...');
+    
+    try {
+        const [appModule, firestoreModule] = await Promise.all([
+            import('https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js'),
+            import('https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js')
+        ]);
+        
+        firebaseModules = {
+            initializeApp: appModule.initializeApp,
+            getFirestore: firestoreModule.getFirestore,
+            collection: firestoreModule.collection,
+            doc: firestoreModule.doc,
+            getDoc: firestoreModule.getDoc,
+            setDoc: firestoreModule.setDoc,
+            updateDoc: firestoreModule.updateDoc,
+            increment: firestoreModule.increment,
+            getDocs: firestoreModule.getDocs,
+            serverTimestamp: firestoreModule.serverTimestamp
+        };
+        
+        console.log('✅ Firebase SDK loaded successfully');
+        return firebaseModules;
+    } catch (error) {
+        console.error('❌ Failed to load Firebase SDK:', error);
+        throw error;
+    }
+};
+
+const initFirebase = async () => {
+    if (app) return;
+    
+    const firebase = await loadFirebaseSDK();
+    
+    // FIREBASE CONFIG (measurementId removed - no Google Analytics)
+    const firebaseConfig = {
+        apiKey: "AIzaSyBMt3p3OCOUcMb4mdpfaCEhzxhlsRSTej8",
+        authDomain: "thenonconformistdotxyz.firebaseapp.com",
+        projectId: "thenonconformistdotxyz",
+        storageBucket: "thenonconformistdotxyz.firebasestorage.app",
+        messagingSenderId: "552037212425",
+        appId: "1:552037212425:web:b0ddaed6ebbc34442f73d8"
+    };
+    
+    app = firebase.initializeApp(firebaseConfig);
+    db = firebase.getFirestore(app);
+    console.log('✅ Firebase initialized');
+};
+
+// Teardown function for consent withdrawal
+const teardownFirebase = () => {
+    if (app) {
+        console.log('🔥 Disconnecting Firebase...');
+        app = null;
+        db = null;
+        firebaseModules = null;
+        likesCache = {};
+        window.FUNCTIONAL_COOKIES_ENABLED = false;
+        console.log('✅ Firebase disconnected and cleaned up');
+    }
 };
 
 // GALLERY CONFIG
 const galleries = {
-    'low': { title: 'Language of Windows', dir: 'LoW' },
-    'sol': { title: 'Snapshots of Life', dir: 'SoL' },
-    'r': { title: 'Reflections', dir: 'R' },
-    'sa': { title: 'Street Art', dir: 'SA' }
+    'low': { 
+        title: 'Language of Windows', 
+        dir: 'LoW',
+        subtitle: 'Exploring the silent stories behind glass',
+        color: '#FF6B35'
+    },
+    'sol': { 
+        title: 'Snapshots of Life', 
+        dir: 'SoL',
+        subtitle: 'Capturing the raw essence of everyday moments',
+        color: '#9D4EDD'
+    },
+    'r': { 
+        title: 'Reflections', 
+        dir: 'R',
+        subtitle: 'Where reality meets its mirror image',
+        color: '#06FFA5'
+    },
+    'sa': { 
+        title: 'Street Art', 
+        dir: 'SA',
+        subtitle: 'Urban expressions and vibrant creativity',
+        color: '#FFD23F'
+    }
 };
 
-// ============================================
-// SIMPLIFIED STATE (NO MORE COMPLEX CACHING)
-// ============================================
-
+// STATE
 let imageManifest = {};
 let likesCache = {};
 let currentModalImageUrl = null;
 let currentModalImageIndex = -1;
-let currentGalleryImages = []; // For modal navigation (in sorted order)
+let currentGalleryImages = [];
 let isProcessing = false;
 let currentGallery = 'low';
-let galleryImageData = {}; // Simple storage: galleryKey -> array of image objects
+let galleryImageData = {};
+let isDragging = false;
+let startX = 0;
+let startY = 0;
+let scrollX = 0;
+let scrollY = 0;
+let scrollLimits = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
 
-// GDPR: Functional cookies disabled by default until user explicitly accepts
 window.FUNCTIONAL_COOKIES_ENABLED = false;
 
-// ============================================
-// SIMPLIFIED SORTING (NO TRANSPOSE NEEDED WITH CSS GRID!)
-// ============================================
-
-/**
- * Stable sort by likes, then by original index
- * With CSS Grid, images render left-to-right, top-to-bottom automatically!
- */
+// STABLE SORT BY LIKES - DESCENDING ORDER
 const stableSortByLikes = (items) => {
     return [...items].sort((a, b) => {
         if (b.likes !== a.likes) return b.likes - a.likes;
@@ -81,30 +130,7 @@ const stableSortByLikes = (items) => {
     });
 };
 
-// ============================================
-// UTILITIES (UNCHANGED)
-// ============================================
-
-const debounce = (fn, delay) => {
-    let timeoutId;
-    return (...args) => {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => fn(...args), delay);
-    };
-};
-
-// GDPR: Clear functional cookie data when user rejects
-const clearFunctionalCookieData = () => {
-    const keys = Object.keys(localStorage);
-    keys.forEach(key => {
-        if (key.startsWith('liked_')) {
-            localStorage.removeItem(key);
-        }
-    });
-    console.log('🗑️ Cleared functional cookie data');
-};
-
-// MANIFEST LOADING (UNCHANGED)
+// LOAD MANIFEST
 const loadManifest = async () => {
     try {
         const owner = 'gro-lab';
@@ -112,16 +138,14 @@ const loadManifest = async () => {
         const branch = 'main';
         const manifestUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images.json`;
         
-        console.log('📦 Loading manifest...');
         const response = await fetch(manifestUrl);
         
         if (!response.ok) {
-            console.warn('⚠️ Manifest not found, using fallback');
             return generateFallbackManifest();
         }
         
         imageManifest = await response.json();
-        console.log('✅ Manifest loaded:', imageManifest);
+        console.log('✅ Manifest loaded');
         return imageManifest;
     } catch (error) {
         console.warn('⚠️ Error loading manifest:', error);
@@ -157,16 +181,13 @@ const generateFallbackManifest = () => {
     });
     
     imageManifest = manifest;
-    console.log('📋 Using fallback manifest with default aspect ratios');
     return manifest;
 };
 
-// IMAGE URL (UNCHANGED)
 const createImageUrl = (dir, imageData) => {
     const owner = 'gro-lab';
     const repo = 'thenonconformist';
     const branch = 'main';
-    
     const filename = imageData.originalName || `${dir}-${imageData.index}.${imageData.ext}`;
     return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/${dir}/${filename}`;
 };
@@ -175,21 +196,23 @@ const getDocIdFromUrl = (url) => {
     return btoa(url).replace(/[^a-zA-Z0-9]/g, '');
 };
 
-// FIRESTORE FUNCTIONS (UNCHANGED)
+// FIRESTORE - GDPR COMPLIANT
 const fetchAllLikes = async () => {
     try {
-        if (!window.FUNCTIONAL_COOKIES_ENABLED || !db) {
-            console.log('⚠️ Functional cookies disabled - likes not loaded');
+        if (!window.FUNCTIONAL_COOKIES_ENABLED || !db || !firebaseModules) {
+            console.log('⚠️ Functional cookies not enabled or Firebase not initialized, skipping likes fetch');
             return {};
         }
         
-        const querySnapshot = await getDocs(collection(db, 'image_likes'));
+        console.log('📊 Fetching all likes from Firestore...');
+        const firebase = firebaseModules;
+        const querySnapshot = await firebase.getDocs(firebase.collection(db, 'image_likes'));
         const likes = {};
         querySnapshot.forEach((doc) => {
             likes[doc.id] = doc.data().likes || 0;
         });
         likesCache = likes;
-        console.log(`❤️ Loaded ${Object.keys(likes).length} like records`);
+        console.log(`❤️ Loaded ${Object.keys(likes).length} likes from Firestore`);
         return likes;
     } catch (error) {
         console.error('Error fetching likes:', error);
@@ -199,31 +222,32 @@ const fetchAllLikes = async () => {
 
 const updateLike = async (url, increment_value) => {
     try {
-        if (!window.FUNCTIONAL_COOKIES_ENABLED || !db) {
-            console.warn('⚠️ Functional cookies required for likes');
+        if (!window.FUNCTIONAL_COOKIES_ENABLED || !db || !firebaseModules) {
+            console.log('⚠️ Functional cookies not enabled, cannot update likes');
             return null;
         }
         
+        const firebase = firebaseModules;
         const docId = getDocIdFromUrl(url);
-        const docRef = doc(db, 'image_likes', docId);
-        const docSnap = await getDoc(docRef);
+        const docRef = firebase.doc(db, 'image_likes', docId);
+        const docSnap = await firebase.getDoc(docRef);
         
         if (docSnap.exists()) {
-            await updateDoc(docRef, {
-                likes: increment(increment_value),
-                lastUpdated: serverTimestamp()
+            await firebase.updateDoc(docRef, {
+                likes: firebase.increment(increment_value),
+                lastUpdated: firebase.serverTimestamp()
             });
-            const updatedSnap = await getDoc(docRef);
+            const updatedSnap = await firebase.getDoc(docRef);
             const newLikes = updatedSnap.data().likes;
             likesCache[docId] = newLikes;
             return newLikes;
         } else {
             const initialLikes = Math.max(0, increment_value);
-            await setDoc(docRef, {
+            await firebase.setDoc(docRef, {
                 url: url,
                 likes: initialLikes,
-                createdAt: serverTimestamp(),
-                lastUpdated: serverTimestamp()
+                createdAt: firebase.serverTimestamp(),
+                lastUpdated: firebase.serverTimestamp()
             });
             likesCache[docId] = initialLikes;
             return initialLikes;
@@ -234,65 +258,22 @@ const updateLike = async (url, increment_value) => {
     }
 };
 
-// LAZY LOADING (UNCHANGED)
-const setupLazyLoading = (img) => {
-    const options = {
-        rootMargin: '400px',
-        threshold: 0.01
-    };
-    
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const image = entry.target;
-                const src = image.dataset.src;
-                
-                if (src && !image.classList.contains('loaded')) {
-                    const preloader = new Image();
-                    preloader.onload = () => {
-                        image.src = src;
-                        image.classList.add('loaded');
-                        image.style.opacity = '1';
-                    };
-                    preloader.onerror = () => {
-                        console.warn(`Failed to load: ${src}`);
-                        image.remove();
-                    };
-                    preloader.src = src;
-                }
-                
-                observer.unobserve(image);
-            }
-        });
-    }, options);
-    
-    observer.observe(img);
-};
-
-// ============================================
-// SIMPLIFIED GALLERY FUNCTIONS (CSS GRID = NO TRANSPOSE!)
-// ============================================
-
-/**
- * Load and prepare image data for a gallery
- */
+// LOAD GALLERY DATA
 const loadGalleryData = async (galleryKey) => {
     const gallery = galleries[galleryKey];
     const dir = gallery.dir;
     const imageList = imageManifest[dir] || [];
     
     if (imageList.length === 0) {
-        console.warn(`⚠️ No images for ${gallery.title}`);
         return [];
     }
     
-    console.log(`📸 Loading ${imageList.length} images for ${gallery.title}`);
-    
-    // Create image objects with originalIndex
     const images = imageList.map((imageData, originalIndex) => {
         const url = createImageUrl(dir, imageData);
         const docId = getDocIdFromUrl(url);
-        const likes = likesCache[docId] || 0;
+        const likes = likesCache[docId] !== undefined ? likesCache[docId] : 0;
+        
+        console.log(`📷 ${galleryKey} image ${imageData.index}: ${likes} likes`);
         
         return {
             url,
@@ -301,7 +282,6 @@ const loadGalleryData = async (galleryKey) => {
             gallery: galleryKey,
             title: gallery.title,
             alt: `${gallery.title} - Image ${imageData.index}`,
-            // Aspect ratio info for rendering
             aspectRatio: imageData.aspectDecimal || 
                         (imageData.width && imageData.height ? 
                          imageData.width / imageData.height : 
@@ -311,163 +291,336 @@ const loadGalleryData = async (galleryKey) => {
     });
     
     galleryImageData[galleryKey] = images;
-    console.log(`✅ Gallery ${gallery.title} data loaded`);
     return images;
 };
 
-/**
- * Create an image card DOM element
- */
-const createImageCard = (image, index) => {
-    const card = document.createElement('div');
-    card.className = 'image-card';
-    card.dataset.gallery = image.gallery;
-    card.dataset.url = image.url;
-    card.dataset.index = index;
-    card.dataset.category = image.title;
+const getMostLikedImageUrl = (galleryKey) => {
+    const images = galleryImageData[galleryKey];
+    if (!images || images.length === 0) return '';
     
-    // Determine orientation based on aspect ratio
-    let orientation = 'square';
-    if (image.aspectRatio > 1.2) {
-        orientation = 'horizontal';
-    } else if (image.aspectRatio < 0.8) {
-        orientation = 'vertical';
-    }
-    card.dataset.orientation = orientation;
-    
-    const img = document.createElement('img');
-    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-    img.dataset.src = image.url;
-    img.alt = image.alt;
-    img.style.opacity = '0';
-    img.style.transition = 'opacity 0.3s ease';
-    img.style.aspectRatio = image.aspectRatio;
-    img.style.width = '100%';
-    img.style.height = '100%';
-    
-    const likeCount = document.createElement('div');
-    likeCount.className = 'card-like-count';
-    likeCount.innerHTML = `<i class="fas fa-heart"></i> <span>${image.likes}</span>`;
-    
-    card.appendChild(img);
-    card.appendChild(likeCount);
-    
-    card.addEventListener('click', () => openModal(image.url, image.title, image.gallery));
-    
-    setupLazyLoading(img);
-    
-    return card;
+    const sorted = stableSortByLikes(images);
+    return sorted[0].url;
 };
 
-/**
- * Render gallery with CSS Grid (NO TRANSPOSE NEEDED!)
- * CSS Grid automatically lays out items left-to-right, top-to-bottom!
- */
-const renderMasonryGrid = async (galleryKey) => {
+// Calculate scroll limits based on grid size
+const calculateScrollLimits = () => {
     const grid = document.getElementById('masonry-grid');
-    if (!grid) return;
+    const canvas = document.getElementById('infinite-canvas');
+    const viewport = document.getElementById('gallery-content');
     
-    const loadingIndicator = document.getElementById('loading-indicator');
-    if (loadingIndicator) loadingIndicator.classList.remove('hidden');
+    if (!grid || !canvas || !viewport) return;
     
-    // Clear grid
-    grid.innerHTML = '';
+    const gridRect = grid.getBoundingClientRect();
+    const canvasRect = canvas.getBoundingClientRect();
+    const viewportRect = viewport.getBoundingClientRect();
     
-    // Get or load image data
-    let images = galleryImageData[galleryKey];
-    if (!images) {
-        images = await loadGalleryData(galleryKey);
-    }
+    const contentWidth = gridRect.width;
+    const contentHeight = gridRect.height;
+    const viewportWidth = viewportRect.width;
+    const viewportHeight = viewportRect.height;
     
-    // Sort by likes (simple, no transpose needed with CSS Grid!)
-    const sortedImages = stableSortByLikes(images);
+    const canvasStyle = window.getComputedStyle(canvas);
+    const paddingLeft = parseInt(canvasStyle.paddingLeft) || 20;
+    const paddingRight = parseInt(canvasStyle.paddingRight) || 20;
+    const paddingTop = parseInt(canvasStyle.paddingTop) || 120;
+    const paddingBottom = parseInt(canvasStyle.paddingBottom) || 80;
     
-    // Store for modal navigation (in sorted order)
-    currentGalleryImages = sortedImages;
+    const scrollableWidth = Math.max(0, contentWidth - viewportWidth + paddingLeft + paddingRight);
+    const scrollableHeight = Math.max(0, contentHeight - viewportHeight + paddingTop + paddingBottom);
     
-    // Create and append cards in sorted order
-    // CSS Grid will lay them out left-to-right, top-to-bottom automatically!
-    sortedImages.forEach((image, index) => {
-        const card = createImageCard(image, index);
-        grid.appendChild(card);
-    });
+    scrollLimits = {
+        minX: -scrollableWidth,
+        maxX: scrollableWidth,
+        minY: -scrollableHeight,
+        maxY: scrollableHeight
+    };
     
-    if (loadingIndicator) {
-        setTimeout(() => {
-            loadingIndicator.classList.add('hidden');
-        }, 300);
-    }
-    
-    console.log(`✅ Rendered ${sortedImages.length} images sorted by likes (CSS Grid)`);
+    console.log('📐 Scroll limits calculated:', scrollLimits);
 };
 
-// ============================================
-// EXISTING UI FUNCTIONS (UNCHANGED)
-// ============================================
-
-const switchGalleryDescription = (galleryKey) => {
-    const descriptions = document.querySelectorAll('.gallery-description');
-    descriptions.forEach(desc => {
-        if (desc.dataset.gallery === galleryKey) {
-            desc.classList.remove('hidden');
-        } else {
-            desc.classList.add('hidden');
+// GALLERY SELECTOR
+const setupGallerySelector = async () => {
+    console.log('🔄 Setting up gallery selector...');
+    
+    await Promise.all(Object.keys(galleries).map(key => loadGalleryData(key)));
+    
+    Object.keys(galleries).forEach(key => {
+        const cover = document.querySelector(`.gallery-cover[data-gallery="${key}"]`);
+        const countElement = document.getElementById(`${key}-count`);
+        
+        if (cover && galleryImageData[key]) {
+            const mostLikedUrl = getMostLikedImageUrl(key);
+            if (mostLikedUrl) {
+                cover.style.backgroundImage = `url(${mostLikedUrl})`;
+            }
+        }
+        
+        if (countElement && galleryImageData[key]) {
+            const count = galleryImageData[key].length;
+            countElement.textContent = `${count} Works`;
         }
     });
-};
-
-const setupFilters = () => {
-    const filterTabs = document.querySelectorAll('.filter-tab');
     
-    filterTabs.forEach(tab => {
-        tab.addEventListener('click', async () => {
-            filterTabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            
-            const galleryKey = tab.dataset.gallery;
-            currentGallery = galleryKey;
-            
-            await renderMasonryGrid(galleryKey);
-            switchGalleryDescription(galleryKey);
+    document.querySelectorAll('.gallery-cover').forEach(cover => {
+        cover.addEventListener('click', function() {
+            const galleryId = this.dataset.gallery;
+            openGallery(galleryId);
         });
     });
+    
+    console.log('✅ Gallery selector setup complete');
 };
 
-const setupBackToTop = () => {
-    const backToTopBtn = document.getElementById('back-to-top');
-    if (!backToTopBtn) return;
+const openGallery = (galleryId) => {
+    currentGallery = galleryId;
     
-    window.addEventListener('scroll', () => {
-        if (window.pageYOffset > 500) {
-            backToTopBtn.classList.add('visible');
-        } else {
-            backToTopBtn.classList.remove('visible');
+    const gallerySelector = document.getElementById('gallery-selector');
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const galleryContent = document.getElementById('gallery-content');
+    const currentGalleryTitle = document.getElementById('current-gallery-title');
+    const currentGallerySubtitle = document.getElementById('current-gallery-subtitle');
+    const siteIntro = document.querySelector('.site-intro');
+    const termsFooter = document.querySelector('.terms-footer');
+    
+    loadingIndicator.classList.add('active');
+    gallerySelector.classList.add('hidden');
+    if (siteIntro) siteIntro.classList.add('hidden');
+    if (termsFooter) termsFooter.classList.add('hidden');
+    
+    currentGalleryTitle.textContent = galleries[galleryId].title;
+    currentGallerySubtitle.textContent = galleries[galleryId].subtitle;
+    
+    setTimeout(() => {
+        loadGalleryContent(galleryId);
+        loadingIndicator.classList.remove('active');
+        galleryContent.classList.add('active');
+    }, 800);
+};
+
+const loadGalleryContent = (galleryId) => {
+    const masonryGrid = document.getElementById('masonry-grid');
+    const gallery = galleries[galleryId];
+    const images = galleryImageData[galleryId];
+    
+    if (!images || images.length === 0) {
+        console.error(`No images found for gallery: ${galleryId}`);
+        return;
+    }
+    
+    masonryGrid.innerHTML = '';
+    
+    const sortedImages = stableSortByLikes(images);
+    currentGalleryImages = sortedImages;
+    
+    console.log(`🎨 Rendering ${sortedImages.length} images for ${galleryId}, sorted by likes:`);
+    sortedImages.forEach((image, idx) => {
+        console.log(`  ${idx + 1}: ${image.likes} likes - ${image.url}`);
+    });
+    
+    sortedImages.forEach((image, index) => {
+        const masonryItem = document.createElement('div');
+        
+        let orientation = 'square';
+        if (image.aspectRatio > 1.2) {
+            orientation = 'horizontal';
+        } else if (image.aspectRatio < 0.8) {
+            orientation = 'vertical';
+        }
+        
+        masonryItem.className = `masonry-item ${orientation}`;
+        masonryItem.style.animationDelay = `${index * 0.05}s`;
+        masonryItem.style.backgroundImage = `url(${image.url})`;
+        
+        const overlay = document.createElement('div');
+        overlay.className = 'item-overlay';
+        overlay.style.opacity = '0';
+        
+        masonryItem.addEventListener('mouseenter', () => {
+            overlay.style.opacity = '1';
+        });
+        
+        masonryItem.addEventListener('mouseleave', () => {
+            overlay.style.opacity = '0';
+        });
+        
+        overlay.innerHTML = `
+            <div class="item-category">${gallery.title}</div>
+            <div class="item-title">Image ${image.imageData.index}</div>
+            <div class="item-likes">♥ ${image.likes}</div>
+        `;
+        
+        masonryItem.addEventListener('click', () => {
+            openModal(image.url, gallery.title, galleryId, index);
+        });
+        
+        masonryItem.appendChild(overlay);
+        masonryGrid.appendChild(masonryItem);
+    });
+    
+    scrollX = 0;
+    scrollY = 0;
+    
+    setTimeout(() => {
+        calculateScrollLimits();
+        updateCanvasTransform();
+    }, 100);
+    
+    setTimeout(calculateScrollLimits, 500);
+};
+
+const closeGallery = () => {
+    const galleryContent = document.getElementById('gallery-content');
+    const gallerySelector = document.getElementById('gallery-selector');
+    const siteIntro = document.querySelector('.site-intro');
+    const termsFooter = document.querySelector('.terms-footer');
+    
+    galleryContent.classList.remove('active');
+    
+    setTimeout(() => {
+        gallerySelector.classList.remove('hidden');
+        if (siteIntro) siteIntro.classList.remove('hidden');
+        if (termsFooter) termsFooter.classList.remove('hidden');
+        currentGallery = null;
+    }, 800);
+};
+
+// CANVAS NAVIGATION
+const updateCanvasTransform = () => {
+    const container = document.getElementById('canvas-transform-container');
+    if (container) {
+        container.style.transform = `translate(${scrollX}px, ${scrollY}px)`;
+    }
+};
+
+const setupCanvasNavigation = () => {
+    const canvas = document.getElementById('infinite-canvas');
+    const galleryContent = document.getElementById('gallery-content');
+    
+    canvas.addEventListener('mousedown', startDrag);
+    canvas.addEventListener('touchstart', startDragTouch, { passive: false });
+    
+    function startDrag(e) {
+        if (!galleryContent.classList.contains('active')) return;
+        isDragging = true;
+        startX = e.clientX - scrollX;
+        startY = e.clientY - scrollY;
+        canvas.style.cursor = 'grabbing';
+        e.preventDefault();
+    }
+    
+    function startDragTouch(e) {
+        if (!galleryContent.classList.contains('active')) return;
+        if (e.touches.length === 1) {
+            isDragging = true;
+            startX = e.touches[0].clientX - scrollX;
+            startY = e.touches[0].clientY - scrollY;
+        }
+    }
+    
+    function onDrag(e) {
+        if (!isDragging || !galleryContent.classList.contains('active')) return;
+        
+        scrollX = e.clientX - startX;
+        scrollY = e.clientY - startY;
+        
+        scrollX = Math.max(scrollLimits.minX, Math.min(scrollLimits.maxX, scrollX));
+        scrollY = Math.max(scrollLimits.minY, Math.min(scrollLimits.maxY, scrollY));
+        
+        updateCanvasTransform();
+    }
+    
+    function onDragTouch(e) {
+        if (!isDragging || !galleryContent.classList.contains('active')) return;
+        if (e.touches.length === 1) {
+            scrollX = e.touches[0].clientX - startX;
+            scrollY = e.touches[0].clientY - startY;
+            
+            scrollX = Math.max(scrollLimits.minX, Math.min(scrollLimits.maxX, scrollX));
+            scrollY = Math.max(scrollLimits.minY, Math.min(scrollLimits.maxY, scrollY));
+            
+            updateCanvasTransform();
+        }
+    }
+    
+    function stopDrag() {
+        isDragging = false;
+        canvas.style.cursor = '';
+    }
+    
+    document.addEventListener('mousemove', onDrag);
+    document.addEventListener('touchmove', onDragTouch, { passive: false });
+    document.addEventListener('mouseup', stopDrag);
+    document.addEventListener('touchend', stopDrag);
+    
+    document.addEventListener('keydown', function(e) {
+        if (!galleryContent.classList.contains('active')) return;
+        
+        const scrollSpeed = 30;
+        
+        switch(e.key) {
+            case 'ArrowLeft':
+                scrollX += scrollSpeed;
+                break;
+            case 'ArrowRight':
+                scrollX -= scrollSpeed;
+                break;
+            case 'ArrowUp':
+                scrollY += scrollSpeed;
+                break;
+            case 'ArrowDown':
+                scrollY -= scrollSpeed;
+                break;
+            case 'Escape':
+                closeGallery();
+                return;
+        }
+        
+        scrollX = Math.max(scrollLimits.minX, Math.min(scrollLimits.maxX, scrollX));
+        scrollY = Math.max(scrollLimits.minY, Math.min(scrollLimits.maxY, scrollY));
+        
+        updateCanvasTransform();
+    });
+    
+    canvas.addEventListener('wheel', function(e) {
+        if (!galleryContent.classList.contains('active')) return;
+        
+        e.preventDefault();
+        
+        scrollX -= e.deltaX * 0.5;
+        scrollY -= e.deltaY * 0.5;
+        
+        scrollX = Math.max(scrollLimits.minX, Math.min(scrollLimits.maxX, scrollX));
+        scrollY = Math.max(scrollLimits.minY, Math.min(scrollLimits.maxY, scrollY));
+        
+        updateCanvasTransform();
+    }, { passive: false });
+    
+    window.addEventListener('resize', () => {
+        if (galleryContent.classList.contains('active')) {
+            setTimeout(calculateScrollLimits, 100);
         }
     });
-    
-    backToTopBtn.addEventListener('click', () => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
 };
 
-// ============================================
-// MODAL FUNCTIONS (UNCHANGED)
-// ============================================
+const setupBackButton = () => {
+    const backButton = document.getElementById('back-button');
+    if (backButton) {
+        backButton.addEventListener('click', closeGallery);
+    }
+};
 
+// MODAL
 const modal = document.getElementById('modal');
-const modalImage = document.getElementById('modal-image');
+const modalImage = document.getElementById('modal-img');
 const likeBtn = document.getElementById('like-btn');
-const modalClose = modal.querySelector('.modal-close');
+const modalClose = document.getElementById('modal-close');
 const modalPrev = document.getElementById('modal-prev');
 const modalNext = document.getElementById('modal-next');
 
-const openModal = (imageUrl, category = 'Image', galleryKey = currentGallery) => {
+const openModal = (imageUrl, category = 'Image', galleryKey = currentGallery, imageIndex = 0) => {
     currentModalImageUrl = imageUrl;
+    currentModalImageIndex = imageIndex;
     modalImage.src = imageUrl;
-    
-    // Find index in current gallery's sorted order
-    const images = currentGalleryImages;
-    currentModalImageIndex = images.findIndex(img => img.url === imageUrl);
     
     modal.removeAttribute('hidden');
     document.body.style.overflow = 'hidden';
@@ -514,10 +667,10 @@ const updateLikeButton = () => {
     
     const docId = getDocIdFromUrl(currentModalImageUrl);
     const likes = likesCache[docId] || 0;
+    const likeCount = document.getElementById('like-count');
     const heart = likeBtn.querySelector('.heart');
-    const count = likeBtn.querySelector('.count');
     
-    if (count) count.textContent = likes;
+    if (likeCount) likeCount.textContent = likes;
     
     let isLiked = false;
     if (window.FUNCTIONAL_COOKIES_ENABLED) {
@@ -526,19 +679,14 @@ const updateLikeButton = () => {
     }
     
     if (heart) {
+        heart.textContent = isLiked ? '♥' : '♡';
         if (isLiked) {
-            heart.classList.remove('far');
-            heart.classList.add('fas', 'liked');
+            likeBtn.classList.add('liked');
         } else {
-            heart.classList.remove('fas', 'liked');
-            heart.classList.add('far');
+            likeBtn.classList.remove('liked');
         }
     }
 };
-
-// ============================================
-// LIKE HANDLING (SIMPLIFIED)
-// ============================================
 
 const toggleLike = async () => {
     if (!currentModalImageUrl || isProcessing) return;
@@ -560,17 +708,14 @@ const toggleLike = async () => {
         const newLikes = await updateLike(currentModalImageUrl, increment_value);
         
         if (newLikes !== null) {
-            // Update localStorage
             if (isCurrentlyLiked) {
                 localStorage.removeItem(likedKey);
             } else {
                 localStorage.setItem(likedKey, 'true');
             }
             
-            // Update cache
             likesCache[docId] = newLikes;
             
-            // Update image data in ALL galleries
             Object.keys(galleryImageData).forEach(galleryKey => {
                 const images = galleryImageData[galleryKey];
                 const imageIndex = images.findIndex(img => img.url === currentModalImageUrl);
@@ -579,31 +724,47 @@ const toggleLike = async () => {
                 }
             });
             
-            // Update modal UI
             updateLikeButton();
-            
-            // Re-render current gallery (will re-sort automatically)
-            await renderMasonryGrid(currentGallery);
+            loadGalleryContent(currentGallery);
         }
     } catch (error) {
         console.error('Error toggling like:', error);
-        alert('Failed to update like. Please try again.');
     } finally {
         isProcessing = false;
         likeBtn.disabled = false;
     }
 };
 
-// ============================================
-// GDPR COOKIE CONSENT FUNCTIONS (UNCHANGED)
-// ============================================
+if (modalClose) modalClose.addEventListener('click', closeModal);
+if (modal) {
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeModal();
+        }
+    });
+}
+if (likeBtn) likeBtn.addEventListener('click', toggleLike);
+if (modalPrev) modalPrev.addEventListener('click', () => navigateModal('prev'));
+if (modalNext) modalNext.addEventListener('click', () => navigateModal('next'));
 
+document.addEventListener('keydown', (e) => {
+    if (!modal.hasAttribute('hidden')) {
+        if (e.key === 'Escape') {
+            closeModal();
+        } else if (e.key === 'ArrowLeft') {
+            navigateModal('prev');
+        } else if (e.key === 'ArrowRight') {
+            navigateModal('next');
+        }
+    }
+});
+
+// COOKIES - GDPR COMPLIANT
 const initCookieBanner = () => {
     const savedPrefs = localStorage.getItem('cookiePreferences');
     
     if (savedPrefs) {
         const prefs = JSON.parse(savedPrefs);
-        console.log('📋 Applying cookie preferences:', prefs);
         applyCookiePreferences(prefs);
     } else {
         showCookieBanner();
@@ -618,106 +779,37 @@ const showCookieBanner = () => {
 };
 
 const applyCookiePreferences = async (prefs) => {
-    console.log('🔧 Applying cookie preferences:', prefs);
-    
-    // Essential cookies (always enabled)
-    
-    // Functional cookies (Firebase, likes, etc.)
+    console.log('🍪 Applying cookie preferences:', prefs);
     if (prefs.functional) {
         window.FUNCTIONAL_COOKIES_ENABLED = true;
         await initFirebase();
         await fetchAllLikes();
-        console.log('✅ Functional cookies enabled');
     } else {
-        console.log('❌ Functional cookies disabled');
+        window.FUNCTIONAL_COOKIES_ENABLED = false;
     }
-    
-    // Analytics cookies
-    if (prefs.analytics) {
-        window['ga-disable-G-5MGS0G4CDY'] = false;
-        import('https://www.gstatic.com/firebasejs/12.8.0/firebase-analytics.js')
-            .then(({ getAnalytics }) => {
-                if (app) {
-                    analytics = getAnalytics(app);
-                    console.log('✅ Analytics enabled after consent');
-                }
-            });
-    } else {
-        console.log('❌ Analytics cookies disabled');
-    }
-    
-    // Marketing cookies
-    if (prefs.marketing) {
-        console.log('✅ Marketing cookies enabled');
-    } else {
-        console.log('❌ Marketing cookies disabled');
-    }
-    
-    // Verify what was saved
-    const saved = localStorage.getItem('cookiePreferences');
-    console.log('💾 Verified saved preferences:', JSON.parse(saved));
 };
 
-// ============================================
-// TERMS MODAL (UNCHANGED)
-// ============================================
-
-const termsModal = document.getElementById('terms-modal');
-const termsBtn = document.getElementById('terms-btn');
-const termsClose = termsModal.querySelector('.modal-close');
-
-termsBtn.addEventListener('click', () => {
-    termsModal.removeAttribute('hidden');
-    document.body.style.overflow = 'hidden';
-});
-
-termsClose.addEventListener('click', () => {
-    termsModal.setAttribute('hidden', '');
-    document.body.style.overflow = 'auto';
-});
-
-termsModal.addEventListener('click', (e) => {
-    if (e.target === termsModal) {
-        termsModal.setAttribute('hidden', '');
-        document.body.style.overflow = 'auto';
-    }
-});
-
-// ============================================
-// COOKIE EVENT LISTENERS (UNCHANGED)
-// ============================================
-
+// Initialize cookie event listeners
 document.addEventListener('DOMContentLoaded', () => {
     const cookieBanner = document.getElementById('cookie-banner');
     const cookieSettingsModal = document.getElementById('cookie-settings-modal');
-    
-    // Banner buttons
     const cookieAcceptBtn = document.getElementById('cookie-accept-btn');
     const cookieRejectBtn = document.getElementById('cookie-reject-btn');
     const cookieSettingsBtn = document.getElementById('cookie-settings-btn');
-    
-    // Modal buttons
     const cookieSaveBtn = document.getElementById('cookie-save-btn');
     const cookieAcceptAllBtn = document.getElementById('cookie-accept-all-btn');
     const cookieRejectAllBtn = document.getElementById('cookie-reject-all-btn');
-    const cookieSettingsModalClose = cookieSettingsModal?.querySelector('.modal-close');
-    
-    // Floating button
     const cookieFloatBtn = document.getElementById('cookie-float-btn');
-    const footerCookieBtn = document.getElementById('footer-cookie-btn');
+    const cookieModalClose = document.getElementById('cookie-modal-close');
     
-    // Accept All from banner
     if (cookieAcceptBtn) {
         cookieAcceptBtn.addEventListener('click', async () => {
             const prefs = {
                 essential: true,
-                analytics: true,
                 functional: true,
-                marketing: true,
                 version: '1.0',
                 timestamp: new Date().toISOString()
             };
-            console.log('✅ Accepting all cookies from banner:', prefs);
             localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
             if (cookieBanner) cookieBanner.setAttribute('hidden', '');
             await applyCookiePreferences(prefs);
@@ -725,245 +817,144 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Reject All from banner
     if (cookieRejectBtn) {
         cookieRejectBtn.addEventListener('click', () => {
             const prefs = {
                 essential: true,
-                analytics: false,
                 functional: false,
-                marketing: false,
                 version: '1.0',
                 timestamp: new Date().toISOString()
             };
             localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
-            
-            clearFunctionalCookieData();
-            
+            teardownFirebase();
             if (cookieBanner) cookieBanner.setAttribute('hidden', '');
-            console.log('✅ Essential cookies only');
             location.reload();
         });
     }
     
-    // Open settings modal from banner
     if (cookieSettingsBtn && cookieSettingsModal) {
         cookieSettingsBtn.addEventListener('click', () => {
             if (cookieBanner) cookieBanner.setAttribute('hidden', '');
-            loadCookiePreferencesIntoModal();
             cookieSettingsModal.removeAttribute('hidden');
-            document.body.style.overflow = 'hidden';
         });
     }
     
-    // Open settings modal from floating button
     if (cookieFloatBtn && cookieSettingsModal) {
         cookieFloatBtn.addEventListener('click', () => {
-            loadCookiePreferencesIntoModal();
-            cookieSettingsModal.removeAttribute('hidden');
-            document.body.style.overflow = 'hidden';
-        });
-    }
-    
-    // Open settings modal from footer
-    if (footerCookieBtn && cookieSettingsModal) {
-        footerCookieBtn.addEventListener('click', () => {
-            loadCookiePreferencesIntoModal();
-            cookieSettingsModal.removeAttribute('hidden');
-            document.body.style.overflow = 'hidden';
-        });
-    }
-    
-    // Helper function to load saved preferences into checkboxes
-    function loadCookiePreferencesIntoModal() {
-        const savedPrefs = localStorage.getItem('cookiePreferences');
-        if (savedPrefs) {
-            const prefs = JSON.parse(savedPrefs);
-            
-            const analyticsCheckbox = document.getElementById('analytics-cookies');
-            const functionalCheckbox = document.getElementById('functional-cookies');
-            const marketingCheckbox = document.getElementById('marketing-cookies');
-            
-            if (analyticsCheckbox) analyticsCheckbox.checked = prefs.analytics || false;
-            if (functionalCheckbox) functionalCheckbox.checked = prefs.functional || false;
-            if (marketingCheckbox) marketingCheckbox.checked = prefs.marketing || false;
-        }
-    }
-    
-    // Close settings modal
-    if (cookieSettingsModalClose && cookieSettingsModal) {
-        cookieSettingsModalClose.addEventListener('click', () => {
-            cookieSettingsModal.setAttribute('hidden', '');
-            document.body.style.overflow = 'auto';
-        });
-    }
-    
-    // Click outside to close settings modal
-    if (cookieSettingsModal) {
-        cookieSettingsModal.addEventListener('click', (e) => {
-            if (e.target === cookieSettingsModal) {
-                cookieSettingsModal.setAttribute('hidden', '');
-                document.body.style.overflow = 'auto';
+            const savedPrefs = localStorage.getItem('cookiePreferences');
+            if (savedPrefs) {
+                const prefs = JSON.parse(savedPrefs);
+                const functionalCheckbox = document.getElementById('functional-cookies');
+                if (functionalCheckbox) functionalCheckbox.checked = prefs.functional || false;
             }
+            cookieSettingsModal.removeAttribute('hidden');
         });
     }
     
-    // Save custom preferences
+    if (cookieModalClose && cookieSettingsModal) {
+        cookieModalClose.addEventListener('click', () => {
+            cookieSettingsModal.setAttribute('hidden', '');
+        });
+    }
+    
     if (cookieSaveBtn && cookieSettingsModal) {
         cookieSaveBtn.addEventListener('click', async () => {
-            const analyticsCheckbox = document.getElementById('analytics-cookies');
             const functionalCheckbox = document.getElementById('functional-cookies');
-            const marketingCheckbox = document.getElementById('marketing-cookies');
-            
             const prefs = {
                 essential: true,
-                analytics: analyticsCheckbox?.checked || false,
                 functional: functionalCheckbox?.checked || false,
-                marketing: marketingCheckbox?.checked || false,
                 version: '1.0',
                 timestamp: new Date().toISOString()
             };
-            
-            console.log('💾 Saving cookie preferences:', prefs);
             localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
-            
-            if (!prefs.functional) {
-                clearFunctionalCookieData();
-            }
-            
             cookieSettingsModal.setAttribute('hidden', '');
-            document.body.style.overflow = 'auto';
             await applyCookiePreferences(prefs);
             location.reload();
         });
     }
     
-    // Accept all from settings modal
     if (cookieAcceptAllBtn && cookieSettingsModal) {
         cookieAcceptAllBtn.addEventListener('click', async () => {
-            const analyticsCheckbox = document.getElementById('analytics-cookies');
-            const functionalCheckbox = document.getElementById('functional-cookies');
-            const marketingCheckbox = document.getElementById('marketing-cookies');
-            
-            if (analyticsCheckbox) analyticsCheckbox.checked = true;
-            if (functionalCheckbox) functionalCheckbox.checked = true;
-            if (marketingCheckbox) marketingCheckbox.checked = true;
-            
             const prefs = {
                 essential: true,
-                analytics: true,
                 functional: true,
-                marketing: true,
                 version: '1.0',
                 timestamp: new Date().toISOString()
             };
-            console.log('✅ Accepting all cookies from modal:', prefs);
             localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
             cookieSettingsModal.setAttribute('hidden', '');
-            document.body.style.overflow = 'auto';
             await applyCookiePreferences(prefs);
             location.reload();
         });
     }
     
-    // Reject all from settings modal
     if (cookieRejectAllBtn && cookieSettingsModal) {
         cookieRejectAllBtn.addEventListener('click', () => {
-            const analyticsCheckbox = document.getElementById('analytics-cookies');
-            const functionalCheckbox = document.getElementById('functional-cookies');
-            const marketingCheckbox = document.getElementById('marketing-cookies');
-            
-            if (analyticsCheckbox) analyticsCheckbox.checked = false;
-            if (functionalCheckbox) functionalCheckbox.checked = false;
-            if (marketingCheckbox) marketingCheckbox.checked = false;
-            
             const prefs = {
                 essential: true,
-                analytics: false,
                 functional: false,
-                marketing: false,
                 version: '1.0',
                 timestamp: new Date().toISOString()
             };
-            console.log('🚫 Rejecting all optional cookies:', prefs);
             localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
-            
-            clearFunctionalCookieData();
-            
+            teardownFirebase();
             cookieSettingsModal.setAttribute('hidden', '');
-            document.body.style.overflow = 'auto';
             location.reload();
         });
     }
 });
 
-// ============================================
-// EVENT LISTENERS (UNCHANGED)
-// ============================================
+// TERMS MODAL
+const termsModal = document.getElementById('terms-modal');
+const termsLink = document.getElementById('terms-link');
+const termsModalClose = document.getElementById('terms-modal-close');
 
-modalClose.addEventListener('click', closeModal);
+if (termsLink && termsModal) {
+    termsLink.addEventListener('click', () => {
+        termsModal.removeAttribute('hidden');
+        document.body.style.overflow = 'hidden';
+    });
+}
 
-modal.addEventListener('click', (e) => {
-    if (e.target === modal) {
-        closeModal();
-    }
-});
+if (termsModalClose && termsModal) {
+    termsModalClose.addEventListener('click', () => {
+        termsModal.setAttribute('hidden', '');
+        document.body.style.overflow = 'auto';
+    });
+}
 
-likeBtn.addEventListener('click', toggleLike);
-
-modalPrev.addEventListener('click', () => navigateModal('prev'));
-modalNext.addEventListener('click', () => navigateModal('next'));
-
-// Keyboard
-document.addEventListener('keydown', (e) => {
-    if (!modal.hasAttribute('hidden')) {
-        if (e.key === 'Escape') {
-            closeModal();
-        } else if (e.key === 'ArrowLeft') {
-            navigateModal('prev');
-        } else if (e.key === 'ArrowRight') {
-            navigateModal('next');
+if (termsModal) {
+    termsModal.addEventListener('click', (e) => {
+        if (e.target === termsModal) {
+            termsModal.setAttribute('hidden', '');
+            document.body.style.overflow = 'auto';
         }
-    }
-});
+    });
+}
 
-// ============================================
-// INITIALIZATION (UPDATED)
-// ============================================
-
+// INIT
 const init = async () => {
     try {
-        console.log('🚀 Initializing...');
+        console.log('🚀 Initializing The Nonconformist...');
         
-        // Initialize cookie banner first
         initCookieBanner();
-        
-        const loadingIndicator = document.getElementById('loading-indicator');
-        if (loadingIndicator) loadingIndicator.classList.remove('hidden');
-        
-        // Load manifest
         await loadManifest();
         
-        // Fetch likes only if functional cookies enabled
         if (window.FUNCTIONAL_COOKIES_ENABLED) {
+            console.log('🔐 Functional cookies enabled, initializing Firebase...');
+            await initFirebase();
             await fetchAllLikes();
+        } else {
+            console.log('🔐 Functional cookies not enabled, using default likes (0)');
         }
         
-        // Setup UI
-        setupFilters();
-        setupBackToTop();
+        await setupGallerySelector();
+        setupCanvasNavigation();
+        setupBackButton();
         
-        // Initial render
-        await renderMasonryGrid(currentGallery);
-        
-        console.log('✅ Initialized successfully with CSS Grid');
+        console.log('✅ Initialization complete');
     } catch (error) {
         console.error('❌ Init error:', error);
-        
-        const loadingIndicator = document.getElementById('loading-indicator');
-        if (loadingIndicator) {
-            loadingIndicator.innerHTML = '<p>Error loading images. Please refresh.</p>';
-        }
     }
 };
 
@@ -971,16 +962,4 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
 } else {
     init();
-}
-
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-                console.log('✅ Service Worker registered for image caching');
-            })
-            .catch(error => {
-                console.warn('Service Worker registration failed:', error);
-            });
-    });
 }
