@@ -1,4 +1,4 @@
-// THE NONCONFORMIST - GDPR Compliant Version
+// THE NONCONFORMIST - GDPR Compliant Version with Thumbnail View
 // ✅ Firebase SDK loaded dynamically ONLY after user consent
 
 // ============================================
@@ -120,6 +120,12 @@ let scrollX = 0;
 let scrollY = 0;
 let scrollLimits = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
 
+// Thumbnail view state
+let thumbnailViewActive = false;
+let thumbnailCache = {};
+let lastPinchDistance = 0;
+let pinchThreshold = 50;
+
 window.FUNCTIONAL_COOKIES_ENABLED = false;
 
 // STABLE SORT BY LIKES - DESCENDING ORDER
@@ -190,6 +196,14 @@ const createImageUrl = (dir, imageData) => {
     const branch = 'main';
     const filename = imageData.originalName || `${dir}-${imageData.index}.${imageData.ext}`;
     return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/${dir}/${filename}`;
+};
+
+// Create thumbnail URL (smaller version for performance)
+const createThumbnailUrl = (url) => {
+    // For GitHub raw content, we can't directly request smaller versions
+    // So we'll use the same URL but rely on CSS to scale down
+    // In a production environment, you'd use a CDN with image resizing
+    return url;
 };
 
 const getDocIdFromUrl = (url) => {
@@ -474,6 +488,11 @@ const closeGallery = () => {
     const siteIntro = document.querySelector('.site-intro');
     const termsFooter = document.querySelector('.terms-footer');
     
+    // Close thumbnail view if open
+    if (thumbnailViewActive) {
+        closeThumbnailView();
+    }
+    
     galleryContent.classList.remove('active');
     
     setTimeout(() => {
@@ -510,6 +529,19 @@ const setupCanvasNavigation = () => {
     
     function startDragTouch(e) {
         if (!galleryContent.classList.contains('active')) return;
+        
+        // Detect pinch gesture
+        if (e.touches.length === 2) {
+            const touch1 = e.touches[0];
+            const touch2 = e.touches[1];
+            const distance = Math.hypot(
+                touch2.clientX - touch1.clientX,
+                touch2.clientY - touch1.clientY
+            );
+            lastPinchDistance = distance;
+            return;
+        }
+        
         if (e.touches.length === 1) {
             isDragging = true;
             startX = e.touches[0].clientX - scrollX;
@@ -530,7 +562,32 @@ const setupCanvasNavigation = () => {
     }
     
     function onDragTouch(e) {
-        if (!isDragging || !galleryContent.classList.contains('active')) return;
+        if (!galleryContent.classList.contains('active')) return;
+        
+        // Detect pinch zoom out gesture
+        if (e.touches.length === 2) {
+            const touch1 = e.touches[0];
+            const touch2 = e.touches[1];
+            const distance = Math.hypot(
+                touch2.clientX - touch1.clientX,
+                touch2.clientY - touch1.clientY
+            );
+            
+            if (lastPinchDistance > 0) {
+                const delta = distance - lastPinchDistance;
+                if (delta < -pinchThreshold) {
+                    // Pinch out (zoom out) - open thumbnail view
+                    openThumbnailView();
+                    lastPinchDistance = 0;
+                    return;
+                }
+            }
+            lastPinchDistance = distance;
+            return;
+        }
+        
+        if (!isDragging) return;
+        
         if (e.touches.length === 1) {
             scrollX = e.touches[0].clientX - startX;
             scrollY = e.touches[0].clientY - startY;
@@ -545,6 +602,7 @@ const setupCanvasNavigation = () => {
     function stopDrag() {
         isDragging = false;
         canvas.style.cursor = '';
+        lastPinchDistance = 0;
     }
     
     document.addEventListener('mousemove', onDrag);
@@ -552,8 +610,16 @@ const setupCanvasNavigation = () => {
     document.addEventListener('mouseup', stopDrag);
     document.addEventListener('touchend', stopDrag);
     
+    // Keyboard navigation with Ctrl+- to open thumbnail view
     document.addEventListener('keydown', function(e) {
         if (!galleryContent.classList.contains('active')) return;
+        
+        // Ctrl+Minus to open thumbnail view
+        if (e.ctrlKey && e.key === '-') {
+            e.preventDefault();
+            openThumbnailView();
+            return;
+        }
         
         const scrollSpeed = 30;
         
@@ -571,7 +637,11 @@ const setupCanvasNavigation = () => {
                 scrollY -= scrollSpeed;
                 break;
             case 'Escape':
-                closeGallery();
+                if (thumbnailViewActive) {
+                    closeThumbnailView();
+                } else {
+                    closeGallery();
+                }
                 return;
         }
         
@@ -583,6 +653,15 @@ const setupCanvasNavigation = () => {
     
     canvas.addEventListener('wheel', function(e) {
         if (!galleryContent.classList.contains('active')) return;
+        
+        // Ctrl+Scroll to open thumbnail view
+        if (e.ctrlKey) {
+            if (e.deltaY < 0) {
+                e.preventDefault();
+                openThumbnailView();
+                return;
+            }
+        }
         
         e.preventDefault();
         
@@ -606,6 +685,189 @@ const setupBackButton = () => {
     const backButton = document.getElementById('back-button');
     if (backButton) {
         backButton.addEventListener('click', closeGallery);
+    }
+};
+
+// ============================================
+// THUMBNAIL VIEW FUNCTIONALITY
+// ============================================
+
+const openThumbnailView = () => {
+    if (thumbnailViewActive || !currentGallery) return;
+    
+    thumbnailViewActive = true;
+    const overlay = document.getElementById('thumbnail-overlay');
+    const thumbnailGrid = document.getElementById('thumbnail-grid');
+    const overlayTitle = document.getElementById('thumbnail-overlay-title');
+    
+    overlayTitle.textContent = `${galleries[currentGallery].title} - Gallery Overview`;
+    
+    overlay.removeAttribute('hidden');
+    
+    // Clear existing thumbnails
+    thumbnailGrid.innerHTML = '';
+    
+    // Generate thumbnails
+    const images = currentGalleryImages;
+    images.forEach((image, index) => {
+        const thumbnailItem = document.createElement('div');
+        thumbnailItem.className = 'thumbnail-grid-item';
+        thumbnailItem.style.animationDelay = `${index * 0.01}s`;
+        
+        // Check if thumbnail is in cache
+        const thumbnailUrl = thumbnailCache[image.url] || createThumbnailUrl(image.url);
+        thumbnailCache[image.url] = thumbnailUrl;
+        
+        thumbnailItem.style.backgroundImage = `url(${thumbnailUrl})`;
+        thumbnailItem.dataset.index = index;
+        
+        // Add overlay with image number
+        const itemOverlay = document.createElement('div');
+        itemOverlay.className = 'thumbnail-grid-item-overlay';
+        itemOverlay.innerHTML = `<span class="thumbnail-grid-item-number">${image.imageData.index}</span>`;
+        
+        thumbnailItem.appendChild(itemOverlay);
+        
+        // Click to jump to image
+        thumbnailItem.addEventListener('click', () => {
+            jumpToImageFromThumbnail(index);
+        });
+        
+        thumbnailGrid.appendChild(thumbnailItem);
+    });
+    
+    // Update viewport indicator
+    updateViewportIndicator();
+    
+    // Update position info
+    updateThumbnailPosition();
+    
+    // Add scroll listener for viewport indicator
+    const thumbnailContainer = document.querySelector('.thumbnail-grid-container');
+    if (thumbnailContainer) {
+        thumbnailContainer.addEventListener('scroll', updateViewportIndicator);
+    }
+};
+
+const closeThumbnailView = () => {
+    if (!thumbnailViewActive) return;
+    
+    thumbnailViewActive = false;
+    const overlay = document.getElementById('thumbnail-overlay');
+    overlay.setAttribute('hidden', '');
+    
+    // Remove scroll listener
+    const thumbnailContainer = document.querySelector('.thumbnail-grid-container');
+    if (thumbnailContainer) {
+        thumbnailContainer.removeEventListener('scroll', updateViewportIndicator);
+    }
+};
+
+const jumpToImageFromThumbnail = (imageIndex) => {
+    if (imageIndex < 0 || imageIndex >= currentGalleryImages.length) return;
+    
+    // Close thumbnail view
+    closeThumbnailView();
+    
+    // Calculate approximate scroll position to show this image
+    // This is a simplified calculation - in a real implementation you'd
+    // calculate the exact position based on the masonry grid layout
+    const gridWidth = scrollLimits.maxX * 2;
+    const gridHeight = scrollLimits.maxY * 2;
+    const imagesPerRow = 4; // Approximate
+    const row = Math.floor(imageIndex / imagesPerRow);
+    const col = imageIndex % imagesPerRow;
+    
+    scrollX = -(col / imagesPerRow) * gridWidth * 0.5;
+    scrollY = -(row / Math.ceil(currentGalleryImages.length / imagesPerRow)) * gridHeight * 0.5;
+    
+    scrollX = Math.max(scrollLimits.minX, Math.min(scrollLimits.maxX, scrollX));
+    scrollY = Math.max(scrollLimits.minY, Math.min(scrollLimits.maxY, scrollY));
+    
+    updateCanvasTransform();
+    
+    // Highlight the clicked image temporarily
+    setTimeout(() => {
+        const masonryItems = document.querySelectorAll('.masonry-item');
+        if (masonryItems[imageIndex]) {
+            masonryItems[imageIndex].style.boxShadow = '0 0 30px rgba(255, 107, 53, 0.8)';
+            setTimeout(() => {
+                masonryItems[imageIndex].style.boxShadow = '';
+            }, 2000);
+        }
+    }, 500);
+};
+
+const updateViewportIndicator = () => {
+    const indicator = document.getElementById('viewport-indicator');
+    const thumbnailContainer = document.querySelector('.thumbnail-grid-container');
+    const thumbnailGrid = document.getElementById('thumbnail-grid');
+    
+    if (!indicator || !thumbnailContainer || !thumbnailGrid) return;
+    
+    // Calculate visible area relative to total grid
+    const containerRect = thumbnailContainer.getBoundingClientRect();
+    const gridRect = thumbnailGrid.getBoundingClientRect();
+    
+    const scrollLeft = thumbnailContainer.scrollLeft;
+    const scrollWidth = thumbnailContainer.scrollWidth;
+    const clientWidth = thumbnailContainer.clientWidth;
+    
+    // Calculate indicator dimensions and position
+    const indicatorWidth = (clientWidth / scrollWidth) * gridRect.width;
+    const indicatorLeft = (scrollLeft / scrollWidth) * gridRect.width;
+    
+    indicator.style.width = `${indicatorWidth}px`;
+    indicator.style.height = `${containerRect.height - 60}px`;
+    indicator.style.left = `${indicatorLeft + 30}px`;
+    indicator.style.top = '30px';
+};
+
+const updateThumbnailPosition = () => {
+    const positionElement = document.getElementById('thumbnail-position');
+    if (positionElement && currentGalleryImages.length > 0) {
+        // Calculate which images are currently visible
+        const thumbnailContainer = document.querySelector('.thumbnail-grid-container');
+        if (thumbnailContainer) {
+            const scrollLeft = thumbnailContainer.scrollLeft;
+            const clientWidth = thumbnailContainer.clientWidth;
+            const scrollWidth = thumbnailContainer.scrollWidth;
+            
+            const visibleStart = Math.floor((scrollLeft / scrollWidth) * currentGalleryImages.length) + 1;
+            const visibleEnd = Math.ceil(((scrollLeft + clientWidth) / scrollWidth) * currentGalleryImages.length);
+            
+            positionElement.textContent = `${visibleStart}-${visibleEnd} / ${currentGalleryImages.length}`;
+        }
+    }
+};
+
+const setupThumbnailView = () => {
+    const thumbnailBtn = document.getElementById('thumbnail-view-btn');
+    const thumbnailCloseBtn = document.getElementById('thumbnail-close-btn');
+    
+    if (thumbnailBtn) {
+        thumbnailBtn.addEventListener('click', openThumbnailView);
+    }
+    
+    if (thumbnailCloseBtn) {
+        thumbnailCloseBtn.addEventListener('click', closeThumbnailView);
+    }
+    
+    // Close thumbnail view on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && thumbnailViewActive) {
+            closeThumbnailView();
+        }
+    });
+    
+    // Close thumbnail view on overlay click
+    const thumbnailOverlay = document.getElementById('thumbnail-overlay');
+    if (thumbnailOverlay) {
+        thumbnailOverlay.addEventListener('click', (e) => {
+            if (e.target === thumbnailOverlay) {
+                closeThumbnailView();
+            }
+        });
     }
 };
 
@@ -941,16 +1203,17 @@ const init = async () => {
         await loadManifest();
         
         if (window.FUNCTIONAL_COOKIES_ENABLED) {
-            console.log('🔐 Functional cookies enabled, initializing Firebase...');
+            console.log('🔓 Functional cookies enabled, initializing Firebase...');
             await initFirebase();
             await fetchAllLikes();
         } else {
-            console.log('🔐 Functional cookies not enabled, using default likes (0)');
+            console.log('🔒 Functional cookies not enabled, using default likes (0)');
         }
         
         await setupGallerySelector();
         setupCanvasNavigation();
         setupBackButton();
+        setupThumbnailView();
         
         console.log('✅ Initialization complete');
     } catch (error) {
