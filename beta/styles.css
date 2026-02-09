@@ -517,6 +517,8 @@ body {
     overflow-y: auto;
     overflow-x: hidden;
     padding: 20px 10px;
+    width: 30vw;
+    margin: 0 auto;
     
     /* Custom scrollbar */
     scrollbar-width: thin;
