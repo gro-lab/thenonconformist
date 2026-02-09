@@ -24,7 +24,7 @@ body {
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     overscroll-behavior-y: none;
-    touch-action: manipulation;
+    touch-action: none;
 }
 
 ::selection {
@@ -469,6 +469,7 @@ body {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.4s ease;
+    touch-action: none;
 }
 
 .thumbnail-overlay:not([hidden]) {
@@ -482,6 +483,7 @@ body {
     align-items: center;
     padding: 20px 30px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
 }
 
 .thumbnail-overlay-header h3 {
@@ -515,17 +517,20 @@ body {
 .thumbnail-grid-container {
     position: relative;
     flex: 1;
-    overflow-x: auto;
-    overflow-y: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
     padding: 30px;
-    /* Custom scrollbar */
+    /* Custom scrollbar - vertical */
     scrollbar-width: thin;
     scrollbar-color: rgba(242, 140, 40, 0.8) transparent;
 }
 
-/* Custom Scrollbar for Webkit browsers */
+/* Custom Scrollbar for Webkit browsers - VERTICAL */
 .thumbnail-grid-container::-webkit-scrollbar {
-    height: 12px;
+    width: 12px;
 }
 
 .thumbnail-grid-container::-webkit-scrollbar-track {
@@ -545,11 +550,10 @@ body {
 
 .thumbnail-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    grid-template-columns: repeat(6, 80px);
     gap: 8px;
-    min-height: 100%;
     width: fit-content;
-    min-width: 100%;
+    max-height: fit-content;
 }
 
 .thumbnail-grid-item {
@@ -607,16 +611,17 @@ body {
     font-weight: 600;
 }
 
-/* Viewport Indicator */
+/* Viewport Indicator - VERTICAL on the right side */
 .viewport-indicator {
-    position: absolute;
+    position: fixed;
+    right: 30px;
     border: 3px solid var(--accent-orange);
     background: rgba(242, 140, 40, 0.15);
     pointer-events: none;
     border-radius: 6px;
     transition: all 0.3s ease;
     box-shadow: 0 0 20px rgba(242, 140, 40, 0.4);
-    height: 120px !important;
+    width: 60px;
 }
 
 .thumbnail-info {
@@ -1058,7 +1063,7 @@ body {
     }
     
     .thumbnail-grid {
-        grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+        grid-template-columns: repeat(5, 60px);
         gap: 6px;
     }
     
@@ -1068,7 +1073,8 @@ body {
     }
     
     .viewport-indicator {
-        height: 100px !important;
+        width: 50px;
+        right: 20px;
     }
 }
 
@@ -1082,7 +1088,7 @@ body {
     }
     
     .thumbnail-grid {
-        grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+        grid-template-columns: repeat(4, 50px);
     }
     
     .thumbnail-grid-item {
@@ -1091,7 +1097,8 @@ body {
     }
     
     .viewport-indicator {
-        height: 80px !important;
+        width: 40px;
+        right: 15px;
     }
 }
 

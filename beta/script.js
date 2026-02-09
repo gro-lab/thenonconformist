@@ -532,6 +532,7 @@ const setupCanvasNavigation = () => {
         
         // Detect pinch gesture
         if (e.touches.length === 2) {
+            e.preventDefault(); // Prevent default pinch zoom
             const touch1 = e.touches[0];
             const touch2 = e.touches[1];
             const distance = Math.hypot(
@@ -566,6 +567,7 @@ const setupCanvasNavigation = () => {
         
         // Detect pinch zoom out gesture
         if (e.touches.length === 2) {
+            e.preventDefault(); // Prevent default pinch zoom
             const touch1 = e.touches[0];
             const touch2 = e.touches[1];
             const distance = Math.hypot(
@@ -742,10 +744,17 @@ const openThumbnailView = () => {
     // Update position info
     updateThumbnailPosition();
     
-    // Add scroll listener for viewport indicator
+    // Add scroll listener for viewport indicator and position updates
     const thumbnailContainer = document.querySelector('.thumbnail-grid-container');
     if (thumbnailContainer) {
-        thumbnailContainer.addEventListener('scroll', updateViewportIndicator);
+        const handleScroll = () => {
+            updateViewportIndicator();
+            updateThumbnailPosition();
+        };
+        thumbnailContainer.addEventListener('scroll', handleScroll);
+        
+        // Store reference to remove listener later
+        thumbnailContainer._scrollHandler = handleScroll;
     }
 };
 
@@ -758,8 +767,9 @@ const closeThumbnailView = () => {
     
     // Remove scroll listener
     const thumbnailContainer = document.querySelector('.thumbnail-grid-container');
-    if (thumbnailContainer) {
-        thumbnailContainer.removeEventListener('scroll', updateViewportIndicator);
+    if (thumbnailContainer && thumbnailContainer._scrollHandler) {
+        thumbnailContainer.removeEventListener('scroll', thumbnailContainer._scrollHandler);
+        thumbnailContainer._scrollHandler = null;
     }
 };
 
@@ -805,55 +815,70 @@ const updateViewportIndicator = () => {
     
     if (!indicator || !thumbnailContainer || !thumbnailGrid) return;
     
-    // Get the first thumbnail to calculate column width
+    // Get the first thumbnail to calculate row height
     const firstThumbnail = thumbnailGrid.querySelector('.thumbnail-grid-item');
     if (!firstThumbnail) return;
     
     const thumbnailRect = firstThumbnail.getBoundingClientRect();
-    const thumbnailWidth = thumbnailRect.width;
+    const thumbnailHeight = thumbnailRect.height;
     
-    // Get grid styles to find gap
+    // Get grid styles to find gap and column count
     const gridStyles = window.getComputedStyle(thumbnailGrid);
     const gap = parseInt(gridStyles.gap) || 8;
+    const gridTemplateColumns = gridStyles.gridTemplateColumns.split(' ').length;
     
-    // Calculate how many columns fit in the visible container width
+    // Calculate visible container height
     const containerRect = thumbnailContainer.getBoundingClientRect();
-    const containerWidth = containerRect.width - 60; // Account for padding
-    const columnsVisible = Math.floor((containerWidth + gap) / (thumbnailWidth + gap));
+    const containerHeight = containerRect.height - 60; // Account for padding
     
-    // Calculate total columns in grid
+    // Calculate how many rows fit in the visible container height
+    const rowsVisible = Math.floor((containerHeight + gap) / (thumbnailHeight + gap));
+    
+    // Calculate total rows in grid
     const totalThumbnails = thumbnailGrid.querySelectorAll('.thumbnail-grid-item').length;
-    const gridRect = thumbnailGrid.getBoundingClientRect();
-    const totalColumns = Math.round(gridRect.width / (thumbnailWidth + gap));
+    const totalRows = Math.ceil(totalThumbnails / gridTemplateColumns);
     
-    // Calculate indicator width based on visible columns
-    const indicatorWidth = (columnsVisible / totalColumns) * gridRect.width;
+    // Calculate indicator height based on visible rows
+    const availableHeight = containerHeight;
+    const indicatorHeight = Math.max(40, (rowsVisible / totalRows) * availableHeight);
     
-    // Calculate horizontal position
-    const scrollLeft = thumbnailContainer.scrollLeft;
-    const scrollWidth = thumbnailContainer.scrollWidth;
-    const indicatorLeft = (scrollLeft / scrollWidth) * gridRect.width;
+    // Calculate vertical position
+    const scrollTop = thumbnailContainer.scrollTop;
+    const scrollHeight = thumbnailContainer.scrollHeight;
+    const clientHeight = thumbnailContainer.clientHeight;
+    
+    // Calculate indicator top position
+    const scrollableHeight = scrollHeight - clientHeight;
+    const scrollPercentage = scrollableHeight > 0 ? scrollTop / scrollableHeight : 0;
+    const maxIndicatorTop = availableHeight - indicatorHeight;
+    const indicatorTop = scrollPercentage * maxIndicatorTop;
     
     // Set indicator dimensions and position
-    indicator.style.width = `${indicatorWidth}px`;
-    indicator.style.left = `${indicatorLeft + 30}px`;
-    indicator.style.top = '30px';
+    indicator.style.height = `${indicatorHeight}px`;
+    indicator.style.top = `${indicatorTop + 90}px`; // 90px offset for header
 };
 
 const updateThumbnailPosition = () => {
     const positionElement = document.getElementById('thumbnail-position');
     if (positionElement && currentGalleryImages.length > 0) {
-        // Calculate which images are currently visible
+        // Calculate which images are currently visible based on vertical scroll
         const thumbnailContainer = document.querySelector('.thumbnail-grid-container');
-        if (thumbnailContainer) {
-            const scrollLeft = thumbnailContainer.scrollLeft;
-            const clientWidth = thumbnailContainer.clientWidth;
-            const scrollWidth = thumbnailContainer.scrollWidth;
+        const thumbnailGrid = document.getElementById('thumbnail-grid');
+        
+        if (thumbnailContainer && thumbnailGrid) {
+            const scrollTop = thumbnailContainer.scrollTop;
+            const clientHeight = thumbnailContainer.clientHeight;
+            const scrollHeight = thumbnailContainer.scrollHeight;
             
-            const visibleStart = Math.floor((scrollLeft / scrollWidth) * currentGalleryImages.length) + 1;
-            const visibleEnd = Math.ceil(((scrollLeft + clientWidth) / scrollWidth) * currentGalleryImages.length);
+            // Get grid column count
+            const gridStyles = window.getComputedStyle(thumbnailGrid);
+            const columnsCount = gridStyles.gridTemplateColumns.split(' ').length;
             
-            positionElement.textContent = `${visibleStart}-${visibleEnd} / ${currentGalleryImages.length}`;
+            // Calculate visible range based on scroll position
+            const visibleStart = Math.floor((scrollTop / scrollHeight) * currentGalleryImages.length) + 1;
+            const visibleEnd = Math.ceil(((scrollTop + clientHeight) / scrollHeight) * currentGalleryImages.length);
+            
+            positionElement.textContent = `${visibleStart}-${Math.min(visibleEnd, currentGalleryImages.length)} / ${currentGalleryImages.length}`;
         }
     }
 };
