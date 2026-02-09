@@ -1076,6 +1076,7 @@ body {
     transition: all 0.3s ease;
     width: calc(100% - 20px);
     max-width: 380px;
+    display: none
 }
 
 /* Position Info */
