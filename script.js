@@ -701,7 +701,7 @@ const updateLikeButton = () => {
     }
     
     if (heart) {
-        heart.textContent = isLiked ? 'â™¥' : 'â™¡';
+        heart.textContent = isLiked ? '' : '♡';
         if (isLiked) {
             likeBtn.classList.add('liked');
         } else {
