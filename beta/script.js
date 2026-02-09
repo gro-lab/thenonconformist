@@ -619,10 +619,13 @@ const updateViewportIndicator = () => {
     
     indicator.style.display = 'block';
     
-    // Calculate row heights (always 2 columns on mobile)
+    // Get grid properties dynamically
     const thumbnails = Array.from(thumbnailGrid.children);
-    const gap = 8;
-    const columnsCount = 2;
+    const gridStyle = window.getComputedStyle(thumbnailGrid);
+    const gap = parseInt(gridStyle.gap) || 8;
+    
+    // Calculate actual columns from grid-template-columns
+    const columnsCount = gridStyle.gridTemplateColumns.split(' ').length;
     
     let rowHeights = [];
     let currentRow = [];
@@ -630,7 +633,9 @@ const updateViewportIndicator = () => {
     
     thumbnails.forEach((thumb) => {
         const isHorizontal = thumb.classList.contains('horizontal');
-        const columnSpan = isHorizontal ? 2 : 1; // Horizontal spans both columns
+        // Horizontal spans multiple columns depending on layout
+        const columnSpan = isHorizontal ? Math.min(3, Math.ceil(columnsCount / 2)) : 1;
+        
         
         if (currentColumn + columnSpan > columnsCount) {
             // Save current row

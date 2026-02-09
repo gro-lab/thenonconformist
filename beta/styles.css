@@ -416,10 +416,10 @@ body {
 }
 
 /* ============================================ */
-/* THUMBNAIL VIEW - MOBILE ONLY (2 COLUMNS)   */
+/* THUMBNAIL VIEW - MOBILE & TABLET   */
 /* ============================================ */
 
-/* Thumbnail View Button - MOBILE ONLY */
+/* Thumbnail View Button - MOBILE & TABLET */
 .thumbnail-view-btn {
     position: fixed;
     bottom: 100px;
@@ -671,11 +671,43 @@ body {
     display: none;
 }
 
+
 /* ============================================ */
-/* HIDE ON TABLET AND DESKTOP */
+/* TABLET ADJUSTMENTS (769px - 1024px) */
 /* ============================================ */
 
-@media (min-width: 769px) {
+@media (min-width: 769px) and (max-width: 1024px) {
+    .thumbnail-grid {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        max-width: 600px;
+        gap: 10px;
+    }
+    
+    .thumbnail-grid-container {
+        width: 70vw;
+    }
+    
+    /* Horizontal images span 3 columns on tablet to match main gallery */
+    .thumbnail-grid-item.horizontal {
+        grid-column: span 3;
+    }
+    
+    .viewport-indicator {
+        max-width: 580px;
+    }
+    
+    .thumbnail-view-btn {
+        right: 30px;
+        padding: 14px 28px;
+        font-size: 0.9rem;
+    }
+}
+
+/* ============================================ */
+/* HIDE ON DESKTOP ONLY (1025px+) */
+/* ============================================ */
+
+@media (min-width: 1025px) {
     .thumbnail-view-btn {
         display: none !important;
     }
