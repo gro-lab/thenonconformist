@@ -451,19 +451,10 @@ const loadGalleryContent = (galleryId) => {
             <div class="item-likes">♥ ${image.likes}</div>
         `;
         
-        // 🔧 FIX: Stop propagation to prevent canvas scroll
+        // 🔧 FIX: Only open modal if not dragging - stop propagation to prevent canvas interactions
         masonryItem.addEventListener('click', (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            openModal(image.url, gallery.title, galleryId, index);
-        });
-        
-        // 🔧 FIX: Also handle touch events for mobile
-        masonryItem.addEventListener('touchend', (e) => {
-            // Only open modal if user didn't drag
             if (!hasMoved) {
                 e.stopPropagation();
-                e.preventDefault();
                 openModal(image.url, gallery.title, galleryId, index);
             }
         });
@@ -521,11 +512,6 @@ const setupCanvasNavigation = () => {
     function startDrag(e) {
         if (!galleryContent.classList.contains('active')) return;
         
-        // 🔧 Don't start drag if clicking on a masonry item
-        if (e.target.closest('.masonry-item')) {
-            return;
-        }
-        
         isDragging = true;
         hasMoved = false; // 🔧 Reset movement flag
         startX = e.clientX - scrollX;
@@ -536,11 +522,6 @@ const setupCanvasNavigation = () => {
     
     function startDragTouch(e) {
         if (!galleryContent.classList.contains('active')) return;
-        
-        // 🔧 Don't start drag if touching a masonry item
-        if (e.target.closest('.masonry-item')) {
-            return;
-        }
         
         if (e.touches.length === 1) {
             isDragging = true;
@@ -580,6 +561,8 @@ const setupCanvasNavigation = () => {
             // 🔧 Track if user actually moved (more than 5px threshold)
             if (Math.abs(newScrollX - scrollX) > 5 || Math.abs(newScrollY - scrollY) > 5) {
                 hasMoved = true;
+                // 🔧 CRITICAL: Only preventDefault if actually moving, otherwise iOS suppresses click
+                e.preventDefault();
             }
             
             scrollX = newScrollX;
@@ -590,7 +573,6 @@ const setupCanvasNavigation = () => {
             scrollY = Math.max(scrollLimits.minY, Math.min(scrollLimits.maxY, scrollY));
             
             updateCanvasTransform();
-            e.preventDefault(); // 🔧 Prevent iOS rubber-band scrolling
         }
     }
     
@@ -598,10 +580,10 @@ const setupCanvasNavigation = () => {
         isDragging = false;
         canvas.style.cursor = '';
         
-        // 🔧 Reset hasMoved after a short delay
+        // 🔧 Reset hasMoved after a short delay to allow click events to check it first
         setTimeout(() => {
             hasMoved = false;
-        }, 50);
+        }, 100);
     }
     
     document.addEventListener('mousemove', onDrag);
