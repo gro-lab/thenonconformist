@@ -555,7 +555,7 @@ body {
 
 .thumbnail-grid {
     display: grid;
-    grid-template-columns: repeat(6, 80px);
+    grid-template-columns: repeat(5, 80px);
     gap: 8px;
     width: fit-content;
     max-height: fit-content;
@@ -577,7 +577,9 @@ body {
 
 /* Maintain aspect ratios */
 .thumbnail-grid-item.horizontal {
-    height: 45px; /* 16:9 ratio for 80px width */
+    grid-column: span 2; /* Takes 2 columns width */
+    width: auto; /* Let grid determine width */
+    height: 94px; /* 16:9 ratio for (80px × 2 + 8px gap = 168px) width */
 }
 
 .thumbnail-grid-item.vertical {
@@ -1090,7 +1092,9 @@ body {
     }
     
     .thumbnail-grid-item.horizontal {
-        height: 34px; /* 16:9 ratio for 60px width */
+        grid-column: span 2;
+        width: auto;
+        height: 71px; /* 16:9 ratio for (60px × 2 + 6px gap = 126px) width */
     }
     
     .thumbnail-grid-item.vertical {
@@ -1120,7 +1124,9 @@ body {
     }
     
     .thumbnail-grid-item.horizontal {
-        height: 28px; /* 16:9 ratio for 50px width */
+        grid-column: span 2;
+        width: auto;
+        height: 60px; /* 16:9 ratio for (50px × 2 + 6px gap = 106px) width */
     }
     
     .thumbnail-grid-item.vertical {

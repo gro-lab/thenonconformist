@@ -837,33 +837,52 @@ const updateViewportIndicator = () => {
     const thumbnails = thumbnailGrid.querySelectorAll('.thumbnail-grid-item');
     if (thumbnails.length === 0) return;
     
-    // Sample first few thumbnails to get average row height
-    let totalHeight = 0;
-    let rowCount = 0;
-    for (let i = 0; i < Math.min(columnsCount * 3, thumbnails.length); i++) {
-        if (i % columnsCount === 0) {
-            // Start of new row
-            let maxHeightInRow = 0;
-            for (let j = 0; j < columnsCount && (i + j) < thumbnails.length; j++) {
-                const thumbHeight = thumbnails[i + j].getBoundingClientRect().height;
-                maxHeightInRow = Math.max(maxHeightInRow, thumbHeight);
+    // Calculate row heights by going through the grid
+    // Horizontal thumbnails span 2 columns, so we need to track column position
+    let rowHeights = [];
+    let currentRow = [];
+    let currentColumn = 0;
+    
+    thumbnails.forEach((thumb) => {
+        const isHorizontal = thumb.classList.contains('horizontal');
+        const columnSpan = isHorizontal ? 2 : 1;
+        
+        // Check if this thumbnail fits in current row
+        if (currentColumn + columnSpan > columnsCount) {
+            // Start new row
+            if (currentRow.length > 0) {
+                const maxHeight = Math.max(...currentRow.map(t => t.getBoundingClientRect().height));
+                rowHeights.push(maxHeight);
             }
-            totalHeight += maxHeightInRow;
-            rowCount++;
+            currentRow = [thumb];
+            currentColumn = columnSpan;
+        } else {
+            currentRow.push(thumb);
+            currentColumn += columnSpan;
         }
+    });
+    
+    // Add last row
+    if (currentRow.length > 0) {
+        const maxHeight = Math.max(...currentRow.map(t => t.getBoundingClientRect().height));
+        rowHeights.push(maxHeight);
     }
-    const avgRowHeight = rowCount > 0 ? totalHeight / rowCount : 80;
+    
+    const totalRows = rowHeights.length;
+    const totalGridHeight = rowHeights.reduce((sum, h) => sum + h, 0) + (totalRows - 1) * gap;
+    
+    // Calculate average row height for visible rows calculation
+    const avgRowHeight = rowHeights.length > 0 
+        ? rowHeights.reduce((sum, h) => sum + h, 0) / rowHeights.length 
+        : 80;
     
     // Calculate how many rows are visible in viewport
     const visibleHeight = containerRect.height - 60; // Account for padding
     const rowsVisible = Math.floor(visibleHeight / (avgRowHeight + gap));
     
-    // Calculate total rows
-    const totalRows = Math.ceil(thumbnails.length / columnsCount);
-    
     // Calculate indicator dimensions
     const indicatorWidth = gridRect.width; // Same width as grid
-    const indicatorHeight = Math.max(60, (rowsVisible / totalRows) * gridRect.height);
+    const indicatorHeight = Math.max(60, (rowsVisible / totalRows) * totalGridHeight);
     
     // Calculate vertical position based on scroll
     const scrollTop = thumbnailContainer.scrollTop;
@@ -873,7 +892,7 @@ const updateViewportIndicator = () => {
     
     // Calculate indicator position relative to grid
     const scrollPercentage = scrollableHeight > 0 ? scrollTop / scrollableHeight : 0;
-    const maxIndicatorTop = gridRect.height - indicatorHeight;
+    const maxIndicatorTop = totalGridHeight - indicatorHeight;
     const indicatorTop = scrollPercentage * maxIndicatorTop;
     
     // Set indicator dimensions and position
@@ -894,13 +913,13 @@ const updateThumbnailPosition = () => {
             const clientHeight = thumbnailContainer.clientHeight;
             const scrollHeight = thumbnailContainer.scrollHeight;
             
-            // Get grid column count
-            const gridStyles = window.getComputedStyle(thumbnailGrid);
-            const columnsCount = gridStyles.gridTemplateColumns.split(' ').length;
-            
             // Calculate visible range based on scroll position
-            const visibleStart = Math.floor((scrollTop / scrollHeight) * currentGalleryImages.length) + 1;
-            const visibleEnd = Math.ceil(((scrollTop + clientHeight) / scrollHeight) * currentGalleryImages.length);
+            // This is approximate since thumbnails have different heights
+            const scrollPercentage = scrollHeight > 0 ? scrollTop / scrollHeight : 0;
+            const scrollEndPercentage = scrollHeight > 0 ? (scrollTop + clientHeight) / scrollHeight : 1;
+            
+            const visibleStart = Math.floor(scrollPercentage * currentGalleryImages.length) + 1;
+            const visibleEnd = Math.ceil(scrollEndPercentage * currentGalleryImages.length);
             
             positionElement.textContent = `${visibleStart}-${Math.min(visibleEnd, currentGalleryImages.length)} / ${currentGalleryImages.length}`;
         }
