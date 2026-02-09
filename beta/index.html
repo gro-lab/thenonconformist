@@ -14,7 +14,7 @@
     <title>The Nonconformist | Photography Portfolio - Language of Windows, Snapshots of Life, Reflections, Street Art</title>
     <meta name="title" content="The Nonconformist | Photography Portfolio">
     <meta name="description" content="Explore The Nonconformist's unique photography portfolio featuring Language of Windows, Snapshots of Life, Reflections, and Street Art. Capturing emotions, truth, and beauty in everyday moments.">
-    <meta name="keywords" content="photography, art photography, street photography, window photography, urban photography, reflections, street art, fine art, Timișoara photographer, Romanian photographer, artistic photography, contemporary photography, emotion in photography">
+    <meta name="keywords" content="photography, art photography, street photography, window photography, urban photography, reflections, street art, fine art, TimiÈ™oara photographer, Romanian photographer, artistic photography, contemporary photography, emotion in photography">
     <meta name="author" content="The Nonconformist">
     <meta name="language" content="English">
     <meta name="revisit-after" content="7 days">
@@ -66,6 +66,9 @@
     <!-- ============================================ -->
     <!-- EXTERNAL CONNECTIONS - GDPR COMPLIANT -->
     <!-- ============================================ -->
+    <!-- âœ… GDPR FIX: Third-party connections (Firebase/Google) are loaded -->
+    <!-- dynamically ONLY AFTER user consent in script.js -->
+    <!-- Images hosted on GitHub - functional requirement, minimal privacy impact -->
     <link rel="dns-prefetch" href="https://raw.githubusercontent.com">
     
     <!-- ============================================ -->
@@ -196,12 +199,9 @@
         <button id="back-button" class="back-button">
             <span>←</span> Back to Galleries
         </button>
-        
-        <!-- Thumbnail View Toggle Button -->
         <button id="thumbnail-view-btn" class="thumbnail-view-btn">
-            <span class="thumbnail-icon">⊞</span> Thumbnail View
+            <span>▦</span> Thumbnail View
         </button>
-        
         <div id="infinite-canvas" class="infinite-canvas">
             <div id="gallery-header" class="gallery-header">
                 <h2 id="current-gallery-title"></h2>
@@ -213,21 +213,6 @@
         </div>
         <div class="navigation-hint">
             <p>Drag to explore • Arrow keys to navigate • Scroll to move</p>
-        </div>
-    </div>
-
-    <!-- Thumbnail Grid Overlay -->
-    <div id="thumbnail-overlay" class="thumbnail-overlay" hidden>
-        <div class="thumbnail-overlay-header">
-            <h3 id="thumbnail-overlay-title">Gallery Overview</h3>
-            <button id="thumbnail-close-btn" class="thumbnail-close-btn">✕</button>
-        </div>
-        <div class="thumbnail-grid-container">
-            <div id="thumbnail-grid" class="thumbnail-grid"></div>
-            <div id="viewport-indicator" class="viewport-indicator"></div>
-        </div>
-        <div class="thumbnail-info">
-            <span id="thumbnail-position">1 / 100</span>
         </div>
     </div>
 
@@ -308,7 +293,7 @@
                     <li>advertising data</li>
                     <li>newsletter subscriptions</li>
                 </ul>
-                <p>✅ Third-party services (Firebase) are loaded ONLY after you accept functional cookies.</p>
+                <p>âœ… Third-party services (Firebase) are loaded ONLY after you accept functional cookies.</p>
 
                 <h3>5. Legal basis for processing</h3>
                 <p>Personal data is processed only based on your consent, in accordance with:</p>
@@ -375,11 +360,11 @@
 
                 <h3>14. Supervisory Authority</h3>
                 <p>You have the right to lodge a complaint with the Romanian data protection authority:</p>
-                <p><strong>Autoritatea Națională de Supraveghere a Prelucrării Datelor cu Caracter Personal (ANSPDCP)</strong><br>
-                Address: B-dul G-ral. Gheorghe Magheru 28-30, Sector 1, București, România<br>
+                <p><strong>Autoritatea Nationala de Supraveghere a Prelucrarii Datelor cu Caracter Personal (ANSPDCP)</strong><br>
+                Address: B-dul G-ral. Gheorghe Magheru 28-30, Sector 1, Bucuresti, Romania<br>
                 Website: <a href="https://www.dataprotection.ro" target="_blank" rel="noopener">www.dataprotection.ro</a></p>
 
-                <h3>✔️ GDPR approach</h3>
+                <h3>15. GDPR approach</h3>
                 <p>This website follows the principles of:</p>
                 <ul>
                     <li>data minimization</li>
@@ -406,7 +391,7 @@
 
     <!-- Cookie Settings Modal -->
     <div id="cookie-settings-modal" class="modal cookie-modal" hidden>
-        <button class="modal-close" id="cookie-modal-close">×</button>
+        <button class="modal-close" id="cookie-modal-close">Ã—</button>
         <div class="modal-content cookie-settings-content">
             <h2>Cookie Settings</h2>
             <p class="cookie-intro">We use cookies to improve your browsing experience.</p>
