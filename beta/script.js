@@ -609,6 +609,28 @@ const setupBackButton = () => {
     }
 };
 
+// THUMBNAIL VIEW TOGGLE
+const setupThumbnailView = () => {
+    const thumbnailBtn = document.getElementById('thumbnail-view-btn');
+    const infiniteCanvas = document.getElementById('infinite-canvas');
+    
+    if (thumbnailBtn && infiniteCanvas) {
+        thumbnailBtn.addEventListener('click', () => {
+            infiniteCanvas.classList.toggle('thumbnail-mode');
+            
+            if (infiniteCanvas.classList.contains('thumbnail-mode')) {
+                thumbnailBtn.innerHTML = '<span>∞</span> Canvas View';
+                // Reset scroll position when entering thumbnail mode
+                scrollX = 0;
+                scrollY = 0;
+                updateCanvasTransform();
+            } else {
+                thumbnailBtn.innerHTML = '<span>▦</span> Thumbnail View';
+            }
+        });
+    }
+};
+
 // MODAL
 const modal = document.getElementById('modal');
 const modalImage = document.getElementById('modal-img');
@@ -951,6 +973,7 @@ const init = async () => {
         await setupGallerySelector();
         setupCanvasNavigation();
         setupBackButton();
+        setupThumbnailView();
         
  console.log(' Initialization complete');
     } catch (error) {
