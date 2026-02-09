@@ -24,7 +24,7 @@ body {
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     overscroll-behavior-y: none;
-    touch-action: none;
+    touch-action: manipulation;
 }
 
 ::selection {
@@ -361,7 +361,7 @@ body {
 /* Masonry - NO GAPS, Fixed Sizing */
 .masonry-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
     gap: 0;
     width: 100%;
     max-width: 100%;
@@ -469,7 +469,6 @@ body {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.4s ease;
-    touch-action: none;
 }
 
 .thumbnail-overlay:not([hidden]) {
@@ -523,17 +522,14 @@ body {
     justify-content: center;
     align-items: flex-start;
     padding: 30px;
-    /* Custom scrollbar - vertical */
     scrollbar-width: thin;
     scrollbar-color: rgba(242, 140, 40, 0.8) transparent;
 }
 
-/* Thumbnail grid wrapper for proper indicator positioning */
 .thumbnail-grid-wrapper {
     position: relative;
 }
 
-/* Custom Scrollbar for Webkit browsers - VERTICAL */
 .thumbnail-grid-container::-webkit-scrollbar {
     width: 12px;
 }
@@ -575,11 +571,10 @@ body {
     animation: fadeInThumb 0.3s ease forwards;
 }
 
-/* Maintain aspect ratios */
 .thumbnail-grid-item.horizontal {
-    grid-column: span 2; /* Takes 2 columns width */
-    width: auto; /* Let grid determine width */
-    height: 94px; /* 16:9 ratio for (80px × 2 + 8px gap = 168px) width */
+    grid-column: span 3;
+    width: auto;
+    height: 140px; /* 16:9 ratio for (80px × 3 + 8px × 2 = 256px) width */
 }
 
 .thumbnail-grid-item.vertical {
@@ -587,11 +582,11 @@ body {
 }
 
 .thumbnail-grid-item.square {
-    height: 80px; /* 1:1 ratio */
+    height: 80px;
 }
 
 .thumbnail-grid-item:hover {
-    transform: scale(1.1);
+    transform: scale(1.05);
     border-color: var(--accent-orange);
     z-index: 10;
 }
@@ -630,7 +625,6 @@ body {
     font-weight: 600;
 }
 
-/* Viewport Indicator - OVERLAYS thumbnail grid in center */
 .viewport-indicator {
     position: absolute;
     left: 50%;
@@ -1036,13 +1030,6 @@ body {
         z-index: 250;
     }
     
-    .thumbnail-view-btn {
-        bottom: 80px;
-        right: 15px;
-        padding: 12px 20px;
-        font-size: 0.85rem;
-    }
-    
     .gallery-header {
         top: 80px;
         right: 15px;
@@ -1057,7 +1044,7 @@ body {
     }
     
     .masonry-grid {
-        grid-template-columns: repeat(2, 1fr);
+        /* grid-template-columns: repeat(2, 1fr); */
         gap: 0;
         padding: 0;
     }
@@ -1068,6 +1055,13 @@ body {
     
     .infinite-canvas {
         padding: 100px 5px 60px;
+    }
+    
+    .thumbnail-view-btn {
+        bottom: 80px;
+        right: 15px;
+        padding: 12px 20px;
+        font-size: 0.85rem;
     }
     
     .thumbnail-overlay-header {
@@ -1092,13 +1086,13 @@ body {
     }
     
     .thumbnail-grid-item.horizontal {
-        grid-column: span 2;
+        grid-column: span 3;
         width: auto;
-        height: 71px; /* 16:9 ratio for (60px × 2 + 6px gap = 126px) width */
+        height: 106px; /* 16:9 ratio for (60px × 3 + 6px × 2 = 192px) */
     }
     
     .thumbnail-grid-item.vertical {
-        height: 107px; /* 9:16 ratio for 60px width */
+        height: 107px;
     }
     
     .thumbnail-grid-item.square {
@@ -1124,13 +1118,13 @@ body {
     }
     
     .thumbnail-grid-item.horizontal {
-        grid-column: span 2;
+        grid-column: span 3;
         width: auto;
-        height: 60px; /* 16:9 ratio for (50px × 2 + 6px gap = 106px) width */
+        height: 90px; /* 16:9 ratio for (50px × 3 + 6px × 2 = 162px) */
     }
     
     .thumbnail-grid-item.vertical {
-        height: 89px; /* 9:16 ratio for 50px width */
+        height: 89px;
     }
     
     .thumbnail-grid-item.square {
