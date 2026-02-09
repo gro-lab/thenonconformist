@@ -1,6 +1,5 @@
 // THE NONCONFORMIST - GDPR Compliant Version
-// ✅ Firebase SDK loaded dynamically ONLY after user consent
-// 🔧 iOS Safari fixes + Click event isolation
+// âœ… Firebase SDK loaded dynamically ONLY after user consent
 
 // ============================================
 // FIREBASE - LOADED DYNAMICALLY AFTER CONSENT  
@@ -15,7 +14,7 @@ const loadFirebaseSDK = async () => {
         return firebaseModules;
     }
     
-    console.log('📦 Loading Firebase SDK dynamically...');
+    console.log('ðŸ“¦ Loading Firebase SDK dynamically...');
     
     try {
         const [appModule, firestoreModule] = await Promise.all([
@@ -36,10 +35,10 @@ const loadFirebaseSDK = async () => {
             serverTimestamp: firestoreModule.serverTimestamp
         };
         
-        console.log('✅ Firebase SDK loaded successfully');
+        console.log('âœ… Firebase SDK loaded successfully');
         return firebaseModules;
     } catch (error) {
-        console.error('❌ Failed to load Firebase SDK:', error);
+        console.error('âŒ Failed to load Firebase SDK:', error);
         throw error;
     }
 };
@@ -61,19 +60,19 @@ const initFirebase = async () => {
     
     app = firebase.initializeApp(firebaseConfig);
     db = firebase.getFirestore(app);
-    console.log('✅ Firebase initialized');
+    console.log('âœ… Firebase initialized');
 };
 
 // Teardown function for consent withdrawal
 const teardownFirebase = () => {
     if (app) {
-        console.log('🔥 Disconnecting Firebase...');
+        console.log('ðŸ”¥ Disconnecting Firebase...');
         app = null;
         db = null;
         firebaseModules = null;
         likesCache = {};
         window.FUNCTIONAL_COOKIES_ENABLED = false;
-        console.log('✅ Firebase disconnected and cleaned up');
+        console.log('âœ… Firebase disconnected and cleaned up');
     }
 };
 
@@ -115,7 +114,6 @@ let isProcessing = false;
 let currentGallery = 'low';
 let galleryImageData = {};
 let isDragging = false;
-let hasMoved = false; // 🔧 NEW: Track if user actually dragged
 let startX = 0;
 let startY = 0;
 let scrollX = 0;
@@ -147,10 +145,10 @@ const loadManifest = async () => {
         }
         
         imageManifest = await response.json();
-        console.log('✅ Manifest loaded');
+        console.log('âœ… Manifest loaded');
         return imageManifest;
     } catch (error) {
-        console.warn('⚠️ Error loading manifest:', error);
+        console.warn('âš ï¸ Error loading manifest:', error);
         return generateFallbackManifest();
     }
 };
@@ -202,11 +200,11 @@ const getDocIdFromUrl = (url) => {
 const fetchAllLikes = async () => {
     try {
         if (!window.FUNCTIONAL_COOKIES_ENABLED || !db || !firebaseModules) {
-            console.log('⚠️ Functional cookies not enabled or Firebase not initialized, skipping likes fetch');
+            console.log('âš ï¸ Functional cookies not enabled or Firebase not initialized, skipping likes fetch');
             return {};
         }
         
-        console.log('📊 Fetching all likes from Firestore...');
+        console.log('ðŸ“Š Fetching all likes from Firestore...');
         const firebase = firebaseModules;
         const querySnapshot = await firebase.getDocs(firebase.collection(db, 'image_likes'));
         const likes = {};
@@ -214,7 +212,7 @@ const fetchAllLikes = async () => {
             likes[doc.id] = doc.data().likes || 0;
         });
         likesCache = likes;
-        console.log(`❤️ Loaded ${Object.keys(likes).length} likes from Firestore`);
+        console.log(`â¤ï¸ Loaded ${Object.keys(likes).length} likes from Firestore`);
         return likes;
     } catch (error) {
         console.error('Error fetching likes:', error);
@@ -225,7 +223,7 @@ const fetchAllLikes = async () => {
 const updateLike = async (url, increment_value) => {
     try {
         if (!window.FUNCTIONAL_COOKIES_ENABLED || !db || !firebaseModules) {
-            console.log('⚠️ Functional cookies not enabled, cannot update likes');
+            console.log('âš ï¸ Functional cookies not enabled, cannot update likes');
             return null;
         }
         
@@ -275,7 +273,7 @@ const loadGalleryData = async (galleryKey) => {
         const docId = getDocIdFromUrl(url);
         const likes = likesCache[docId] !== undefined ? likesCache[docId] : 0;
         
-        console.log(`📷 ${galleryKey} image ${imageData.index}: ${likes} likes`);
+        console.log(`ðŸ“· ${galleryKey} image ${imageData.index}: ${likes} likes`);
         
         return {
             url,
@@ -337,12 +335,12 @@ const calculateScrollLimits = () => {
         maxY: scrollableHeight
     };
     
-    console.log('📐 Scroll limits calculated:', scrollLimits);
+    console.log('ðŸ“ Scroll limits calculated:', scrollLimits);
 };
 
 // GALLERY SELECTOR
 const setupGallerySelector = async () => {
-    console.log('📄 Setting up gallery selector...');
+    console.log('ðŸ”„ Setting up gallery selector...');
     
     await Promise.all(Object.keys(galleries).map(key => loadGalleryData(key)));
     
@@ -370,7 +368,7 @@ const setupGallerySelector = async () => {
         });
     });
     
-    console.log('✅ Gallery selector setup complete');
+    console.log('âœ… Gallery selector setup complete');
 };
 
 const openGallery = (galleryId) => {
@@ -414,7 +412,7 @@ const loadGalleryContent = (galleryId) => {
     const sortedImages = stableSortByLikes(images);
     currentGalleryImages = sortedImages;
     
-    console.log(`🎨 Rendering ${sortedImages.length} images for ${galleryId}, sorted by likes:`);
+    console.log(`ðŸŽ¨ Rendering ${sortedImages.length} images for ${galleryId}, sorted by likes:`);
     sortedImages.forEach((image, idx) => {
         console.log(`  ${idx + 1}: ${image.likes} likes - ${image.url}`);
     });
@@ -448,15 +446,11 @@ const loadGalleryContent = (galleryId) => {
         overlay.innerHTML = `
             <div class="item-category">${gallery.title}</div>
             <div class="item-title">Image ${image.imageData.index}</div>
-            <div class="item-likes">♥ ${image.likes}</div>
+            <div class="item-likes">â™¥ ${image.likes}</div>
         `;
         
-        // 🔧 FIX: Only open modal if not dragging - stop propagation to prevent canvas interactions
-        masonryItem.addEventListener('click', (e) => {
-            if (!hasMoved) {
-                e.stopPropagation();
-                openModal(image.url, gallery.title, galleryId, index);
-            }
+        masonryItem.addEventListener('click', () => {
+            openModal(image.url, gallery.title, galleryId, index);
         });
         
         masonryItem.appendChild(overlay);
@@ -490,12 +484,11 @@ const closeGallery = () => {
     }, 800);
 };
 
-// CANVAS NAVIGATION - 🔧 iOS SAFARI FIXES
+// CANVAS NAVIGATION
 const updateCanvasTransform = () => {
     const container = document.getElementById('canvas-transform-container');
     if (container) {
-        // 🔧 Use translate3d for better iOS performance
-        container.style.transform = `translate3d(${scrollX}px, ${scrollY}px, 0)`;
+        container.style.transform = `translate(${scrollX}px, ${scrollY}px)`;
     }
 };
 
@@ -503,17 +496,12 @@ const setupCanvasNavigation = () => {
     const canvas = document.getElementById('infinite-canvas');
     const galleryContent = document.getElementById('gallery-content');
     
-    // 🔧 Prevent default touch behavior on canvas
-    canvas.style.touchAction = 'none';
-    
-    canvas.addEventListener('mousedown', startDrag, { passive: false });
+    canvas.addEventListener('mousedown', startDrag);
     canvas.addEventListener('touchstart', startDragTouch, { passive: false });
     
     function startDrag(e) {
         if (!galleryContent.classList.contains('active')) return;
-        
         isDragging = true;
-        hasMoved = false; // 🔧 Reset movement flag
         startX = e.clientX - scrollX;
         startY = e.clientY - scrollY;
         canvas.style.cursor = 'grabbing';
@@ -522,10 +510,8 @@ const setupCanvasNavigation = () => {
     
     function startDragTouch(e) {
         if (!galleryContent.classList.contains('active')) return;
-        
         if (e.touches.length === 1) {
             isDragging = true;
-            hasMoved = false; // 🔧 Reset movement flag
             startX = e.touches[0].clientX - scrollX;
             startY = e.touches[0].clientY - scrollY;
         }
@@ -534,18 +520,9 @@ const setupCanvasNavigation = () => {
     function onDrag(e) {
         if (!isDragging || !galleryContent.classList.contains('active')) return;
         
-        const newScrollX = e.clientX - startX;
-        const newScrollY = e.clientY - startY;
+        scrollX = e.clientX - startX;
+        scrollY = e.clientY - startY;
         
-        // 🔧 Track if user actually moved (more than 5px threshold)
-        if (Math.abs(newScrollX - scrollX) > 5 || Math.abs(newScrollY - scrollY) > 5) {
-            hasMoved = true;
-        }
-        
-        scrollX = newScrollX;
-        scrollY = newScrollY;
-        
-        // 🔧 Clamp values to prevent extreme transforms on iOS
         scrollX = Math.max(scrollLimits.minX, Math.min(scrollLimits.maxX, scrollX));
         scrollY = Math.max(scrollLimits.minY, Math.min(scrollLimits.maxY, scrollY));
         
@@ -555,20 +532,9 @@ const setupCanvasNavigation = () => {
     function onDragTouch(e) {
         if (!isDragging || !galleryContent.classList.contains('active')) return;
         if (e.touches.length === 1) {
-            const newScrollX = e.touches[0].clientX - startX;
-            const newScrollY = e.touches[0].clientY - startY;
+            scrollX = e.touches[0].clientX - startX;
+            scrollY = e.touches[0].clientY - startY;
             
-            // 🔧 Track if user actually moved (more than 5px threshold)
-            if (Math.abs(newScrollX - scrollX) > 5 || Math.abs(newScrollY - scrollY) > 5) {
-                hasMoved = true;
-                // 🔧 CRITICAL: Only preventDefault if actually moving, otherwise iOS suppresses click
-                e.preventDefault();
-            }
-            
-            scrollX = newScrollX;
-            scrollY = newScrollY;
-            
-            // 🔧 Clamp values to prevent extreme transforms on iOS
             scrollX = Math.max(scrollLimits.minX, Math.min(scrollLimits.maxX, scrollX));
             scrollY = Math.max(scrollLimits.minY, Math.min(scrollLimits.maxY, scrollY));
             
@@ -579,18 +545,12 @@ const setupCanvasNavigation = () => {
     function stopDrag() {
         isDragging = false;
         canvas.style.cursor = '';
-        
-        // 🔧 Reset hasMoved after a short delay to allow click events to check it first
-        setTimeout(() => {
-            hasMoved = false;
-        }, 100);
     }
     
     document.addEventListener('mousemove', onDrag);
     document.addEventListener('touchmove', onDragTouch, { passive: false });
     document.addEventListener('mouseup', stopDrag);
     document.addEventListener('touchend', stopDrag);
-    document.addEventListener('touchcancel', stopDrag); // 🔧 Handle touch cancellation
     
     document.addEventListener('keydown', function(e) {
         if (!galleryContent.classList.contains('active')) return;
@@ -719,7 +679,7 @@ const updateLikeButton = () => {
     }
     
     if (heart) {
-        heart.textContent = isLiked ? '♥' : '♡';
+        heart.textContent = isLiked ? 'â™¥' : 'â™¡';
         if (isLiked) {
             likeBtn.classList.add('liked');
         } else {
@@ -819,7 +779,7 @@ const showCookieBanner = () => {
 };
 
 const applyCookiePreferences = async (prefs) => {
-    console.log('🍪 Applying cookie preferences:', prefs);
+    console.log('ðŸª Applying cookie preferences:', prefs);
     if (prefs.functional) {
         window.FUNCTIONAL_COOKIES_ENABLED = true;
         await initFirebase();
@@ -975,26 +935,26 @@ if (termsModal) {
 // INIT
 const init = async () => {
     try {
-        console.log('🚀 Initializing The Nonconformist...');
+        console.log('ðŸš€ Initializing The Nonconformist...');
         
         initCookieBanner();
         await loadManifest();
         
         if (window.FUNCTIONAL_COOKIES_ENABLED) {
-            console.log('🔓 Functional cookies enabled, initializing Firebase...');
+            console.log('ðŸ” Functional cookies enabled, initializing Firebase...');
             await initFirebase();
             await fetchAllLikes();
         } else {
-            console.log('🔒 Functional cookies not enabled, using default likes (0)');
+            console.log('ðŸ” Functional cookies not enabled, using default likes (0)');
         }
         
         await setupGallerySelector();
         setupCanvasNavigation();
         setupBackButton();
         
-        console.log('✅ Initialization complete');
+        console.log('âœ… Initialization complete');
     } catch (error) {
-        console.error('❌ Init error:', error);
+        console.error('âŒ Init error:', error);
     }
 };
 
