@@ -6,8 +6,8 @@ const sharp = require('sharp');
 const GALLERIES = ['LoW', 'SoL', 'R', 'SA'];
 const INPUT_DIR = './images';
 const OUTPUT_DIR = './images/thumbnails';
-const THUMB_WIDTH = 600;
-const QUALITY = 80;
+const THUMB_WIDTH = 288;
+const QUALITY = 70;
 
 async function generateThumbnails() {
     for (const gallery of GALLERIES) {
