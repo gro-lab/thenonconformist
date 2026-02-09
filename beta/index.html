@@ -5,7 +5,7 @@
     <!-- ESSENTIAL META TAGS -->
     <!-- ============================================ -->
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     
     <!-- ============================================ -->
@@ -199,7 +199,7 @@
         <button id="back-button" class="back-button">
             <span>←</span> Back to Galleries
         </button>
-        <!-- Thumbnail View Button -->
+        <!-- Thumbnail View Button - Mobile Only -->
         <button id="thumbnail-view-btn" class="thumbnail-view-btn" aria-label="Thumbnail View">
             ⊞ Thumbnail View
         </button>
@@ -216,22 +216,6 @@
             <p>Drag to explore • Arrow keys to navigate • Scroll to move</p>
         </div>
     </div>
-    <!-- Thumbnail Overlay -->
-    <div id="thumbnail-overlay" class="thumbnail-overlay" hidden>
-        <div class="thumbnail-overlay-header">
-            <h3 id="thumbnail-overlay-title">Gallery Overview</h3>
-            <button class="thumbnail-close-btn" id="thumbnail-close-btn" aria-label="Close thumbnail view">×</button>
-        </div>
-        <div class="thumbnail-grid-container">
-            <div class="thumbnail-grid-wrapper">
-                <div id="thumbnail-grid" class="thumbnail-grid"></div>
-                <!-- <div id="viewport-indicator" class="viewport-indicator"></div> -->
-            </div>
-        </div>
-        <div class="thumbnail-info">
-            <span id="thumbnail-position">1 / 0</span>
-        </div>
-    </div>
 
     <!-- Modal -->
     <div id="modal" class="modal" hidden>
@@ -246,7 +230,22 @@
             <span id="like-count">0</span>
         </button>
     </div>
-
+    <!-- Thumbnail Overlay - Mobile Only -->
+    <div id="thumbnail-overlay" class="thumbnail-overlay" hidden>
+        <div class="thumbnail-overlay-header">
+            <h3 id="thumbnail-overlay-title">Gallery Overview</h3>
+            <button class="thumbnail-close-btn" id="thumbnail-close-btn" aria-label="Close thumbnail view">×</button>
+        </div>
+        <div class="thumbnail-grid-container">
+            <div class="thumbnail-grid-wrapper">
+                <div id="thumbnail-grid" class="thumbnail-grid"></div>
+                <div id="viewport-indicator" class="viewport-indicator"></div>
+            </div>
+        </div>
+        <div class="thumbnail-info">
+            <span id="thumbnail-position">1 / 0</span>
+        </div>
+    </div>
   <!-- Terms Modal -->
     <div id="terms-modal" class="modal terms-modal" hidden>
         <button class="modal-close" id="terms-modal-close">×</button>

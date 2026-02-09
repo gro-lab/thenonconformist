@@ -485,7 +485,7 @@ const closeGallery = () => {
 };
 
 // ============================================
-// THUMBNAIL VIEW SYSTEM
+// THUMBNAIL VIEW SYSTEM - MOBILE ONLY
 // ============================================
 
 let thumbnailCache = {};
@@ -619,13 +619,10 @@ const updateViewportIndicator = () => {
     
     indicator.style.display = 'block';
     
-    // Calculate row heights
+    // Calculate row heights (always 2 columns on mobile)
     const thumbnails = Array.from(thumbnailGrid.children);
-    const gridStyle = window.getComputedStyle(thumbnailGrid);
-    const gap = parseInt(gridStyle.gap) || 8;
-    
-    // Get number of columns from computed style
-    const columnsCount = gridStyle.gridTemplateColumns.split(' ').length;
+    const gap = 8;
+    const columnsCount = 2;
     
     let rowHeights = [];
     let currentRow = [];
@@ -633,7 +630,7 @@ const updateViewportIndicator = () => {
     
     thumbnails.forEach((thumb) => {
         const isHorizontal = thumb.classList.contains('horizontal');
-        const columnSpan = isHorizontal ? Math.min(columnsCount, 2) : 1;
+        const columnSpan = isHorizontal ? 2 : 1; // Horizontal spans both columns
         
         if (currentColumn + columnSpan > columnsCount) {
             // Save current row
@@ -1208,7 +1205,6 @@ const init = async () => {
         await setupGallerySelector();
         setupCanvasNavigation();
         setupBackButton();
-        setupThumbnailView();
         
         console.log('✅ Initialization complete');
     } catch (error) {
