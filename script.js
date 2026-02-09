@@ -1,4 +1,4 @@
-// THE NONCONFORMIST - GDPR Compliant Version
+// THE NONCONFORMIST - GDPR Compliant Version with Thumbnail Support
 // ✅ Firebase SDK loaded dynamically ONLY after user consent
 
 // ============================================
@@ -184,12 +184,19 @@ const generateFallbackManifest = () => {
     return manifest;
 };
 
-const createImageUrl = (dir, imageData) => {
+// ============================================
+// 🆕 UPDATED: createImageUrl with thumbnail support
+// ============================================
+const createImageUrl = (dir, imageData, thumbnail = false) => {
     const owner = 'gro-lab';
     const repo = 'thenonconformist';
     const branch = 'main';
     const filename = imageData.originalName || `${dir}-${imageData.index}.${imageData.ext}`;
-    return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/${dir}/${filename}`;
+    
+    // Use thumbnails folder for thumbnails, regular folder for full-size
+    const path = thumbnail ? `thumbnails/${dir}` : dir;
+    
+    return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/${path}/${filename}`;
 };
 
 const getDocIdFromUrl = (url) => {
@@ -269,14 +276,18 @@ const loadGalleryData = async (galleryKey) => {
     }
     
     const images = imageList.map((imageData, originalIndex) => {
-        const url = createImageUrl(dir, imageData);
-        const docId = getDocIdFromUrl(url);
+        // Store both thumbnail and full-size URLs
+        const thumbnailUrl = createImageUrl(dir, imageData, true);  // 🆕 Thumbnail
+        const fullSizeUrl = createImageUrl(dir, imageData, false);  // 🆕 Full-size
+        const docId = getDocIdFromUrl(fullSizeUrl);
         const likes = likesCache[docId] !== undefined ? likesCache[docId] : 0;
         
         console.log(`📷 ${galleryKey} image ${imageData.index}: ${likes} likes`);
         
         return {
-            url,
+            thumbnailUrl,    // 🆕 Add thumbnail URL
+            fullSizeUrl,     // 🆕 Add full-size URL
+            url: fullSizeUrl, // Keep for compatibility (likes system uses this)
             likes,
             originalIndex,
             gallery: galleryKey,
@@ -299,7 +310,7 @@ const getMostLikedImageUrl = (galleryKey) => {
     if (!images || images.length === 0) return '';
     
     const sorted = stableSortByLikes(images);
-    return sorted[0].url;
+    return sorted[0].thumbnailUrl;  // 🆕 Use thumbnail for gallery covers
 };
 
 // Calculate scroll limits based on grid size
@@ -351,7 +362,7 @@ const setupGallerySelector = async () => {
         if (cover && galleryImageData[key]) {
             const mostLikedUrl = getMostLikedImageUrl(key);
             if (mostLikedUrl) {
-                cover.style.backgroundImage = `url(${mostLikedUrl})`;
+                cover.style.backgroundImage = `url(${mostLikedUrl})`;  // 🆕 Uses thumbnail
             }
         }
         
@@ -397,6 +408,9 @@ const openGallery = (galleryId) => {
     }, 800);
 };
 
+// ============================================
+// 🆕 UPDATED: loadGalleryContent uses thumbnails
+// ============================================
 const loadGalleryContent = (galleryId) => {
     const masonryGrid = document.getElementById('masonry-grid');
     const gallery = galleries[galleryId];
@@ -429,7 +443,9 @@ const loadGalleryContent = (galleryId) => {
         
         masonryItem.className = `masonry-item ${orientation}`;
         masonryItem.style.animationDelay = `${index * 0.05}s`;
-        masonryItem.style.backgroundImage = `url(${image.url})`;
+        
+        // 🆕 USE THUMBNAIL for background image
+        masonryItem.style.backgroundImage = `url(${image.thumbnailUrl})`;
         
         const overlay = document.createElement('div');
         overlay.className = 'item-overlay';
@@ -449,8 +465,9 @@ const loadGalleryContent = (galleryId) => {
             <div class="item-likes">♥ ${image.likes}</div>
         `;
         
+        // 🆕 Pass index to modal, which will load full-size image
         masonryItem.addEventListener('click', () => {
-            openModal(image.url, gallery.title, galleryId, index);
+            openModal(image.fullSizeUrl, gallery.title, galleryId, index);
         });
         
         masonryItem.appendChild(overlay);
@@ -609,7 +626,9 @@ const setupBackButton = () => {
     }
 };
 
-// MODAL
+// ============================================
+// 🆕 UPDATED: Modal uses full-size images
+// ============================================
 const modal = document.getElementById('modal');
 const modalImage = document.getElementById('modal-img');
 const likeBtn = document.getElementById('like-btn');
@@ -617,10 +636,12 @@ const modalClose = document.getElementById('modal-close');
 const modalPrev = document.getElementById('modal-prev');
 const modalNext = document.getElementById('modal-next');
 
-const openModal = (imageUrl, category = 'Image', galleryKey = currentGallery, imageIndex = 0) => {
-    currentModalImageUrl = imageUrl;
+const openModal = (fullSizeImageUrl, category = 'Image', galleryKey = currentGallery, imageIndex = 0) => {
+    currentModalImageUrl = fullSizeImageUrl;  // 🆕 This is now full-size URL
     currentModalImageIndex = imageIndex;
-    modalImage.src = imageUrl;
+    
+    // 🆕 Load full-size image in modal
+    modalImage.src = fullSizeImageUrl;
     
     modal.removeAttribute('hidden');
     document.body.style.overflow = 'hidden';
@@ -645,8 +666,8 @@ const navigateModal = (direction) => {
     }
     
     const nextImage = currentGalleryImages[currentModalImageIndex];
-    currentModalImageUrl = nextImage.url;
-    modalImage.src = nextImage.url;
+    currentModalImageUrl = nextImage.fullSizeUrl;  // 🆕 Use full-size URL
+    modalImage.src = nextImage.fullSizeUrl;        // 🆕 Load full-size image
     
     updateLikeButton();
     updateNavButtons();
@@ -718,7 +739,7 @@ const toggleLike = async () => {
             
             Object.keys(galleryImageData).forEach(galleryKey => {
                 const images = galleryImageData[galleryKey];
-                const imageIndex = images.findIndex(img => img.url === currentModalImageUrl);
+                const imageIndex = images.findIndex(img => img.fullSizeUrl === currentModalImageUrl);  // 🆕 Compare full-size URLs
                 if (imageIndex !== -1) {
                     images[imageIndex].likes = newLikes;
                 }
@@ -941,11 +962,11 @@ const init = async () => {
         await loadManifest();
         
         if (window.FUNCTIONAL_COOKIES_ENABLED) {
-            console.log('🔐 Functional cookies enabled, initializing Firebase...');
+            console.log('🔓 Functional cookies enabled, initializing Firebase...');
             await initFirebase();
             await fetchAllLikes();
         } else {
-            console.log('🔐 Functional cookies not enabled, using default likes (0)');
+            console.log('🔒 Functional cookies not enabled, using default likes (0)');
         }
         
         await setupGallerySelector();

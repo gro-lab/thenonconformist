@@ -7,7 +7,8 @@
     "build": "node generate-manifest.js"
   },
   "dependencies": {
-    "image-size": "^1.2.1"
+    "image-size": "^1.2.1",
+    "sharp": "^0.34.5"
   },
   "repository": {
     "type": "git",
