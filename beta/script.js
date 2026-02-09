@@ -484,6 +484,263 @@ const closeGallery = () => {
     }, 800);
 };
 
+// ============================================
+// THUMBNAIL VIEW SYSTEM
+// ============================================
+
+let thumbnailCache = {};
+let thumbnailScrollHandler = null;
+let thumbnailResizeHandler = null;
+
+const openThumbnailView = () => {
+    if (!currentGalleryImages || currentGalleryImages.length === 0) {
+        console.warn('No images in current gallery');
+        return;
+    }
+    
+    const overlay = document.getElementById('thumbnail-overlay');
+    const thumbnailGrid = document.getElementById('thumbnail-grid');
+    const overlayTitle = document.getElementById('thumbnail-overlay-title');
+    
+    if (!overlay || !thumbnailGrid) return;
+    
+    // Set title
+    const gallery = galleries[currentGallery];
+    overlayTitle.textContent = `${gallery.title} - Gallery Overview`;
+    
+    // Clear existing thumbnails
+    thumbnailGrid.innerHTML = '';
+    
+    // Generate thumbnails
+    currentGalleryImages.forEach((image, index) => {
+        const thumb = document.createElement('div');
+        
+        // Determine aspect ratio class
+        let aspectClass = 'square';
+        if (image.aspectRatio > 1.2) {
+            aspectClass = 'horizontal';
+        } else if (image.aspectRatio < 0.8) {
+            aspectClass = 'vertical';
+        }
+        
+        thumb.className = `thumbnail-grid-item ${aspectClass}`;
+        thumb.style.backgroundImage = `url(${image.url})`;
+        thumb.style.animationDelay = `${index * 0.02}s`;
+        
+        // Add overlay with image number
+        const itemOverlay = document.createElement('div');
+        itemOverlay.className = 'thumbnail-grid-item-overlay';
+        itemOverlay.innerHTML = `<span class="thumbnail-grid-item-number">#${image.imageData.index}</span>`;
+        
+        thumb.appendChild(itemOverlay);
+        
+        // Click handler
+        thumb.addEventListener('click', () => {
+            closeThumbnailView();
+            setTimeout(() => {
+                openModal(image.url, gallery.title, currentGallery, index);
+            }, 100);
+        });
+        
+        thumbnailGrid.appendChild(thumb);
+    });
+    
+    // Show overlay
+    overlay.removeAttribute('hidden');
+    document.body.style.overflow = 'hidden';
+    
+    // Setup scroll handler
+    const gridContainer = document.querySelector('.thumbnail-grid-container');
+    
+    // Wait for layout to complete
+    setTimeout(() => {
+        updateViewportIndicator();
+        updateThumbnailPosition();
+        
+        thumbnailScrollHandler = () => {
+            requestAnimationFrame(() => {
+                updateViewportIndicator();
+                updateThumbnailPosition();
+            });
+        };
+        
+        thumbnailResizeHandler = () => {
+            requestAnimationFrame(() => {
+                updateViewportIndicator();
+            });
+        };
+        
+        gridContainer.addEventListener('scroll', thumbnailScrollHandler);
+        window.addEventListener('resize', thumbnailResizeHandler);
+    }, 100);
+};
+
+const closeThumbnailView = () => {
+    const overlay = document.getElementById('thumbnail-overlay');
+    const gridContainer = document.querySelector('.thumbnail-grid-container');
+    
+    if (!overlay) return;
+    
+    // Remove event listeners
+    if (thumbnailScrollHandler) {
+        gridContainer.removeEventListener('scroll', thumbnailScrollHandler);
+        thumbnailScrollHandler = null;
+    }
+    
+    if (thumbnailResizeHandler) {
+        window.removeEventListener('resize', thumbnailResizeHandler);
+        thumbnailResizeHandler = null;
+    }
+    
+    // Hide overlay
+    overlay.setAttribute('hidden', '');
+    document.body.style.overflow = 'auto';
+};
+
+const updateViewportIndicator = () => {
+    const gridContainer = document.querySelector('.thumbnail-grid-container');
+    const thumbnailGrid = document.getElementById('thumbnail-grid');
+    const indicator = document.getElementById('viewport-indicator');
+    
+    if (!gridContainer || !thumbnailGrid || !indicator) return;
+    
+    const gridRect = thumbnailGrid.getBoundingClientRect();
+    const containerRect = gridContainer.getBoundingClientRect();
+    
+    // Calculate visible portion
+    const scrollTop = gridContainer.scrollTop;
+    const scrollHeight = gridContainer.scrollHeight;
+    const clientHeight = gridContainer.clientHeight;
+    
+    if (scrollHeight <= clientHeight) {
+        indicator.style.display = 'none';
+        return;
+    }
+    
+    indicator.style.display = 'block';
+    
+    // Calculate row heights
+    const thumbnails = Array.from(thumbnailGrid.children);
+    const gridStyle = window.getComputedStyle(thumbnailGrid);
+    const gap = parseInt(gridStyle.gap) || 8;
+    
+    // Get number of columns from computed style
+    const columnsCount = gridStyle.gridTemplateColumns.split(' ').length;
+    
+    let rowHeights = [];
+    let currentRow = [];
+    let currentColumn = 0;
+    
+    thumbnails.forEach((thumb) => {
+        const isHorizontal = thumb.classList.contains('horizontal');
+        const columnSpan = isHorizontal ? Math.min(columnsCount, 2) : 1;
+        
+        if (currentColumn + columnSpan > columnsCount) {
+            // Save current row
+            if (currentRow.length > 0) {
+                const maxHeight = Math.max(...currentRow.map(t => 
+                    t.getBoundingClientRect().height
+                ));
+                rowHeights.push(maxHeight);
+            }
+            currentRow = [thumb];
+            currentColumn = columnSpan;
+        } else {
+            currentRow.push(thumb);
+            currentColumn += columnSpan;
+        }
+    });
+    
+    // Don't forget last row
+    if (currentRow.length > 0) {
+        const maxHeight = Math.max(...currentRow.map(t => 
+            t.getBoundingClientRect().height
+        ));
+        rowHeights.push(maxHeight);
+    }
+    
+    const totalRows = rowHeights.length;
+    if (totalRows === 0) return;
+    
+    const totalGridHeight = rowHeights.reduce((sum, h) => sum + h, 0) + (gap * (totalRows - 1));
+    const avgRowHeight = totalGridHeight / totalRows;
+    
+    // Calculate visible rows
+    const visibleRows = Math.ceil(clientHeight / avgRowHeight);
+    const indicatorHeight = Math.min(
+        (visibleRows / totalRows) * totalGridHeight,
+        totalGridHeight
+    );
+    
+    // Calculate position
+    const scrollPercentage = scrollTop / (scrollHeight - clientHeight);
+    const indicatorTop = scrollPercentage * (totalGridHeight - indicatorHeight);
+    
+    // Apply styles
+    indicator.style.height = `${indicatorHeight}px`;
+    indicator.style.top = `${indicatorTop}px`;
+};
+
+const updateThumbnailPosition = () => {
+    const gridContainer = document.querySelector('.thumbnail-grid-container');
+    const positionElement = document.getElementById('thumbnail-position');
+    
+    if (!gridContainer || !positionElement || !currentGalleryImages) return;
+    
+    const scrollTop = gridContainer.scrollTop;
+    const scrollHeight = gridContainer.scrollHeight;
+    const clientHeight = gridContainer.clientHeight;
+    
+    const totalImages = currentGalleryImages.length;
+    
+    if (scrollHeight <= clientHeight) {
+        positionElement.textContent = `1-${totalImages} / ${totalImages}`;
+        return;
+    }
+    
+    const scrollPercentage = scrollTop / scrollHeight;
+    const scrollEndPercentage = (scrollTop + clientHeight) / scrollHeight;
+    
+    const visibleStart = Math.floor(scrollPercentage * totalImages) + 1;
+    const visibleEnd = Math.min(
+        Math.ceil(scrollEndPercentage * totalImages),
+        totalImages
+    );
+    
+    positionElement.textContent = `${visibleStart}-${visibleEnd} / ${totalImages}`;
+};
+
+const setupThumbnailView = () => {
+    const thumbnailBtn = document.getElementById('thumbnail-view-btn');
+    const thumbnailClose = document.getElementById('thumbnail-close-btn');
+    const overlay = document.getElementById('thumbnail-overlay');
+    
+    if (thumbnailBtn) {
+        thumbnailBtn.addEventListener('click', openThumbnailView);
+    }
+    
+    if (thumbnailClose) {
+        thumbnailClose.addEventListener('click', closeThumbnailView);
+    }
+    
+    if (overlay) {
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                closeThumbnailView();
+            }
+        });
+    }
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        if (!overlay || overlay.hasAttribute('hidden')) return;
+        
+        if (e.key === 'Escape') {
+            closeThumbnailView();
+        }
+    });
+};
+
 // CANVAS NAVIGATION
 const updateCanvasTransform = () => {
     const container = document.getElementById('canvas-transform-container');
@@ -951,6 +1208,7 @@ const init = async () => {
         await setupGallerySelector();
         setupCanvasNavigation();
         setupBackButton();
+        setupThumbnailView();
         
         console.log('✅ Initialization complete');
     } catch (error) {
