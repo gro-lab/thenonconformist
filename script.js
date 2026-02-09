@@ -1,5 +1,5 @@
 // THE NONCONFORMIST - GDPR Compliant Version
-// âœ… Firebase SDK loaded dynamically ONLY after user consent
+// ✅ Firebase SDK loaded dynamically ONLY after user consent
 
 // ============================================
 // FIREBASE - LOADED DYNAMICALLY AFTER CONSENT  
@@ -14,7 +14,7 @@ const loadFirebaseSDK = async () => {
         return firebaseModules;
     }
     
- console.log(' Loading Firebase SDK dynamically...');
+    console.log('📦 Loading Firebase SDK dynamically...');
     
     try {
         const [appModule, firestoreModule] = await Promise.all([
@@ -35,10 +35,10 @@ const loadFirebaseSDK = async () => {
             serverTimestamp: firestoreModule.serverTimestamp
         };
         
- console.log(' Firebase SDK loaded successfully');
+        console.log('✅ Firebase SDK loaded successfully');
         return firebaseModules;
     } catch (error) {
- console.error(' Failed to load Firebase SDK:', error);
+        console.error('❌ Failed to load Firebase SDK:', error);
         throw error;
     }
 };
@@ -60,19 +60,19 @@ const initFirebase = async () => {
     
     app = firebase.initializeApp(firebaseConfig);
     db = firebase.getFirestore(app);
- console.log(' Firebase initialized');
+    console.log('✅ Firebase initialized');
 };
 
 // Teardown function for consent withdrawal
 const teardownFirebase = () => {
     if (app) {
- console.log(' Disconnecting Firebase...');
+        console.log('🔥 Disconnecting Firebase...');
         app = null;
         db = null;
         firebaseModules = null;
         likesCache = {};
         window.FUNCTIONAL_COOKIES_ENABLED = false;
- console.log(' Firebase disconnected and cleaned up');
+        console.log('✅ Firebase disconnected and cleaned up');
     }
 };
 
@@ -145,10 +145,10 @@ const loadManifest = async () => {
         }
         
         imageManifest = await response.json();
- console.log(' Manifest loaded');
+        console.log('✅ Manifest loaded');
         return imageManifest;
     } catch (error) {
- console.warn(' Error loading manifest:', error);
+        console.warn('⚠️ Error loading manifest:', error);
         return generateFallbackManifest();
     }
 };
@@ -200,11 +200,11 @@ const getDocIdFromUrl = (url) => {
 const fetchAllLikes = async () => {
     try {
         if (!window.FUNCTIONAL_COOKIES_ENABLED || !db || !firebaseModules) {
- console.log(' Functional cookies not enabled or Firebase not initialized, skipping likes fetch');
+            console.log('⚠️ Functional cookies not enabled or Firebase not initialized, skipping likes fetch');
             return {};
         }
         
- console.log(' Fetching all likes from Firestore...');
+        console.log('📊 Fetching all likes from Firestore...');
         const firebase = firebaseModules;
         const querySnapshot = await firebase.getDocs(firebase.collection(db, 'image_likes'));
         const likes = {};
@@ -212,10 +212,10 @@ const fetchAllLikes = async () => {
             likes[doc.id] = doc.data().likes || 0;
         });
         likesCache = likes;
- console.log(` Loaded ${Object.keys(likes).length} likes from Firestore`);
+        console.log(`❤️ Loaded ${Object.keys(likes).length} likes from Firestore`);
         return likes;
     } catch (error) {
- console.error('Error fetching likes:', error);
+        console.error('Error fetching likes:', error);
         return {};
     }
 };
@@ -223,7 +223,7 @@ const fetchAllLikes = async () => {
 const updateLike = async (url, increment_value) => {
     try {
         if (!window.FUNCTIONAL_COOKIES_ENABLED || !db || !firebaseModules) {
- console.log(' Functional cookies not enabled, cannot update likes');
+            console.log('⚠️ Functional cookies not enabled, cannot update likes');
             return null;
         }
         
@@ -253,7 +253,7 @@ const updateLike = async (url, increment_value) => {
             return initialLikes;
         }
     } catch (error) {
- console.error('Error updating likes:', error);
+        console.error('Error updating likes:', error);
         return null;
     }
 };
@@ -273,7 +273,7 @@ const loadGalleryData = async (galleryKey) => {
         const docId = getDocIdFromUrl(url);
         const likes = likesCache[docId] !== undefined ? likesCache[docId] : 0;
         
- console.log(` ${galleryKey} image ${imageData.index}: ${likes} likes`);
+        console.log(`📷 ${galleryKey} image ${imageData.index}: ${likes} likes`);
         
         return {
             url,
@@ -335,12 +335,12 @@ const calculateScrollLimits = () => {
         maxY: scrollableHeight
     };
     
- console.log(' Scroll limits calculated:', scrollLimits);
+    console.log('📐 Scroll limits calculated:', scrollLimits);
 };
 
 // GALLERY SELECTOR
 const setupGallerySelector = async () => {
- console.log(' Setting up gallery selector...');
+    console.log('🔄 Setting up gallery selector...');
     
     await Promise.all(Object.keys(galleries).map(key => loadGalleryData(key)));
     
@@ -368,7 +368,7 @@ const setupGallerySelector = async () => {
         });
     });
     
- console.log(' Gallery selector setup complete');
+    console.log('✅ Gallery selector setup complete');
 };
 
 const openGallery = (galleryId) => {
@@ -403,7 +403,7 @@ const loadGalleryContent = (galleryId) => {
     const images = galleryImageData[galleryId];
     
     if (!images || images.length === 0) {
- console.error(`No images found for gallery: ${galleryId}`);
+        console.error(`No images found for gallery: ${galleryId}`);
         return;
     }
     
@@ -412,9 +412,9 @@ const loadGalleryContent = (galleryId) => {
     const sortedImages = stableSortByLikes(images);
     currentGalleryImages = sortedImages;
     
- console.log(` Rendering ${sortedImages.length} images for ${galleryId}, sorted by likes:`);
+    console.log(`🎨 Rendering ${sortedImages.length} images for ${galleryId}, sorted by likes:`);
     sortedImages.forEach((image, idx) => {
- console.log(` ${idx + 1}: ${image.likes} likes - ${image.url}`);
+        console.log(`  ${idx + 1}: ${image.likes} likes - ${image.url}`);
     });
     
     sortedImages.forEach((image, index) => {
@@ -446,7 +446,7 @@ const loadGalleryContent = (galleryId) => {
         overlay.innerHTML = `
             <div class="item-category">${gallery.title}</div>
             <div class="item-title">Image ${image.imageData.index}</div>
-            <div class="item-likes">â™¥ ${image.likes}</div>
+            <div class="item-likes">♥ ${image.likes}</div>
         `;
         
         masonryItem.addEventListener('click', () => {
@@ -609,28 +609,6 @@ const setupBackButton = () => {
     }
 };
 
-// THUMBNAIL VIEW TOGGLE
-const setupThumbnailView = () => {
-    const thumbnailBtn = document.getElementById('thumbnail-view-btn');
-    const infiniteCanvas = document.getElementById('infinite-canvas');
-    
-    if (thumbnailBtn && infiniteCanvas) {
-        thumbnailBtn.addEventListener('click', () => {
-            infiniteCanvas.classList.toggle('thumbnail-mode');
-            
-            if (infiniteCanvas.classList.contains('thumbnail-mode')) {
-                thumbnailBtn.innerHTML = '<span>∞</span> Canvas View';
-                // Reset scroll position when entering thumbnail mode
-                scrollX = 0;
-                scrollY = 0;
-                updateCanvasTransform();
-            } else {
-                thumbnailBtn.innerHTML = '<span>▦</span> Thumbnail View';
-            }
-        });
-    }
-};
-
 // MODAL
 const modal = document.getElementById('modal');
 const modalImage = document.getElementById('modal-img');
@@ -701,7 +679,7 @@ const updateLikeButton = () => {
     }
     
     if (heart) {
-        heart.textContent = isLiked ? '' : '♡';
+        heart.textContent = isLiked ? '♥' : '♡';
         if (isLiked) {
             likeBtn.classList.add('liked');
         } else {
@@ -750,7 +728,7 @@ const toggleLike = async () => {
             loadGalleryContent(currentGallery);
         }
     } catch (error) {
- console.error('Error toggling like:', error);
+        console.error('Error toggling like:', error);
     } finally {
         isProcessing = false;
         likeBtn.disabled = false;
@@ -801,7 +779,7 @@ const showCookieBanner = () => {
 };
 
 const applyCookiePreferences = async (prefs) => {
- console.log(' Applying cookie preferences:', prefs);
+    console.log('🍪 Applying cookie preferences:', prefs);
     if (prefs.functional) {
         window.FUNCTIONAL_COOKIES_ENABLED = true;
         await initFirebase();
@@ -957,27 +935,26 @@ if (termsModal) {
 // INIT
 const init = async () => {
     try {
- console.log(' Initializing The Nonconformist...');
+        console.log('🚀 Initializing The Nonconformist...');
         
         initCookieBanner();
         await loadManifest();
         
         if (window.FUNCTIONAL_COOKIES_ENABLED) {
- console.log(' Functional cookies enabled, initializing Firebase...');
+            console.log('🔐 Functional cookies enabled, initializing Firebase...');
             await initFirebase();
             await fetchAllLikes();
         } else {
- console.log(' Functional cookies not enabled, using default likes (0)');
+            console.log('🔐 Functional cookies not enabled, using default likes (0)');
         }
         
         await setupGallerySelector();
         setupCanvasNavigation();
         setupBackButton();
-        setupThumbnailView();
         
- console.log(' Initialization complete');
+        console.log('✅ Initialization complete');
     } catch (error) {
- console.error(' Init error:', error);
+        console.error('❌ Init error:', error);
     }
 };
 
