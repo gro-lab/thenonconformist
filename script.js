@@ -1,5 +1,5 @@
-// THE NONCONFORMIST - GDPR Compliant Version with Thumbnail Support
-// ✅ Firebase SDK loaded dynamically ONLY after user consent
+// THE NONCONFORMIST - GDPR Compliant Version
+// âœ… Firebase SDK loaded dynamically ONLY after user consent
 
 // ============================================
 // FIREBASE - LOADED DYNAMICALLY AFTER CONSENT  
@@ -14,7 +14,7 @@ const loadFirebaseSDK = async () => {
         return firebaseModules;
     }
     
-    console.log('📦 Loading Firebase SDK dynamically...');
+ console.log(' Loading Firebase SDK dynamically...');
     
     try {
         const [appModule, firestoreModule] = await Promise.all([
@@ -35,10 +35,10 @@ const loadFirebaseSDK = async () => {
             serverTimestamp: firestoreModule.serverTimestamp
         };
         
-        console.log('✅ Firebase SDK loaded successfully');
+ console.log(' Firebase SDK loaded successfully');
         return firebaseModules;
     } catch (error) {
-        console.error('❌ Failed to load Firebase SDK:', error);
+ console.error(' Failed to load Firebase SDK:', error);
         throw error;
     }
 };
@@ -60,19 +60,19 @@ const initFirebase = async () => {
     
     app = firebase.initializeApp(firebaseConfig);
     db = firebase.getFirestore(app);
-    console.log('✅ Firebase initialized');
+ console.log(' Firebase initialized');
 };
 
 // Teardown function for consent withdrawal
 const teardownFirebase = () => {
     if (app) {
-        console.log('🔥 Disconnecting Firebase...');
+ console.log(' Disconnecting Firebase...');
         app = null;
         db = null;
         firebaseModules = null;
         likesCache = {};
         window.FUNCTIONAL_COOKIES_ENABLED = false;
-        console.log('✅ Firebase disconnected and cleaned up');
+ console.log(' Firebase disconnected and cleaned up');
     }
 };
 
@@ -145,10 +145,10 @@ const loadManifest = async () => {
         }
         
         imageManifest = await response.json();
-        console.log('✅ Manifest loaded');
+ console.log(' Manifest loaded');
         return imageManifest;
     } catch (error) {
-        console.warn('⚠️ Error loading manifest:', error);
+ console.warn(' Error loading manifest:', error);
         return generateFallbackManifest();
     }
 };
@@ -184,19 +184,12 @@ const generateFallbackManifest = () => {
     return manifest;
 };
 
-// ============================================
-// 🆕 UPDATED: createImageUrl with thumbnail support
-// ============================================
-const createImageUrl = (dir, imageData, thumbnail = false) => {
+const createImageUrl = (dir, imageData) => {
     const owner = 'gro-lab';
     const repo = 'thenonconformist';
     const branch = 'main';
     const filename = imageData.originalName || `${dir}-${imageData.index}.${imageData.ext}`;
-    
-    // Use thumbnails folder for thumbnails, regular folder for full-size
-    const path = thumbnail ? `thumbnails/${dir}` : dir;
-    
-    return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/${path}/${filename}`;
+    return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/${dir}/${filename}`;
 };
 
 const getDocIdFromUrl = (url) => {
@@ -207,11 +200,11 @@ const getDocIdFromUrl = (url) => {
 const fetchAllLikes = async () => {
     try {
         if (!window.FUNCTIONAL_COOKIES_ENABLED || !db || !firebaseModules) {
-            console.log('⚠️ Functional cookies not enabled or Firebase not initialized, skipping likes fetch');
+ console.log(' Functional cookies not enabled or Firebase not initialized, skipping likes fetch');
             return {};
         }
         
-        console.log('📊 Fetching all likes from Firestore...');
+ console.log(' Fetching all likes from Firestore...');
         const firebase = firebaseModules;
         const querySnapshot = await firebase.getDocs(firebase.collection(db, 'image_likes'));
         const likes = {};
@@ -219,10 +212,10 @@ const fetchAllLikes = async () => {
             likes[doc.id] = doc.data().likes || 0;
         });
         likesCache = likes;
-        console.log(`❤️ Loaded ${Object.keys(likes).length} likes from Firestore`);
+ console.log(` Loaded ${Object.keys(likes).length} likes from Firestore`);
         return likes;
     } catch (error) {
-        console.error('Error fetching likes:', error);
+ console.error('Error fetching likes:', error);
         return {};
     }
 };
@@ -230,7 +223,7 @@ const fetchAllLikes = async () => {
 const updateLike = async (url, increment_value) => {
     try {
         if (!window.FUNCTIONAL_COOKIES_ENABLED || !db || !firebaseModules) {
-            console.log('⚠️ Functional cookies not enabled, cannot update likes');
+ console.log(' Functional cookies not enabled, cannot update likes');
             return null;
         }
         
@@ -260,7 +253,7 @@ const updateLike = async (url, increment_value) => {
             return initialLikes;
         }
     } catch (error) {
-        console.error('Error updating likes:', error);
+ console.error('Error updating likes:', error);
         return null;
     }
 };
@@ -276,18 +269,14 @@ const loadGalleryData = async (galleryKey) => {
     }
     
     const images = imageList.map((imageData, originalIndex) => {
-        // Store both thumbnail and full-size URLs
-        const thumbnailUrl = createImageUrl(dir, imageData, true);  // 🆕 Thumbnail
-        const fullSizeUrl = createImageUrl(dir, imageData, false);  // 🆕 Full-size
-        const docId = getDocIdFromUrl(fullSizeUrl);
+        const url = createImageUrl(dir, imageData);
+        const docId = getDocIdFromUrl(url);
         const likes = likesCache[docId] !== undefined ? likesCache[docId] : 0;
         
-        console.log(`📷 ${galleryKey} image ${imageData.index}: ${likes} likes`);
+ console.log(` ${galleryKey} image ${imageData.index}: ${likes} likes`);
         
         return {
-            thumbnailUrl,    // 🆕 Add thumbnail URL
-            fullSizeUrl,     // 🆕 Add full-size URL
-            url: fullSizeUrl, // Keep for compatibility (likes system uses this)
+            url,
             likes,
             originalIndex,
             gallery: galleryKey,
@@ -310,7 +299,7 @@ const getMostLikedImageUrl = (galleryKey) => {
     if (!images || images.length === 0) return '';
     
     const sorted = stableSortByLikes(images);
-    return sorted[0].thumbnailUrl;  // 🆕 Use thumbnail for gallery covers
+    return sorted[0].url;
 };
 
 // Calculate scroll limits based on grid size
@@ -346,12 +335,12 @@ const calculateScrollLimits = () => {
         maxY: scrollableHeight
     };
     
-    console.log('📐 Scroll limits calculated:', scrollLimits);
+ console.log(' Scroll limits calculated:', scrollLimits);
 };
 
 // GALLERY SELECTOR
 const setupGallerySelector = async () => {
-    console.log('🔄 Setting up gallery selector...');
+ console.log(' Setting up gallery selector...');
     
     await Promise.all(Object.keys(galleries).map(key => loadGalleryData(key)));
     
@@ -362,7 +351,7 @@ const setupGallerySelector = async () => {
         if (cover && galleryImageData[key]) {
             const mostLikedUrl = getMostLikedImageUrl(key);
             if (mostLikedUrl) {
-                cover.style.backgroundImage = `url(${mostLikedUrl})`;  // 🆕 Uses thumbnail
+                cover.style.backgroundImage = `url(${mostLikedUrl})`;
             }
         }
         
@@ -379,7 +368,7 @@ const setupGallerySelector = async () => {
         });
     });
     
-    console.log('✅ Gallery selector setup complete');
+ console.log(' Gallery selector setup complete');
 };
 
 const openGallery = (galleryId) => {
@@ -408,16 +397,13 @@ const openGallery = (galleryId) => {
     }, 800);
 };
 
-// ============================================
-// 🆕 UPDATED: loadGalleryContent uses thumbnails
-// ============================================
 const loadGalleryContent = (galleryId) => {
     const masonryGrid = document.getElementById('masonry-grid');
     const gallery = galleries[galleryId];
     const images = galleryImageData[galleryId];
     
     if (!images || images.length === 0) {
-        console.error(`No images found for gallery: ${galleryId}`);
+ console.error(`No images found for gallery: ${galleryId}`);
         return;
     }
     
@@ -426,9 +412,9 @@ const loadGalleryContent = (galleryId) => {
     const sortedImages = stableSortByLikes(images);
     currentGalleryImages = sortedImages;
     
-    console.log(`🎨 Rendering ${sortedImages.length} images for ${galleryId}, sorted by likes:`);
+ console.log(` Rendering ${sortedImages.length} images for ${galleryId}, sorted by likes:`);
     sortedImages.forEach((image, idx) => {
-        console.log(`  ${idx + 1}: ${image.likes} likes - ${image.url}`);
+ console.log(` ${idx + 1}: ${image.likes} likes - ${image.url}`);
     });
     
     sortedImages.forEach((image, index) => {
@@ -443,9 +429,7 @@ const loadGalleryContent = (galleryId) => {
         
         masonryItem.className = `masonry-item ${orientation}`;
         masonryItem.style.animationDelay = `${index * 0.05}s`;
-        
-        // 🆕 USE THUMBNAIL for background image
-        masonryItem.style.backgroundImage = `url(${image.thumbnailUrl})`;
+        masonryItem.style.backgroundImage = `url(${image.url})`;
         
         const overlay = document.createElement('div');
         overlay.className = 'item-overlay';
@@ -462,12 +446,11 @@ const loadGalleryContent = (galleryId) => {
         overlay.innerHTML = `
             <div class="item-category">${gallery.title}</div>
             <div class="item-title">Image ${image.imageData.index}</div>
-            <div class="item-likes">♥ ${image.likes}</div>
+            <div class="item-likes">â™¥ ${image.likes}</div>
         `;
         
-        // 🆕 Pass index to modal, which will load full-size image
         masonryItem.addEventListener('click', () => {
-            openModal(image.fullSizeUrl, gallery.title, galleryId, index);
+            openModal(image.url, gallery.title, galleryId, index);
         });
         
         masonryItem.appendChild(overlay);
@@ -626,9 +609,29 @@ const setupBackButton = () => {
     }
 };
 
-// ============================================
-// 🆕 UPDATED: Modal uses full-size images
-// ============================================
+// THUMBNAIL VIEW TOGGLE
+const setupThumbnailView = () => {
+    const thumbnailBtn = document.getElementById('thumbnail-view-btn');
+    const infiniteCanvas = document.getElementById('infinite-canvas');
+    
+    if (thumbnailBtn && infiniteCanvas) {
+        thumbnailBtn.addEventListener('click', () => {
+            infiniteCanvas.classList.toggle('thumbnail-mode');
+            
+            if (infiniteCanvas.classList.contains('thumbnail-mode')) {
+                thumbnailBtn.innerHTML = '<span>∞</span> Canvas View';
+                // Reset scroll position when entering thumbnail mode
+                scrollX = 0;
+                scrollY = 0;
+                updateCanvasTransform();
+            } else {
+                thumbnailBtn.innerHTML = '<span>▦</span> Thumbnail View';
+            }
+        });
+    }
+};
+
+// MODAL
 const modal = document.getElementById('modal');
 const modalImage = document.getElementById('modal-img');
 const likeBtn = document.getElementById('like-btn');
@@ -636,12 +639,10 @@ const modalClose = document.getElementById('modal-close');
 const modalPrev = document.getElementById('modal-prev');
 const modalNext = document.getElementById('modal-next');
 
-const openModal = (fullSizeImageUrl, category = 'Image', galleryKey = currentGallery, imageIndex = 0) => {
-    currentModalImageUrl = fullSizeImageUrl;  // 🆕 This is now full-size URL
+const openModal = (imageUrl, category = 'Image', galleryKey = currentGallery, imageIndex = 0) => {
+    currentModalImageUrl = imageUrl;
     currentModalImageIndex = imageIndex;
-    
-    // 🆕 Load full-size image in modal
-    modalImage.src = fullSizeImageUrl;
+    modalImage.src = imageUrl;
     
     modal.removeAttribute('hidden');
     document.body.style.overflow = 'hidden';
@@ -666,8 +667,8 @@ const navigateModal = (direction) => {
     }
     
     const nextImage = currentGalleryImages[currentModalImageIndex];
-    currentModalImageUrl = nextImage.fullSizeUrl;  // 🆕 Use full-size URL
-    modalImage.src = nextImage.fullSizeUrl;        // 🆕 Load full-size image
+    currentModalImageUrl = nextImage.url;
+    modalImage.src = nextImage.url;
     
     updateLikeButton();
     updateNavButtons();
@@ -700,7 +701,7 @@ const updateLikeButton = () => {
     }
     
     if (heart) {
-        heart.textContent = isLiked ? '♥' : '♡';
+        heart.textContent = isLiked ? 'â™¥' : 'â™¡';
         if (isLiked) {
             likeBtn.classList.add('liked');
         } else {
@@ -739,7 +740,7 @@ const toggleLike = async () => {
             
             Object.keys(galleryImageData).forEach(galleryKey => {
                 const images = galleryImageData[galleryKey];
-                const imageIndex = images.findIndex(img => img.fullSizeUrl === currentModalImageUrl);  // 🆕 Compare full-size URLs
+                const imageIndex = images.findIndex(img => img.url === currentModalImageUrl);
                 if (imageIndex !== -1) {
                     images[imageIndex].likes = newLikes;
                 }
@@ -749,7 +750,7 @@ const toggleLike = async () => {
             loadGalleryContent(currentGallery);
         }
     } catch (error) {
-        console.error('Error toggling like:', error);
+ console.error('Error toggling like:', error);
     } finally {
         isProcessing = false;
         likeBtn.disabled = false;
@@ -800,7 +801,7 @@ const showCookieBanner = () => {
 };
 
 const applyCookiePreferences = async (prefs) => {
-    console.log('🍪 Applying cookie preferences:', prefs);
+ console.log(' Applying cookie preferences:', prefs);
     if (prefs.functional) {
         window.FUNCTIONAL_COOKIES_ENABLED = true;
         await initFirebase();
@@ -956,26 +957,27 @@ if (termsModal) {
 // INIT
 const init = async () => {
     try {
-        console.log('🚀 Initializing The Nonconformist...');
+ console.log(' Initializing The Nonconformist...');
         
         initCookieBanner();
         await loadManifest();
         
         if (window.FUNCTIONAL_COOKIES_ENABLED) {
-            console.log('🔓 Functional cookies enabled, initializing Firebase...');
+ console.log(' Functional cookies enabled, initializing Firebase...');
             await initFirebase();
             await fetchAllLikes();
         } else {
-            console.log('🔒 Functional cookies not enabled, using default likes (0)');
+ console.log(' Functional cookies not enabled, using default likes (0)');
         }
         
         await setupGallerySelector();
         setupCanvasNavigation();
         setupBackButton();
+        setupThumbnailView();
         
-        console.log('✅ Initialization complete');
+ console.log(' Initialization complete');
     } catch (error) {
-        console.error('❌ Init error:', error);
+ console.error(' Init error:', error);
     }
 };
 
