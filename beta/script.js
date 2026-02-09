@@ -751,6 +751,16 @@ const updateCanvasTransform = () => {
     }
 };
 
+// Throttle helper to reduce event frequency on iOS
+let lastUpdateTime = 0;
+const throttleTransform = (callback, delay = 16) => {
+    const now = Date.now();
+    if (now - lastUpdateTime >= delay) {
+        lastUpdateTime = now;
+        callback();
+    }
+};
+
 const setupCanvasNavigation = () => {
     const canvas = document.getElementById('infinite-canvas');
     const galleryContent = document.getElementById('gallery-content');
@@ -773,6 +783,7 @@ const setupCanvasNavigation = () => {
             isDragging = true;
             startX = e.touches[0].clientX - scrollX;
             startY = e.touches[0].clientY - scrollY;
+            e.preventDefault(); // Prevent iOS Safari issues
         }
     }
     
@@ -785,19 +796,25 @@ const setupCanvasNavigation = () => {
         scrollX = Math.max(scrollLimits.minX, Math.min(scrollLimits.maxX, scrollX));
         scrollY = Math.max(scrollLimits.minY, Math.min(scrollLimits.maxY, scrollY));
         
-        updateCanvasTransform();
+        throttleTransform(updateCanvasTransform);
     }
     
     function onDragTouch(e) {
         if (!isDragging || !galleryContent.classList.contains('active')) return;
         if (e.touches.length === 1) {
-            scrollX = e.touches[0].clientX - startX;
-            scrollY = e.touches[0].clientY - startY;
+            // SLOWED DOWN: Reduced touch sensitivity for thumbnail view
+            const moveX = e.touches[0].clientX - startX;
+            const moveY = e.touches[0].clientY - startY;
+            
+            // Apply 0.6 damping factor to slow down touch scrolling
+            scrollX = moveX * 0.6;
+            scrollY = moveY * 0.6;
             
             scrollX = Math.max(scrollLimits.minX, Math.min(scrollLimits.maxX, scrollX));
             scrollY = Math.max(scrollLimits.minY, Math.min(scrollLimits.maxY, scrollY));
             
-            updateCanvasTransform();
+            throttleTransform(updateCanvasTransform);
+            e.preventDefault(); // Critical for iOS Safari
         }
     }
     
@@ -810,6 +827,7 @@ const setupCanvasNavigation = () => {
     document.addEventListener('touchmove', onDragTouch, { passive: false });
     document.addEventListener('mouseup', stopDrag);
     document.addEventListener('touchend', stopDrag);
+    document.addEventListener('touchcancel', stopDrag); // iOS Safari safety
     
     document.addEventListener('keydown', function(e) {
         if (!galleryContent.classList.contains('active')) return;
@@ -840,18 +858,19 @@ const setupCanvasNavigation = () => {
         updateCanvasTransform();
     });
     
+    // SLOWED DOWN: Reduced wheel scroll speed from 0.5 to 0.2
     canvas.addEventListener('wheel', function(e) {
         if (!galleryContent.classList.contains('active')) return;
         
         e.preventDefault();
         
-        scrollX -= e.deltaX * 0.5;
-        scrollY -= e.deltaY * 0.5;
+        scrollX -= e.deltaX * 0.2; // Reduced from 0.5
+        scrollY -= e.deltaY * 0.2; // Reduced from 0.5
         
         scrollX = Math.max(scrollLimits.minX, Math.min(scrollLimits.maxX, scrollX));
         scrollY = Math.max(scrollLimits.minY, Math.min(scrollLimits.maxY, scrollY));
         
-        updateCanvasTransform();
+        throttleTransform(updateCanvasTransform);
     }, { passive: false });
     
     window.addEventListener('resize', () => {
