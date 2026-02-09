@@ -863,6 +863,8 @@ const setupBackButton = () => {
     }
 };
 
+setupThumbnailView();
+
 // MODAL
 const modal = document.getElementById('modal');
 const modalImage = document.getElementById('modal-img');
