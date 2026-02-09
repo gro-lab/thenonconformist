@@ -713,7 +713,16 @@ const openThumbnailView = () => {
     const images = currentGalleryImages;
     images.forEach((image, index) => {
         const thumbnailItem = document.createElement('div');
-        thumbnailItem.className = 'thumbnail-grid-item';
+        
+        // Determine aspect ratio class
+        let aspectClass = 'square';
+        if (image.aspectRatio > 1.2) {
+            aspectClass = 'horizontal';
+        } else if (image.aspectRatio < 0.8) {
+            aspectClass = 'vertical';
+        }
+        
+        thumbnailItem.className = `thumbnail-grid-item ${aspectClass}`;
         thumbnailItem.style.animationDelay = `${index * 0.01}s`;
         
         // Check if thumbnail is in cache
@@ -815,47 +824,62 @@ const updateViewportIndicator = () => {
     
     if (!indicator || !thumbnailContainer || !thumbnailGrid) return;
     
-    // Get the first thumbnail to calculate row height
-    const firstThumbnail = thumbnailGrid.querySelector('.thumbnail-grid-item');
-    if (!firstThumbnail) return;
+    // Get grid dimensions
+    const gridRect = thumbnailGrid.getBoundingClientRect();
+    const containerRect = thumbnailContainer.getBoundingClientRect();
     
-    const thumbnailRect = firstThumbnail.getBoundingClientRect();
-    const thumbnailHeight = thumbnailRect.height;
-    
-    // Get grid styles to find gap and column count
+    // Get grid styles to find column count and gap
     const gridStyles = window.getComputedStyle(thumbnailGrid);
     const gap = parseInt(gridStyles.gap) || 8;
-    const gridTemplateColumns = gridStyles.gridTemplateColumns.split(' ').length;
+    const columnsCount = gridStyles.gridTemplateColumns.split(' ').length;
     
-    // Calculate visible container height
-    const containerRect = thumbnailContainer.getBoundingClientRect();
-    const containerHeight = containerRect.height - 60; // Account for padding
+    // Calculate average thumbnail height (accounting for different aspect ratios)
+    const thumbnails = thumbnailGrid.querySelectorAll('.thumbnail-grid-item');
+    if (thumbnails.length === 0) return;
     
-    // Calculate how many rows fit in the visible container height
-    const rowsVisible = Math.floor((containerHeight + gap) / (thumbnailHeight + gap));
+    // Sample first few thumbnails to get average row height
+    let totalHeight = 0;
+    let rowCount = 0;
+    for (let i = 0; i < Math.min(columnsCount * 3, thumbnails.length); i++) {
+        if (i % columnsCount === 0) {
+            // Start of new row
+            let maxHeightInRow = 0;
+            for (let j = 0; j < columnsCount && (i + j) < thumbnails.length; j++) {
+                const thumbHeight = thumbnails[i + j].getBoundingClientRect().height;
+                maxHeightInRow = Math.max(maxHeightInRow, thumbHeight);
+            }
+            totalHeight += maxHeightInRow;
+            rowCount++;
+        }
+    }
+    const avgRowHeight = rowCount > 0 ? totalHeight / rowCount : 80;
     
-    // Calculate total rows in grid
-    const totalThumbnails = thumbnailGrid.querySelectorAll('.thumbnail-grid-item').length;
-    const totalRows = Math.ceil(totalThumbnails / gridTemplateColumns);
+    // Calculate how many rows are visible in viewport
+    const visibleHeight = containerRect.height - 60; // Account for padding
+    const rowsVisible = Math.floor(visibleHeight / (avgRowHeight + gap));
     
-    // Calculate indicator height based on visible rows
-    const availableHeight = containerHeight;
-    const indicatorHeight = Math.max(40, (rowsVisible / totalRows) * availableHeight);
+    // Calculate total rows
+    const totalRows = Math.ceil(thumbnails.length / columnsCount);
     
-    // Calculate vertical position
+    // Calculate indicator dimensions
+    const indicatorWidth = gridRect.width; // Same width as grid
+    const indicatorHeight = Math.max(60, (rowsVisible / totalRows) * gridRect.height);
+    
+    // Calculate vertical position based on scroll
     const scrollTop = thumbnailContainer.scrollTop;
     const scrollHeight = thumbnailContainer.scrollHeight;
     const clientHeight = thumbnailContainer.clientHeight;
-    
-    // Calculate indicator top position
     const scrollableHeight = scrollHeight - clientHeight;
+    
+    // Calculate indicator position relative to grid
     const scrollPercentage = scrollableHeight > 0 ? scrollTop / scrollableHeight : 0;
-    const maxIndicatorTop = availableHeight - indicatorHeight;
+    const maxIndicatorTop = gridRect.height - indicatorHeight;
     const indicatorTop = scrollPercentage * maxIndicatorTop;
     
     // Set indicator dimensions and position
+    indicator.style.width = `${indicatorWidth}px`;
     indicator.style.height = `${indicatorHeight}px`;
-    indicator.style.top = `${indicatorTop + 90}px`; // 90px offset for header
+    indicator.style.top = `${indicatorTop}px`;
 };
 
 const updateThumbnailPosition = () => {

@@ -528,6 +528,11 @@ body {
     scrollbar-color: rgba(242, 140, 40, 0.8) transparent;
 }
 
+/* Thumbnail grid wrapper for proper indicator positioning */
+.thumbnail-grid-wrapper {
+    position: relative;
+}
+
 /* Custom Scrollbar for Webkit browsers - VERTICAL */
 .thumbnail-grid-container::-webkit-scrollbar {
     width: 12px;
@@ -559,7 +564,6 @@ body {
 .thumbnail-grid-item {
     position: relative;
     width: 80px;
-    height: 80px;
     border-radius: 6px;
     overflow: hidden;
     cursor: pointer;
@@ -569,6 +573,19 @@ body {
     transition: all 0.2s ease;
     opacity: 0;
     animation: fadeInThumb 0.3s ease forwards;
+}
+
+/* Maintain aspect ratios */
+.thumbnail-grid-item.horizontal {
+    height: 45px; /* 16:9 ratio for 80px width */
+}
+
+.thumbnail-grid-item.vertical {
+    height: 142px; /* 9:16 ratio for 80px width */
+}
+
+.thumbnail-grid-item.square {
+    height: 80px; /* 1:1 ratio */
 }
 
 .thumbnail-grid-item:hover {
@@ -611,17 +628,18 @@ body {
     font-weight: 600;
 }
 
-/* Viewport Indicator - VERTICAL on the right side */
+/* Viewport Indicator - OVERLAYS thumbnail grid in center */
 .viewport-indicator {
-    position: fixed;
-    right: 30px;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
     border: 3px solid var(--accent-orange);
     background: rgba(242, 140, 40, 0.15);
     pointer-events: none;
     border-radius: 6px;
     transition: all 0.3s ease;
     box-shadow: 0 0 20px rgba(242, 140, 40, 0.4);
-    width: 60px;
+    z-index: 10;
 }
 
 .thumbnail-info {
@@ -1069,12 +1087,18 @@ body {
     
     .thumbnail-grid-item {
         width: 60px;
-        height: 60px;
     }
     
-    .viewport-indicator {
-        width: 50px;
-        right: 20px;
+    .thumbnail-grid-item.horizontal {
+        height: 34px; /* 16:9 ratio for 60px width */
+    }
+    
+    .thumbnail-grid-item.vertical {
+        height: 107px; /* 9:16 ratio for 60px width */
+    }
+    
+    .thumbnail-grid-item.square {
+        height: 60px;
     }
 }
 
@@ -1093,12 +1117,18 @@ body {
     
     .thumbnail-grid-item {
         width: 50px;
-        height: 50px;
     }
     
-    .viewport-indicator {
-        width: 40px;
-        right: 15px;
+    .thumbnail-grid-item.horizontal {
+        height: 28px; /* 16:9 ratio for 50px width */
+    }
+    
+    .thumbnail-grid-item.vertical {
+        height: 89px; /* 9:16 ratio for 50px width */
+    }
+    
+    .thumbnail-grid-item.square {
+        height: 50px;
     }
 }
 
