@@ -759,6 +759,7 @@ body {
 
 /* Mobile */
 @media (max-width: 768px) {
+    .gallery-content { display: none; }
     .site-intro {
         padding: 40px 20px 30px;
     }
@@ -830,6 +831,7 @@ body {
 }
 
 @media (max-width: 480px) {
+    .gallery-content { display: none; }
     .masonry-grid {
         grid-template-columns: repeat(2, 1fr);
     }
