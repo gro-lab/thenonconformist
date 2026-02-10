@@ -120,7 +120,100 @@ let scrollX = 0;
 let scrollY = 0;
 let scrollLimits = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
 
+// LAZY LOADING STATE
+let masonryObserver = null;
+let coverObserver = null;
+
 window.FUNCTIONAL_COOKIES_ENABLED = false;
+
+// ============================================
+// LAZY LOADING - MOST AGGRESSIVE
+// ============================================
+
+// Create observer for masonry grid items - 0px rootMargin = only when visible
+const createMasonryObserver = () => {
+    if (masonryObserver) {
+        masonryObserver.disconnect();
+    }
+    
+    masonryObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const item = entry.target;
+                const bgUrl = item.dataset.bg;
+                if (bgUrl) {
+                    // Create a hidden image to preload, then apply
+                    const img = new Image();
+                    img.onload = () => {
+                        item.style.backgroundImage = `url(${bgUrl})`;
+                        item.classList.add('lazy-loaded');
+                        delete item.dataset.bg;
+                    };
+                    img.onerror = () => {
+                        // Still remove from observer on error
+                        item.classList.add('lazy-error');
+                        delete item.dataset.bg;
+                    };
+                    img.src = bgUrl;
+                }
+                masonryObserver.unobserve(item);
+            }
+        });
+    }, {
+        root: null,         // viewport
+        rootMargin: '0px',  // AGGRESSIVE: only when actually entering viewport
+        threshold: 0        // trigger as soon as even 1px is visible
+    });
+    
+    return masonryObserver;
+};
+
+// Create observer for gallery cover images on the selector page
+const createCoverObserver = () => {
+    if (coverObserver) {
+        coverObserver.disconnect();
+    }
+    
+    coverObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const cover = entry.target;
+                const bgUrl = cover.dataset.bg;
+                if (bgUrl) {
+                    const img = new Image();
+                    img.onload = () => {
+                        cover.style.backgroundImage = `url(${bgUrl})`;
+                        cover.classList.add('lazy-loaded');
+                        delete cover.dataset.bg;
+                    };
+                    img.src = bgUrl;
+                }
+                coverObserver.unobserve(cover);
+            }
+        });
+    }, {
+        root: null,
+        rootMargin: '50px',  // Slightly less aggressive for covers since they're above the fold
+        threshold: 0
+    });
+    
+    return coverObserver;
+};
+
+// Cleanup observers
+const destroyMasonryObserver = () => {
+    if (masonryObserver) {
+        masonryObserver.disconnect();
+        masonryObserver = null;
+    }
+};
+
+const destroyCoverObserver = () => {
+    if (coverObserver) {
+        coverObserver.disconnect();
+        coverObserver = null;
+    }
+};
 
 // STABLE SORT BY LIKES - DESCENDING ORDER
 const stableSortByLikes = (items) => {
@@ -344,6 +437,9 @@ const setupGallerySelector = async () => {
     
     await Promise.all(Object.keys(galleries).map(key => loadGalleryData(key)));
     
+    // Create cover observer for lazy loading gallery cover images
+    const observer = createCoverObserver();
+    
     Object.keys(galleries).forEach(key => {
         const cover = document.querySelector(`.gallery-cover[data-gallery="${key}"]`);
         const countElement = document.getElementById(`${key}-count`);
@@ -351,7 +447,9 @@ const setupGallerySelector = async () => {
         if (cover && galleryImageData[key]) {
             const mostLikedUrl = getMostLikedImageUrl(key);
             if (mostLikedUrl) {
-                cover.style.backgroundImage = `url(${mostLikedUrl})`;
+                // LAZY: store URL in data-bg, observe for visibility
+                cover.dataset.bg = mostLikedUrl;
+                observer.observe(cover);
             }
         }
         
@@ -407,6 +505,9 @@ const loadGalleryContent = (galleryId) => {
         return;
     }
     
+    // Destroy previous observer before rebuilding the grid
+    destroyMasonryObserver();
+    
     masonryGrid.innerHTML = '';
     
     const sortedImages = stableSortByLikes(images);
@@ -416,6 +517,9 @@ const loadGalleryContent = (galleryId) => {
     sortedImages.forEach((image, idx) => {
         console.log(`  ${idx + 1}: ${image.likes} likes - ${image.url}`);
     });
+    
+    // Create fresh observer for this gallery's items
+    const observer = createMasonryObserver();
     
     sortedImages.forEach((image, index) => {
         const masonryItem = document.createElement('div');
@@ -429,7 +533,9 @@ const loadGalleryContent = (galleryId) => {
         
         masonryItem.className = `masonry-item ${orientation}`;
         masonryItem.style.animationDelay = `${index * 0.05}s`;
-        masonryItem.style.backgroundImage = `url(${image.url})`;
+        
+        // LAZY LOADING: store URL in data-bg instead of applying immediately
+        masonryItem.dataset.bg = image.url;
         
         const overlay = document.createElement('div');
         overlay.className = 'item-overlay';
@@ -455,6 +561,9 @@ const loadGalleryContent = (galleryId) => {
         
         masonryItem.appendChild(overlay);
         masonryGrid.appendChild(masonryItem);
+        
+        // Observe this item for lazy loading
+        observer.observe(masonryItem);
     });
     
     scrollX = 0;
@@ -475,6 +584,9 @@ const closeGallery = () => {
     const termsFooter = document.querySelector('.terms-footer');
     
     galleryContent.classList.remove('active');
+    
+    // Cleanup masonry observer when leaving gallery
+    destroyMasonryObserver();
     
     setTimeout(() => {
         gallerySelector.classList.remove('hidden');
