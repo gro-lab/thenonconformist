@@ -578,6 +578,18 @@ const loadGalleryContent = (galleryId) => {
     setTimeout(calculateScrollLimits, 500);
 };
 
+// Refresh gallery selector like counts from current galleryImageData
+const refreshGalleryCounts = () => {
+    Object.keys(galleries).forEach(key => {
+        const countElement = document.getElementById(`${key}-count`);
+        if (countElement && galleryImageData[key]) {
+            const count = galleryImageData[key].length;
+            const totalLikes = galleryImageData[key].reduce((sum, img) => sum + (img.likes || 0), 0);
+            countElement.textContent = `${count} Works ${totalLikes} Likes`;
+        }
+    });
+};
+
 const closeGallery = () => {
     const galleryContent = document.getElementById('gallery-content');
     const gallerySelector = document.getElementById('gallery-selector');
@@ -588,6 +600,9 @@ const closeGallery = () => {
     
     // Cleanup masonry observer when leaving gallery
     destroyMasonryObserver();
+    
+    // Refresh like counts so the selector shows updated totals
+    refreshGalleryCounts();
     
     setTimeout(() => {
         gallerySelector.classList.remove('hidden');
