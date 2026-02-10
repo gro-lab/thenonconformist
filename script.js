@@ -332,6 +332,14 @@ const createImageUrl = (dir, imageData) => {
     return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/${dir}/${filename}`;
 };
 
+const createThumbnailUrl = (dir, imageData) => {
+    const owner = 'gro-lab';
+    const repo = 'thenonconformist';
+    const branch = 'main';
+    const filename = imageData.originalName || `${dir}-${imageData.index}.${imageData.ext}`;
+    return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/thumbnails/${dir}/${filename}`;
+};
+
 const getDocIdFromUrl = (url) => {
     return btoa(url).replace(/[^a-zA-Z0-9]/g, '');
 };
@@ -438,8 +446,10 @@ const getMostLikedImageUrl = (galleryKey) => {
     const images = galleryImageData[galleryKey];
     if (!images || images.length === 0) return '';
     
+    const gallery = galleries[galleryKey];
     const sorted = stableSortByLikes(images);
-    return sorted[0].url;
+    // Use thumbnail for gallery covers instead of full-size image
+    return createThumbnailUrl(gallery.dir, sorted[0].imageData);
 };
 
 // Calculate scroll limits based on grid size
