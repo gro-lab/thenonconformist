@@ -124,7 +124,54 @@ let scrollLimits = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
 let masonryObserver = null;
 let coverObserver = null;
 
+// HISTORY NAVIGATION STATE
+// Tracks whether a popstate-triggered close is in progress,
+// so closeGallery/closeModal don't call history.back() again
+let isPopstateClosing = false;
+
 window.FUNCTIONAL_COOKIES_ENABLED = false;
+
+// ============================================
+// HISTORY API - BACK BUTTON / SWIPE CONTROL
+// ============================================
+
+// Push a "trap" state on the homepage so browser back/swipe cannot leave the site
+const pushHomepageTrap = () => {
+    history.replaceState({ page: 'home' }, '', window.location.href);
+    history.pushState({ page: 'home-trap' }, '', window.location.href);
+};
+
+// Handle browser back button and swipe-back gesture
+const setupHistoryNavigation = () => {
+    // Set initial homepage trap
+    pushHomepageTrap();
+    
+    window.addEventListener('popstate', (e) => {
+        const state = e.state;
+        
+        // If modal is open, close it first
+        if (!modal.hasAttribute('hidden')) {
+            isPopstateClosing = true;
+            closeModalDirect();
+            isPopstateClosing = false;
+            return;
+        }
+        
+        // If gallery is open, close it and return to selector
+        const galleryContent = document.getElementById('gallery-content');
+        if (galleryContent && galleryContent.classList.contains('active')) {
+            isPopstateClosing = true;
+            closeGalleryDirect();
+            isPopstateClosing = false;
+            // Re-push the homepage trap so back is disabled again on homepage
+            pushHomepageTrap();
+            return;
+        }
+        
+        // On homepage: re-push trap to disable back/swipe completely
+        pushHomepageTrap();
+    });
+};
 
 // ============================================
 // LAZY LOADING - MOST AGGRESSIVE
@@ -473,6 +520,9 @@ const setupGallerySelector = async () => {
 const openGallery = (galleryId) => {
     currentGallery = galleryId;
     
+    // Push history state so browser back / swipe returns to gallery selector
+    history.pushState({ page: 'gallery', gallery: galleryId }, '', window.location.href);
+    
     const gallerySelector = document.getElementById('gallery-selector');
     const loadingIndicator = document.getElementById('loading-indicator');
     const galleryContent = document.getElementById('gallery-content');
@@ -590,7 +640,8 @@ const refreshGalleryCounts = () => {
     });
 };
 
-const closeGallery = () => {
+// Direct close functions (no history manipulation) - used by popstate handler
+const closeGalleryDirect = () => {
     const galleryContent = document.getElementById('gallery-content');
     const gallerySelector = document.getElementById('gallery-selector');
     const siteIntro = document.querySelector('.site-intro');
@@ -610,6 +661,31 @@ const closeGallery = () => {
         if (termsFooter) termsFooter.classList.remove('hidden');
         currentGallery = null;
     }, 800);
+};
+
+const closeModalDirect = () => {
+    modal.setAttribute('hidden', '');
+    currentModalImageUrl = null;
+    currentModalImageIndex = -1;
+    document.body.style.overflow = 'auto';
+};
+
+// Public close functions - called by UI clicks (back button, X, click outside, Escape)
+// These trigger history.back() which fires popstate, which calls the Direct versions
+const closeGallery = () => {
+    if (isPopstateClosing) {
+        closeGalleryDirect();
+        return;
+    }
+    history.back();
+};
+
+const closeModal = () => {
+    if (isPopstateClosing) {
+        closeModalDirect();
+        return;
+    }
+    history.back();
 };
 
 // CANVAS NAVIGATION
@@ -750,17 +826,13 @@ const openModal = (imageUrl, category = 'Image', galleryKey = currentGallery, im
     currentModalImageIndex = imageIndex;
     modalImage.src = imageUrl;
     
+    // Push history state so browser back / swipe closes modal first
+    history.pushState({ page: 'modal', gallery: galleryKey }, '', window.location.href);
+    
     modal.removeAttribute('hidden');
     document.body.style.overflow = 'hidden';
     updateLikeButton();
     updateNavButtons();
-};
-
-const closeModal = () => {
-    modal.setAttribute('hidden', '');
-    currentModalImageUrl = null;
-    currentModalImageIndex = -1;
-    document.body.style.overflow = 'auto';
 };
 
 const navigateModal = (direction) => {
@@ -1079,6 +1151,7 @@ const init = async () => {
         await setupGallerySelector();
         setupCanvasNavigation();
         setupBackButton();
+        setupHistoryNavigation();
         
         console.log('✅ Initialization complete');
     } catch (error) {
