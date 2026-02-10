@@ -455,7 +455,8 @@ const setupGallerySelector = async () => {
         
         if (countElement && galleryImageData[key]) {
             const count = galleryImageData[key].length;
-            countElement.textContent = `${count} Works`;
+            const totalLikes = galleryImageData[key].reduce((sum, img) => sum + (img.likes || 0), 0);
+            countElement.textContent = `${count} Works ${totalLikes} Likes`;
         }
     });
     
