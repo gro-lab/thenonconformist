@@ -199,10 +199,6 @@
         <button id="back-button" class="back-button">
             <span>←</span> Back to Galleries
         </button>
-        <!-- Thumbnail View Button - Mobile Only -->
-        <button id="thumbnail-view-btn" class="thumbnail-view-btn" aria-label="Thumbnail View">
-            ⊞ Zoom Out
-        </button>
         <div id="infinite-canvas" class="infinite-canvas">
             <div id="gallery-header" class="gallery-header">
                 <h2 id="current-gallery-title"></h2>
@@ -213,7 +209,7 @@
             </div>
         </div>
         <div class="navigation-hint">
-            <p>Drag to explore • Arrow keys to navigate • Scroll to move</p>
+            <p>Tap to view • Swipe to explore • Keyboard to navigate</p>
         </div>
     </div>
 
@@ -230,22 +226,7 @@
             <span id="like-count">0</span>
         </button>
     </div>
-    <!-- Thumbnail Overlay - Mobile Only -->
-    <div id="thumbnail-overlay" class="thumbnail-overlay" hidden>
-        <div class="thumbnail-overlay-header">
-            <h3 id="thumbnail-overlay-title">Gallery Overview</h3>
-            <button class="thumbnail-close-btn" id="thumbnail-close-btn" aria-label="Close thumbnail view">×</button>
-        </div>
-        <div class="thumbnail-grid-container">
-            <div class="thumbnail-grid-wrapper">
-                <div id="thumbnail-grid" class="thumbnail-grid"></div>
-                <!-- <div id="viewport-indicator" class="viewport-indicator"></div> -->
-            </div>
-        </div>
-        <div class="thumbnail-info">
-            <span id="thumbnail-position">1 / 0</span>
-        </div>
-    </div>
+
   <!-- Terms Modal -->
     <div id="terms-modal" class="modal terms-modal" hidden>
         <button class="modal-close" id="terms-modal-close">×</button>
@@ -257,7 +238,7 @@
                 <ul>
                     <li><strong>Data Controller:</strong> Peter Grosspersky</li>
                     <li><strong>Country:</strong> Romania</li>
-                    <li><strong>Email:</strong> <a href="mailto:then-onconformist@outlook.com" class="__cf_email__" data-cfemail="205448454e0d4f4e434f4e464f524d495354604f55544c4f4f4b0e434f4d">then-onconformist@outlook.com</a></li>
+                    <li><strong>Email:</strong> <a href="mailto:then-onconformist@outlook.com" class="__cf_email__" data-cfemail="205448454e0d4f4e434f4e464f524d495354604f55544c4f4f4b0e434f4d"><span class="__cf_email__" data-cfemail="15617d707b387a7b767a7b737a67787c6661557a6061797a7a7e3b767a78">then-onconformist@outlook.com</span></a></li>
                 </ul>
                 <p>Under Regulation (EU) 2016/679 (GDPR), the above person acts as the data controller responsible for the processing of personal data through this website.</p>
 
@@ -273,12 +254,11 @@
                     <li>your cookie / storage preferences</li>
                     <li>local information related to the "like" feature (to prevent repeated likes from the same browser)</li>
                 </ul>
-                <p>These data:</p>
-                <ul>
-                    <li>remain on your device</li>
-                    <li>are not used to identify you</li>
-                    <li>are not shared with third parties</li>
-                </ul>
+               <p>
+                  This data is processed in a pseudonymous manner and is not used to identify
+                  individuals. The website does not combine this data with other information to
+                  identify users.
+                </p>
 
                 <h4>3.2. Firebase (Google) processing</h4>
                 <p>If you enable optional functionality, the website uses Firebase Firestore, a service provided by Google, to:</p>
@@ -312,11 +292,23 @@
                 <p>✅ Third-party services (Firebase) are loaded ONLY after you accept functional cookies.</p>
 
                 <h3>5. Legal basis for processing</h3>
-                <p>Personal data is processed only based on your consent, in accordance with:</p>
+                <p>
+                  Depending on the specific processing activity, personal data is processed
+                  based on the following legal grounds:
+                </p>
                 <ul>
-                    <li>Article 6(1)(a) GDPR – consent</li>
+                  <li>
+                    <strong>Article 6(1)(a) GDPR – Consent</strong>, for optional functional
+                    features such as image likes enabled via Firebase.
+                  </li>
+                  <li>
+                    <strong>Article 6(1)(f) GDPR – Legitimate interest</strong>, for the
+                    publication of artistic photographs and the handling of user correspondence.
+                  </li>
                 </ul>
-                <p>You may withdraw your consent at any time via the cookie settings.</p>
+                <p>
+                  Each processing activity is limited to its stated purpose.
+                </p>
 
                 <h3>6. Cookies and similar technologies</h3>
                 <p>This website does not use advertising or tracking cookies.</p>
@@ -326,6 +318,11 @@
                     <li>local storage for preferences and the "like" feature</li>
                 </ul>
                 <p>Optional functionality is disabled by default and activated only after consent.</p>
+                <p>
+                  The website may perform minimal technical network requests (such as DNS resolution)
+                  required to load images hosted on external platforms.
+                </p>
+
 
                 <h3>7. International data transfers</h3>
                 <p>Firebase is a service provided by Google LLC (United States). Google relies on Standard Contractual Clauses (SCCs) approved by the European Commission for international data transfers.</p>
@@ -349,7 +346,7 @@
                 <p>This Privacy Policy may be updated from time to time. The current version will always be available on this website.</p>
 
                 <h3>11. Contact</h3>
-                <p>For any questions regarding this Privacy Policy or to exercise your rights, contact us at: <a href="mailto:then-onconformist@outlook.com">then-onconformist@outlook.com</a></p>
+                <p>For any questions regarding this Privacy Policy or to exercise your rights, contact us at: <a href="mailto:then-onconformist@outlook.com" data-cfemail="483c202d266527262b27262e273a25213b3c08273d3c24272723662b2725">then-onconformist@outlook.com</a></p>
 
                 <h3>12. Photography and Artistic Expression</h3>
                 <p>Images displayed on this website may include public spaces and individuals captured in street photography contexts. These images are published under:</p>
@@ -358,7 +355,7 @@
                     <li><strong>Journalistic and artistic exemptions</strong> where applicable under EU and Romanian law</li>
                     <li><strong>Legitimate interest</strong> (Article 6(1)(f)) for documentary and artistic purposes</li>
                 </ul>
-                <p>If you appear in a photograph and wish for it to be removed, please contact us at <a href="mailto:then-onconformist@outlook.com">then-onconformist@outlook.com</a> with:</p>
+                <p>If you appear in a photograph and wish for it to be removed, please contact us at <a href="mailto:then-onconformist@outlook.com"><span class="__cf_email__" data-cfemail="c9bda1aca7e4a6a7aaa6a7afa6bba4a0babd89a6bcbda5a6a6a2e7aaa6a4">then-onconformist@outlook.com</a> with:</p>
                 <ul>
                     <li>The specific image URL and gallery name</li>
                     <li>Your reason for removal request</li>
@@ -396,7 +393,7 @@
     <div id="cookie-banner" class="cookie-banner" hidden>
         <div class="cookie-content">
             <h3>We value your privacy</h3>
-            <p>We use cookies to enhance your browsing experience.</p>
+            <p>We use essential technologies and optional functional storage to enable features such as <span style="color: #f28c28">image likes</span>.</p>
             <div class="cookie-actions">
                 <button id="cookie-settings-btn" class="cookie-btn cookie-btn-secondary">Settings</button>
                 <button id="cookie-reject-btn" class="cookie-btn cookie-btn-secondary">Reject All</button>
@@ -410,7 +407,10 @@
         <button class="modal-close" id="cookie-modal-close">×</button>
         <div class="modal-content cookie-settings-content">
             <h2>Cookie Settings</h2>
-            <p class="cookie-intro">We use cookies to improve your browsing experience.</p>
+            <p class="cookie-intro">
+              We use essential technologies and optional functional storage to enable site features.
+            </p>
+
             
             <div class="cookie-categories">
                 <div class="cookie-category">
@@ -445,7 +445,7 @@
                     </p>
                 </div>
             </div>
-
+            
             <div class="cookie-modal-actions">
                 <button id="cookie-save-btn" class="cookie-btn cookie-btn-primary">Save Preferences</button>
                 <button id="cookie-accept-all-btn" class="cookie-btn cookie-btn-secondary">Accept All</button>
