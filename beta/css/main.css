@@ -1,0 +1,13 @@
+/* src/css/main.css */
+@layer tokens, base, layout, components, utilities;
+
+@import url('tokens.css') layer(tokens);
+@import url('base.css')    layer(base);
+@import url('layout.css')  layer(layout);
+
+@import url('components/gallery.css')        layer(components);
+@import url('components/modal.css')          layer(components);
+@import url('components/cookie-banner.css') layer(components);
+@import url('components/header.css')         layer(components);
+
+@import url('utilities.css') layer(utilities);
