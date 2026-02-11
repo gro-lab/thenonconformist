@@ -958,6 +958,9 @@ const toggleLike = async () => {
     isProcessing = true;
     likeBtn.disabled = true;
     
+    const likeSpinner = document.getElementById('like-spinner');
+    if (likeSpinner) likeSpinner.removeAttribute('hidden');
+    
     const docId = getDocIdFromUrl(currentModalImageUrl);
     const likedKey = `liked_${docId}`;
     const isCurrentlyLiked = localStorage.getItem(likedKey) === 'true';
@@ -991,6 +994,8 @@ const toggleLike = async () => {
     } finally {
         isProcessing = false;
         likeBtn.disabled = false;
+        const likeSpinner = document.getElementById('like-spinner');
+        if (likeSpinner) likeSpinner.setAttribute('hidden', '');
     }
 };
 
