@@ -504,8 +504,8 @@ const setupGallerySelector = async () => {
     
     await Promise.all(Object.keys(galleries).map(key => loadGalleryData(key)));
     
-    // Collect cover image load promises for the initial loading screen
-    const coverLoadPromises = [];
+    // Create cover observer for lazy loading gallery cover images
+    const observer = createCoverObserver();
     
     Object.keys(galleries).forEach(key => {
         const cover = document.querySelector(`.gallery-cover[data-gallery="${key}"]`);
@@ -514,22 +514,9 @@ const setupGallerySelector = async () => {
         if (cover && galleryImageData[key]) {
             const mostLikedUrl = getMostLikedImageUrl(key);
             if (mostLikedUrl) {
-                // EAGER load on initial setup: preload cover image and apply when ready
-                const loadPromise = new Promise((resolve) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        cover.style.backgroundImage = `url(${mostLikedUrl})`;
-                        cover.classList.add('lazy-loaded');
-                        resolve();
-                    };
-                    img.onerror = () => {
-                        // Still resolve on error so we don't block forever
-                        cover.classList.add('lazy-error');
-                        resolve();
-                    };
-                    img.src = mostLikedUrl;
-                });
-                coverLoadPromises.push(loadPromise);
+                // LAZY: store URL in data-bg, observe for visibility
+                cover.dataset.bg = mostLikedUrl;
+                observer.observe(cover);
             }
         }
         
@@ -547,14 +534,7 @@ const setupGallerySelector = async () => {
         });
     });
     
-    // Wait for all cover images to load before returning (with 10s timeout safety)
-    const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 10000));
-    await Promise.race([
-        Promise.all(coverLoadPromises),
-        timeoutPromise
-    ]);
-    
-    console.log('✅ Gallery selector setup complete (all covers loaded)');
+    console.log('✅ Gallery selector setup complete');
 };
 
 const openGallery = (galleryId) => {
@@ -1248,9 +1228,6 @@ const init = async () => {
     try {
         console.log('🚀 Initializing The Nonconformist...');
         
-        // Loading indicator is already active from HTML
-        const loadingIndicator = document.getElementById('loading-indicator');
-        
         initCookieBanner();
         await loadManifest();
         
@@ -1267,19 +1244,9 @@ const init = async () => {
         setupBackButton();
         setupHistoryNavigation();
         
-        // All covers loaded — hide the loading screen
-        if (loadingIndicator) {
-            loadingIndicator.classList.remove('active');
-        }
-        
         console.log('✅ Initialization complete');
     } catch (error) {
         console.error('❌ Init error:', error);
-        // Hide loading indicator even on error so the page isn't stuck
-        const loadingIndicator = document.getElementById('loading-indicator');
-        if (loadingIndicator) {
-            loadingIndicator.classList.remove('active');
-        }
     }
 };
 
