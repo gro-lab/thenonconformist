@@ -957,6 +957,10 @@ const toggleLike = async () => {
     
     isProcessing = true;
     likeBtn.disabled = true;
+    likeBtn.classList.add('loading');
+    const spinner = document.createElement('div');
+    spinner.className = 'like-btn-spinner';
+    likeBtn.appendChild(spinner);
     
     const likeSpinner = document.getElementById('like-spinner');
     if (likeSpinner) likeSpinner.removeAttribute('hidden');
@@ -994,8 +998,9 @@ const toggleLike = async () => {
     } finally {
         isProcessing = false;
         likeBtn.disabled = false;
-        const likeSpinner = document.getElementById('like-spinner');
-        if (likeSpinner) likeSpinner.setAttribute('hidden', '');
+        likeBtn.classList.remove('loading');
+        const spinnerEl = likeBtn.querySelector('.like-btn-spinner');
+        if (spinnerEl) spinnerEl.remove();
     }
 };
 
