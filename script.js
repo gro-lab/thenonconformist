@@ -119,6 +119,7 @@ let startY = 0;
 let scrollX = 0;
 let scrollY = 0;
 let scrollLimits = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+let homepageScrollY = 0;
 
 // LAZY LOADING STATE
 let masonryObserver = null;
@@ -530,6 +531,9 @@ const setupGallerySelector = async () => {
 const openGallery = (galleryId) => {
     currentGallery = galleryId;
     
+    // Remember homepage scroll position
+    homepageScrollY = window.scrollY || document.documentElement.scrollTop;
+    
     // Push history state so browser back / swipe returns to gallery selector
     history.pushState({ page: 'gallery', gallery: galleryId }, '', window.location.href);
     
@@ -688,6 +692,11 @@ const closeGalleryDirect = () => {
         if (siteIntro) siteIntro.classList.remove('hidden');
         if (termsFooter) termsFooter.classList.remove('hidden');
         currentGallery = null;
+        
+        // Restore homepage scroll position
+        requestAnimationFrame(() => {
+            window.scrollTo(0, homepageScrollY);
+        });
     }, 800);
 };
 
