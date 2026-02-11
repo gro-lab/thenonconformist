@@ -757,9 +757,13 @@ body {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
+/* Tablet and below - hide back button */
+@media (max-width: 1024px) {
+    #back-button { display: none; }
+}
+
 /* Mobile */
 @media (max-width: 768px) {
-    #back-button { display: none; }
     .site-intro {
         padding: 40px 20px 30px;
     }
@@ -831,7 +835,6 @@ body {
 }
 
 @media (max-width: 480px) {
-    #back-button { display: none; }
     .masonry-grid {
         grid-template-columns: repeat(2, 1fr);
     }
