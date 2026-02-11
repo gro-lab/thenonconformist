@@ -4,8 +4,8 @@
   "description": "Photography portfolio by The Nonconformist - Capturing emotions, truth, and beauty",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ffffff",
+  "background_color": "#000",
+  "theme_color": "#000",
   "orientation": "portrait-primary",
   "icons": [
     {
