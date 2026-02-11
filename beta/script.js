@@ -119,8 +119,158 @@ let startY = 0;
 let scrollX = 0;
 let scrollY = 0;
 let scrollLimits = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+let homepageScrollY = 0;
+
+// LAZY LOADING STATE
+let masonryObserver = null;
+let coverObserver = null;
+
+// HISTORY NAVIGATION STATE
+// Tracks whether a popstate-triggered close is in progress,
+// so closeGallery/closeModal don't call history.back() again
+let isPopstateClosing = false;
 
 window.FUNCTIONAL_COOKIES_ENABLED = false;
+
+// ============================================
+// HISTORY API - BACK BUTTON / SWIPE CONTROL
+// ============================================
+
+// Push a "trap" state on the homepage so browser back/swipe cannot leave the site
+const pushHomepageTrap = () => {
+    history.replaceState({ page: 'home' }, '', window.location.href);
+    history.pushState({ page: 'home-trap' }, '', window.location.href);
+};
+
+// Handle browser back button and swipe-back gesture
+const setupHistoryNavigation = () => {
+    // Set initial homepage trap
+    pushHomepageTrap();
+    
+    window.addEventListener('popstate', (e) => {
+        const state = e.state;
+    
+        // 1. If image modal is open → close it
+        if (!modal.hasAttribute('hidden')) {
+            isPopstateClosing = true;
+            closeModalDirect();
+            isPopstateClosing = false;
+            return;
+        }
+    
+        // 2. If terms modal is open → close it
+        const termsModal = document.getElementById('terms-modal');
+        if (termsModal && !termsModal.hasAttribute('hidden')) {
+            isPopstateClosing = true;
+            closeTermsModalDirect();
+            isPopstateClosing = false;
+            return;
+        }
+    
+        // 3. If gallery is open → close it
+        const galleryContent = document.getElementById('gallery-content');
+        if (galleryContent && galleryContent.classList.contains('active')) {
+            isPopstateClosing = true;
+            closeGalleryDirect();
+            isPopstateClosing = false;
+            // Re-push the homepage trap so back is disabled again on homepage
+            pushHomepageTrap();
+            return;
+        }
+    
+        // 4. On homepage: re-push trap to disable back/swipe completely
+        pushHomepageTrap();
+    });
+};
+
+// ============================================
+// LAZY LOADING - MOST AGGRESSIVE
+// ============================================
+
+// Create observer for masonry grid items - 0px rootMargin = only when visible
+const createMasonryObserver = () => {
+    if (masonryObserver) {
+        masonryObserver.disconnect();
+    }
+    
+    masonryObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const item = entry.target;
+                const bgUrl = item.dataset.bg;
+                if (bgUrl) {
+                    // Create a hidden image to preload, then apply
+                    const img = new Image();
+                    img.onload = () => {
+                        item.style.backgroundImage = `url(${bgUrl})`;
+                        item.classList.add('lazy-loaded');
+                        delete item.dataset.bg;
+                    };
+                    img.onerror = () => {
+                        // Still remove from observer on error
+                        item.classList.add('lazy-error');
+                        delete item.dataset.bg;
+                    };
+                    img.src = bgUrl;
+                }
+                masonryObserver.unobserve(item);
+            }
+        });
+    }, {
+        root: null,         // viewport
+        rootMargin: '0px',  // AGGRESSIVE: only when actually entering viewport
+        threshold: 0        // trigger as soon as even 1px is visible
+    });
+    
+    return masonryObserver;
+};
+
+// Create observer for gallery cover images on the selector page
+const createCoverObserver = () => {
+    if (coverObserver) {
+        coverObserver.disconnect();
+    }
+    
+    coverObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const cover = entry.target;
+                const bgUrl = cover.dataset.bg;
+                if (bgUrl) {
+                    const img = new Image();
+                    img.onload = () => {
+                        cover.style.backgroundImage = `url(${bgUrl})`;
+                        cover.classList.add('lazy-loaded');
+                        delete cover.dataset.bg;
+                    };
+                    img.src = bgUrl;
+                }
+                coverObserver.unobserve(cover);
+            }
+        });
+    }, {
+        root: null,
+        rootMargin: '50px',  // Slightly less aggressive for covers since they're above the fold
+        threshold: 0
+    });
+    
+    return coverObserver;
+};
+
+// Cleanup observers
+const destroyMasonryObserver = () => {
+    if (masonryObserver) {
+        masonryObserver.disconnect();
+        masonryObserver = null;
+    }
+};
+
+const destroyCoverObserver = () => {
+    if (coverObserver) {
+        coverObserver.disconnect();
+        coverObserver = null;
+    }
+};
 
 // STABLE SORT BY LIKES - DESCENDING ORDER
 const stableSortByLikes = (items) => {
@@ -190,6 +340,14 @@ const createImageUrl = (dir, imageData) => {
     const branch = 'main';
     const filename = imageData.originalName || `${dir}-${imageData.index}.${imageData.ext}`;
     return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/${dir}/${filename}`;
+};
+
+const createThumbnailUrl = (dir, imageData) => {
+    const owner = 'gro-lab';
+    const repo = 'thenonconformist';
+    const branch = 'main';
+    const filename = imageData.originalName || `${dir}-${imageData.index}.${imageData.ext}`;
+    return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/thumbnails/${dir}/${filename}`;
 };
 
 const getDocIdFromUrl = (url) => {
@@ -298,8 +456,10 @@ const getMostLikedImageUrl = (galleryKey) => {
     const images = galleryImageData[galleryKey];
     if (!images || images.length === 0) return '';
     
+    const gallery = galleries[galleryKey];
     const sorted = stableSortByLikes(images);
-    return sorted[0].url;
+    // Use thumbnail for gallery covers instead of full-size image
+    return createThumbnailUrl(gallery.dir, sorted[0].imageData);
 };
 
 // Calculate scroll limits based on grid size
@@ -344,6 +504,9 @@ const setupGallerySelector = async () => {
     
     await Promise.all(Object.keys(galleries).map(key => loadGalleryData(key)));
     
+    // Create cover observer for lazy loading gallery cover images
+    const observer = createCoverObserver();
+    
     Object.keys(galleries).forEach(key => {
         const cover = document.querySelector(`.gallery-cover[data-gallery="${key}"]`);
         const countElement = document.getElementById(`${key}-count`);
@@ -351,13 +514,16 @@ const setupGallerySelector = async () => {
         if (cover && galleryImageData[key]) {
             const mostLikedUrl = getMostLikedImageUrl(key);
             if (mostLikedUrl) {
-                cover.style.backgroundImage = `url(${mostLikedUrl})`;
+                // LAZY: store URL in data-bg, observe for visibility
+                cover.dataset.bg = mostLikedUrl;
+                observer.observe(cover);
             }
         }
         
         if (countElement && galleryImageData[key]) {
             const count = galleryImageData[key].length;
-            countElement.textContent = `${count} Works`;
+            const totalLikes = galleryImageData[key].reduce((sum, img) => sum + (img.likes || 0), 0);
+            countElement.textContent = `${count} Works ${totalLikes} Likes`;
         }
     });
     
@@ -374,6 +540,12 @@ const setupGallerySelector = async () => {
 const openGallery = (galleryId) => {
     currentGallery = galleryId;
     
+    // Remember homepage scroll position
+    homepageScrollY = window.scrollY || document.documentElement.scrollTop;
+    
+    // Push history state so browser back / swipe returns to gallery selector
+    history.pushState({ page: 'gallery', gallery: galleryId }, '', window.location.href);
+    
     const gallerySelector = document.getElementById('gallery-selector');
     const loadingIndicator = document.getElementById('loading-indicator');
     const galleryContent = document.getElementById('gallery-content');
@@ -383,18 +555,24 @@ const openGallery = (galleryId) => {
     const termsFooter = document.querySelector('.terms-footer');
     
     loadingIndicator.classList.add('active');
-    gallerySelector.classList.add('hidden');
-    if (siteIntro) siteIntro.classList.add('hidden');
-    if (termsFooter) termsFooter.classList.add('hidden');
     
     currentGalleryTitle.textContent = galleries[galleryId].title;
     currentGallerySubtitle.textContent = galleries[galleryId].subtitle;
     
-    setTimeout(() => {
-        loadGalleryContent(galleryId);
-        loadingIndicator.classList.remove('active');
-        galleryContent.classList.add('active');
-    }, 800);
+    // Double rAF: first ensures spinner is committed, second ensures it's painted
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            gallerySelector.classList.add('hidden');
+            if (siteIntro) siteIntro.classList.add('hidden');
+            if (termsFooter) termsFooter.classList.add('hidden');
+            
+            setTimeout(() => {
+                loadGalleryContent(galleryId);
+                loadingIndicator.classList.remove('active');
+                galleryContent.classList.add('active');
+            }, 800);
+        });
+    });
 };
 
 const loadGalleryContent = (galleryId) => {
@@ -407,6 +585,9 @@ const loadGalleryContent = (galleryId) => {
         return;
     }
     
+    // Destroy previous observer before rebuilding the grid
+    destroyMasonryObserver();
+    
     masonryGrid.innerHTML = '';
     
     const sortedImages = stableSortByLikes(images);
@@ -416,6 +597,9 @@ const loadGalleryContent = (galleryId) => {
     sortedImages.forEach((image, idx) => {
         console.log(`  ${idx + 1}: ${image.likes} likes - ${image.url}`);
     });
+    
+    // Create fresh observer for this gallery's items
+    const observer = createMasonryObserver();
     
     sortedImages.forEach((image, index) => {
         const masonryItem = document.createElement('div');
@@ -429,7 +613,9 @@ const loadGalleryContent = (galleryId) => {
         
         masonryItem.className = `masonry-item ${orientation}`;
         masonryItem.style.animationDelay = `${index * 0.05}s`;
-        masonryItem.style.backgroundImage = `url(${image.url})`;
+        
+        // LAZY LOADING: store URL in data-bg instead of applying immediately
+        masonryItem.dataset.bg = image.url;
         
         const overlay = document.createElement('div');
         overlay.className = 'item-overlay';
@@ -455,6 +641,9 @@ const loadGalleryContent = (galleryId) => {
         
         masonryItem.appendChild(overlay);
         masonryGrid.appendChild(masonryItem);
+        
+        // Observe this item for lazy loading
+        observer.observe(masonryItem);
     });
     
     scrollX = 0;
@@ -468,279 +657,119 @@ const loadGalleryContent = (galleryId) => {
     setTimeout(calculateScrollLimits, 500);
 };
 
-const closeGallery = () => {
+// Refresh gallery selector like counts from current galleryImageData
+const refreshGalleryCounts = () => {
+    Object.keys(galleries).forEach(key => {
+        const countElement = document.getElementById(`${key}-count`);
+        if (countElement && galleryImageData[key]) {
+            const count = galleryImageData[key].length;
+            const totalLikes = galleryImageData[key].reduce((sum, img) => sum + (img.likes || 0), 0);
+            countElement.textContent = `${count} Works ${totalLikes} Likes`;
+        }
+    });
+};
+
+// Refresh gallery cover images if the most-liked image has changed
+const refreshGalleryCovers = () => {
+    Object.keys(galleries).forEach(key => {
+        const cover = document.querySelector(`.gallery-cover[data-gallery="${key}"]`);
+        if (cover && galleryImageData[key]) {
+            const mostLikedUrl = getMostLikedImageUrl(key);
+            if (mostLikedUrl) {
+                // Update directly since the cover may already be loaded (lazy-loaded class present)
+                cover.style.backgroundImage = `url(${mostLikedUrl})`;
+                cover.classList.add('lazy-loaded');
+                // Also update data-bg in case the observer re-fires
+                delete cover.dataset.bg;
+            }
+        }
+    });
+};
+
+// Direct close functions (no history manipulation) - used by popstate handler
+const closeGalleryDirect = () => {
     const galleryContent = document.getElementById('gallery-content');
     const gallerySelector = document.getElementById('gallery-selector');
     const siteIntro = document.querySelector('.site-intro');
     const termsFooter = document.querySelector('.terms-footer');
+    const loadingIndicator = document.getElementById('loading-indicator');
     
-    galleryContent.classList.remove('active');
+    // Show loading spinner ON TOP of the gallery FIRST (visual anchor)
+    loadingIndicator.classList.add('active');
     
-    setTimeout(() => {
-        gallerySelector.classList.remove('hidden');
-        if (siteIntro) siteIntro.classList.remove('hidden');
-        if (termsFooter) termsFooter.classList.remove('hidden');
-        currentGallery = null;
-    }, 800);
-};
-
-// ============================================
-// THUMBNAIL VIEW SYSTEM - MOBILE ONLY
-// ============================================
-
-let thumbnailCache = {};
-let thumbnailScrollHandler = null;
-let thumbnailResizeHandler = null;
-
-const openThumbnailView = () => {
-    if (!currentGalleryImages || currentGalleryImages.length === 0) {
-        console.warn('No images in current gallery');
-        return;
-    }
+    // Cleanup masonry observer when leaving gallery
+    destroyMasonryObserver();
     
-    const overlay = document.getElementById('thumbnail-overlay');
-    const thumbnailGrid = document.getElementById('thumbnail-grid');
-    const overlayTitle = document.getElementById('thumbnail-overlay-title');
+    // Refresh like counts and cover images so the selector shows updated state
+    refreshGalleryCounts();
+    refreshGalleryCovers();
     
-    if (!overlay || !thumbnailGrid) return;
-    
-    // Set title
-    const gallery = galleries[currentGallery];
-    overlayTitle.textContent = `${gallery.title} - Gallery Overview`;
-    
-    // Clear existing thumbnails
-    thumbnailGrid.innerHTML = '';
-    
-    // Generate thumbnails
-    currentGalleryImages.forEach((image, index) => {
-        const thumb = document.createElement('div');
-        
-        // Determine aspect ratio class
-        let aspectClass = 'square';
-        if (image.aspectRatio > 1.2) {
-            aspectClass = 'horizontal';
-        } else if (image.aspectRatio < 0.8) {
-            aspectClass = 'vertical';
-        }
-        
-        thumb.className = `thumbnail-grid-item ${aspectClass}`;
-        thumb.style.backgroundImage = `url(${image.url})`;
-        thumb.style.animationDelay = `${index * 0.02}s`;
-        
-        // Add overlay with image number
-        const itemOverlay = document.createElement('div');
-        itemOverlay.className = 'thumbnail-grid-item-overlay';
-        itemOverlay.innerHTML = `<span class="thumbnail-grid-item-number">#${image.imageData.index}</span>`;
-        
-        thumb.appendChild(itemOverlay);
-        
-        // Click handler
-        thumb.addEventListener('click', () => {
-            closeThumbnailView();
+    // Double rAF: first ensures spinner is committed, second ensures it's painted
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            galleryContent.classList.remove('active');
+            
             setTimeout(() => {
-                openModal(image.url, gallery.title, currentGallery, index);
-            }, 100);
+                // Restore homepage elements while spinner is still covering
+                gallerySelector.classList.remove('hidden');
+                if (siteIntro) siteIntro.classList.remove('hidden');
+                if (termsFooter) termsFooter.classList.remove('hidden');
+                currentGallery = null;
+                
+                // Force instant scroll while spinner covers everything
+                requestAnimationFrame(() => {
+                    window.scrollTo({ top: homepageScrollY, behavior: 'instant' });
+                    // Let the browser finish painting at the correct position
+                    requestAnimationFrame(() => {
+                        loadingIndicator.classList.remove('active');
+                    });
+                });
+            }, 800);
         });
-        
-        thumbnailGrid.appendChild(thumb);
     });
-    
-    // Show overlay
-    overlay.removeAttribute('hidden');
-    document.body.style.overflow = 'hidden';
-    
-    // Setup scroll handler
-    const gridContainer = document.querySelector('.thumbnail-grid-container');
-    
-    // Wait for layout to complete
-    setTimeout(() => {
-        updateViewportIndicator();
-        updateThumbnailPosition();
-        
-        thumbnailScrollHandler = () => {
-            requestAnimationFrame(() => {
-                updateViewportIndicator();
-                updateThumbnailPosition();
-            });
-        };
-        
-        thumbnailResizeHandler = () => {
-            requestAnimationFrame(() => {
-                updateViewportIndicator();
-            });
-        };
-        
-        gridContainer.addEventListener('scroll', thumbnailScrollHandler);
-        window.addEventListener('resize', thumbnailResizeHandler);
-    }, 100);
 };
 
-const closeThumbnailView = () => {
-    const overlay = document.getElementById('thumbnail-overlay');
-    const gridContainer = document.querySelector('.thumbnail-grid-container');
-    
-    if (!overlay) return;
-    
-    // Remove event listeners
-    if (thumbnailScrollHandler) {
-        gridContainer.removeEventListener('scroll', thumbnailScrollHandler);
-        thumbnailScrollHandler = null;
-    }
-    
-    if (thumbnailResizeHandler) {
-        window.removeEventListener('resize', thumbnailResizeHandler);
-        thumbnailResizeHandler = null;
-    }
-    
-    // Hide overlay
-    overlay.setAttribute('hidden', '');
+const closeModalDirect = () => {
+    modal.setAttribute('hidden', '');
+    currentModalImageUrl = null;
+    currentModalImageIndex = -1;
     document.body.style.overflow = 'auto';
 };
 
-const updateViewportIndicator = () => {
-    const gridContainer = document.querySelector('.thumbnail-grid-container');
-    const thumbnailGrid = document.getElementById('thumbnail-grid');
-    const indicator = document.getElementById('viewport-indicator');
-    
-    if (!gridContainer || !thumbnailGrid || !indicator) return;
-    
-    const gridRect = thumbnailGrid.getBoundingClientRect();
-    const containerRect = gridContainer.getBoundingClientRect();
-    
-    // Calculate visible portion
-    const scrollTop = gridContainer.scrollTop;
-    const scrollHeight = gridContainer.scrollHeight;
-    const clientHeight = gridContainer.clientHeight;
-    
-    if (scrollHeight <= clientHeight) {
-        indicator.style.display = 'none';
-        return;
+// Direct close function for terms modal - no history manipulation
+const closeTermsModalDirect = () => {
+    const termsModal = document.getElementById('terms-modal');
+    if (termsModal) {
+        termsModal.setAttribute('hidden', '');
+        document.body.style.overflow = 'auto';
     }
-    
-    indicator.style.display = 'block';
-    
-    // Get grid properties dynamically
-    const thumbnails = Array.from(thumbnailGrid.children);
-    const gridStyle = window.getComputedStyle(thumbnailGrid);
-    const gap = parseInt(gridStyle.gap) || 8;
-    
-    // Calculate actual columns from grid-template-columns
-    const columnsCount = gridStyle.gridTemplateColumns.split(' ').length;
-    
-    let rowHeights = [];
-    let currentRow = [];
-    let currentColumn = 0;
-    
-    thumbnails.forEach((thumb) => {
-        const isHorizontal = thumb.classList.contains('horizontal');
-        // Horizontal spans multiple columns depending on layout
-        const columnSpan = isHorizontal ? Math.min(3, Math.ceil(columnsCount / 2)) : 1;
-        
-        
-        if (currentColumn + columnSpan > columnsCount) {
-            // Save current row
-            if (currentRow.length > 0) {
-                const maxHeight = Math.max(...currentRow.map(t => 
-                    t.getBoundingClientRect().height
-                ));
-                rowHeights.push(maxHeight);
-            }
-            currentRow = [thumb];
-            currentColumn = columnSpan;
-        } else {
-            currentRow.push(thumb);
-            currentColumn += columnSpan;
-        }
-    });
-    
-    // Don't forget last row
-    if (currentRow.length > 0) {
-        const maxHeight = Math.max(...currentRow.map(t => 
-            t.getBoundingClientRect().height
-        ));
-        rowHeights.push(maxHeight);
-    }
-    
-    const totalRows = rowHeights.length;
-    if (totalRows === 0) return;
-    
-    const totalGridHeight = rowHeights.reduce((sum, h) => sum + h, 0) + (gap * (totalRows - 1));
-    const avgRowHeight = totalGridHeight / totalRows;
-    
-    // Calculate visible rows
-    const visibleRows = Math.ceil(clientHeight / avgRowHeight);
-    const indicatorHeight = Math.min(
-        (visibleRows / totalRows) * totalGridHeight,
-        totalGridHeight
-    );
-    
-    // Calculate position
-    const scrollPercentage = scrollTop / (scrollHeight - clientHeight);
-    const indicatorTop = scrollPercentage * (totalGridHeight - indicatorHeight);
-    
-    // Apply styles
-    indicator.style.height = `${indicatorHeight}px`;
-    indicator.style.top = `${indicatorTop}px`;
 };
 
-const updateThumbnailPosition = () => {
-    const gridContainer = document.querySelector('.thumbnail-grid-container');
-    const positionElement = document.getElementById('thumbnail-position');
-    
-    if (!gridContainer || !positionElement || !currentGalleryImages) return;
-    
-    const scrollTop = gridContainer.scrollTop;
-    const scrollHeight = gridContainer.scrollHeight;
-    const clientHeight = gridContainer.clientHeight;
-    
-    const totalImages = currentGalleryImages.length;
-    
-    if (scrollHeight <= clientHeight) {
-        positionElement.textContent = `1-${totalImages} / ${totalImages}`;
+// Public close function - calls history.back()
+const closeTermsModal = () => {
+    if (isPopstateClosing) {
+        closeTermsModalDirect();
         return;
     }
-    
-    const scrollPercentage = scrollTop / scrollHeight;
-    const scrollEndPercentage = (scrollTop + clientHeight) / scrollHeight;
-    
-    const visibleStart = Math.floor(scrollPercentage * totalImages) + 1;
-    const visibleEnd = Math.min(
-        Math.ceil(scrollEndPercentage * totalImages),
-        totalImages
-    );
-    
-    positionElement.textContent = `${visibleStart}-${visibleEnd} / ${totalImages}`;
+    history.back();
 };
 
-const setupThumbnailView = () => {
-    const thumbnailBtn = document.getElementById('thumbnail-view-btn');
-    const thumbnailClose = document.getElementById('thumbnail-close-btn');
-    const overlay = document.getElementById('thumbnail-overlay');
-    
-    if (thumbnailBtn) {
-        thumbnailBtn.addEventListener('click', openThumbnailView);
+// Public close functions - called by UI clicks (back button, X, click outside, Escape)
+// These trigger history.back() which fires popstate, which calls the Direct versions
+const closeGallery = () => {
+    if (isPopstateClosing) {
+        closeGalleryDirect();
+        return;
     }
-    
-    if (thumbnailClose) {
-        thumbnailClose.addEventListener('click', closeThumbnailView);
+    history.back();
+};
+
+const closeModal = () => {
+    if (isPopstateClosing) {
+        closeModalDirect();
+        return;
     }
-    
-    if (overlay) {
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) {
-                closeThumbnailView();
-            }
-        });
-    }
-    
-    // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-        if (!overlay || overlay.hasAttribute('hidden')) return;
-        
-        if (e.key === 'Escape') {
-            closeThumbnailView();
-        }
-    });
+    history.back();
 };
 
 // CANVAS NAVIGATION
@@ -748,16 +777,6 @@ const updateCanvasTransform = () => {
     const container = document.getElementById('canvas-transform-container');
     if (container) {
         container.style.transform = `translate(${scrollX}px, ${scrollY}px)`;
-    }
-};
-
-// Throttle helper to reduce event frequency on iOS
-let lastUpdateTime = 0;
-const throttleTransform = (callback, delay = 16) => {
-    const now = Date.now();
-    if (now - lastUpdateTime >= delay) {
-        lastUpdateTime = now;
-        callback();
     }
 };
 
@@ -783,7 +802,6 @@ const setupCanvasNavigation = () => {
             isDragging = true;
             startX = e.touches[0].clientX - scrollX;
             startY = e.touches[0].clientY - scrollY;
-            e.preventDefault(); // Prevent iOS Safari issues
         }
     }
     
@@ -796,25 +814,19 @@ const setupCanvasNavigation = () => {
         scrollX = Math.max(scrollLimits.minX, Math.min(scrollLimits.maxX, scrollX));
         scrollY = Math.max(scrollLimits.minY, Math.min(scrollLimits.maxY, scrollY));
         
-        throttleTransform(updateCanvasTransform);
+        updateCanvasTransform();
     }
     
     function onDragTouch(e) {
         if (!isDragging || !galleryContent.classList.contains('active')) return;
         if (e.touches.length === 1) {
-            // SLOWED DOWN: Reduced touch sensitivity for thumbnail view
-            const moveX = e.touches[0].clientX - startX;
-            const moveY = e.touches[0].clientY - startY;
-            
-            // Apply 0.6 damping factor to slow down touch scrolling
-            scrollX = moveX * 0.6;
-            scrollY = moveY * 0.6;
+            scrollX = e.touches[0].clientX - startX;
+            scrollY = e.touches[0].clientY - startY;
             
             scrollX = Math.max(scrollLimits.minX, Math.min(scrollLimits.maxX, scrollX));
             scrollY = Math.max(scrollLimits.minY, Math.min(scrollLimits.maxY, scrollY));
             
-            throttleTransform(updateCanvasTransform);
-            e.preventDefault(); // Critical for iOS Safari
+            updateCanvasTransform();
         }
     }
     
@@ -827,10 +839,11 @@ const setupCanvasNavigation = () => {
     document.addEventListener('touchmove', onDragTouch, { passive: false });
     document.addEventListener('mouseup', stopDrag);
     document.addEventListener('touchend', stopDrag);
-    document.addEventListener('touchcancel', stopDrag); // iOS Safari safety
     
     document.addEventListener('keydown', function(e) {
         if (!galleryContent.classList.contains('active')) return;
+        // If the modal is open, let the modal's own keydown handler deal with it
+        if (!modal.hasAttribute('hidden')) return;
         
         const scrollSpeed = 30;
         
@@ -858,19 +871,18 @@ const setupCanvasNavigation = () => {
         updateCanvasTransform();
     });
     
-    // SLOWED DOWN: Reduced wheel scroll speed from 0.5 to 0.2
     canvas.addEventListener('wheel', function(e) {
         if (!galleryContent.classList.contains('active')) return;
         
         e.preventDefault();
         
-        scrollX -= e.deltaX * 0.2; // Reduced from 0.5
-        scrollY -= e.deltaY * 0.2; // Reduced from 0.5
+        scrollX -= e.deltaX * 0.5;
+        scrollY -= e.deltaY * 0.5;
         
         scrollX = Math.max(scrollLimits.minX, Math.min(scrollLimits.maxX, scrollX));
         scrollY = Math.max(scrollLimits.minY, Math.min(scrollLimits.maxY, scrollY));
         
-        throttleTransform(updateCanvasTransform);
+        updateCanvasTransform();
     }, { passive: false });
     
     window.addEventListener('resize', () => {
@@ -887,8 +899,6 @@ const setupBackButton = () => {
     }
 };
 
-setupThumbnailView();
-
 // MODAL
 const modal = document.getElementById('modal');
 const modalImage = document.getElementById('modal-img');
@@ -902,17 +912,13 @@ const openModal = (imageUrl, category = 'Image', galleryKey = currentGallery, im
     currentModalImageIndex = imageIndex;
     modalImage.src = imageUrl;
     
+    // Push history state so browser back / swipe closes modal first
+    history.pushState({ page: 'modal', gallery: galleryKey }, '', window.location.href);
+    
     modal.removeAttribute('hidden');
     document.body.style.overflow = 'hidden';
     updateLikeButton();
     updateNavButtons();
-};
-
-const closeModal = () => {
-    modal.setAttribute('hidden', '');
-    currentModalImageUrl = null;
-    currentModalImageIndex = -1;
-    document.body.style.overflow = 'auto';
 };
 
 const navigateModal = (direction) => {
@@ -978,6 +984,10 @@ const toggleLike = async () => {
     
     isProcessing = true;
     likeBtn.disabled = true;
+    likeBtn.classList.add('loading');
+    const spinner = document.createElement('div');
+    spinner.className = 'like-btn-spinner';
+    likeBtn.appendChild(spinner);
     
     const docId = getDocIdFromUrl(currentModalImageUrl);
     const likedKey = `liked_${docId}`;
@@ -1012,6 +1022,9 @@ const toggleLike = async () => {
     } finally {
         isProcessing = false;
         likeBtn.disabled = false;
+        likeBtn.classList.remove('loading');
+        const spinnerEl = likeBtn.querySelector('.like-btn-spinner');
+        if (spinnerEl) spinnerEl.remove();
     }
 };
 
@@ -1184,30 +1197,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// TERMS MODAL
+// TERMS MODAL - GDPR COMPLIANT + HISTORY SUPPORT
 const termsModal = document.getElementById('terms-modal');
 const termsLink = document.getElementById('terms-link');
 const termsModalClose = document.getElementById('terms-modal-close');
 
 if (termsLink && termsModal) {
     termsLink.addEventListener('click', () => {
+        // Push state so the back button knows to close this modal
+        history.pushState({ page: 'terms' }, '', window.location.href);
         termsModal.removeAttribute('hidden');
         document.body.style.overflow = 'hidden';
     });
 }
 
 if (termsModalClose && termsModal) {
-    termsModalClose.addEventListener('click', () => {
-        termsModal.setAttribute('hidden', '');
-        document.body.style.overflow = 'auto';
-    });
+    termsModalClose.addEventListener('click', closeTermsModal);
 }
 
 if (termsModal) {
     termsModal.addEventListener('click', (e) => {
         if (e.target === termsModal) {
-            termsModal.setAttribute('hidden', '');
-            document.body.style.overflow = 'auto';
+            closeTermsModal();
         }
     });
 }
@@ -1231,6 +1242,7 @@ const init = async () => {
         await setupGallerySelector();
         setupCanvasNavigation();
         setupBackButton();
+        setupHistoryNavigation();
         
         console.log('✅ Initialization complete');
     } catch (error) {
