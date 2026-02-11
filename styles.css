@@ -508,6 +508,31 @@ body {
     color: #ff4757;
 }
 
+.like-btn.loading {
+    pointer-events: none;
+    position: relative;
+}
+
+.like-btn-spinner {
+    position: absolute;
+    inset: 0;
+    background: #0a0a14;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.like-btn-spinner::after {
+    content: '';
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    border-top-color: var(--accent-orange);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
 /* Like processing spinner overlay */
 .like-spinner {
     position: fixed;
