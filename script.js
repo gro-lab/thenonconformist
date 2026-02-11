@@ -677,6 +677,10 @@ const closeGalleryDirect = () => {
     const gallerySelector = document.getElementById('gallery-selector');
     const siteIntro = document.querySelector('.site-intro');
     const termsFooter = document.querySelector('.terms-footer');
+    const loadingIndicator = document.getElementById('loading-indicator');
+    
+    // Show loading spinner during transition
+    loadingIndicator.classList.add('active');
     
     galleryContent.classList.remove('active');
     
@@ -693,9 +697,13 @@ const closeGalleryDirect = () => {
         if (termsFooter) termsFooter.classList.remove('hidden');
         currentGallery = null;
         
-        // Restore homepage scroll position
+        // Restore homepage scroll position, then hide spinner
         requestAnimationFrame(() => {
             window.scrollTo(0, homepageScrollY);
+            // Give the browser a frame to finish the scroll before hiding
+            requestAnimationFrame(() => {
+                loadingIndicator.classList.remove('active');
+            });
         });
     }, 800);
 };
