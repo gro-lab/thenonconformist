@@ -546,18 +546,24 @@ const openGallery = (galleryId) => {
     const termsFooter = document.querySelector('.terms-footer');
     
     loadingIndicator.classList.add('active');
-    gallerySelector.classList.add('hidden');
-    if (siteIntro) siteIntro.classList.add('hidden');
-    if (termsFooter) termsFooter.classList.add('hidden');
     
     currentGalleryTitle.textContent = galleries[galleryId].title;
     currentGallerySubtitle.textContent = galleries[galleryId].subtitle;
     
-    setTimeout(() => {
-        loadGalleryContent(galleryId);
-        loadingIndicator.classList.remove('active');
-        galleryContent.classList.add('active');
-    }, 800);
+    // Double rAF: first ensures spinner is committed, second ensures it's painted
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            gallerySelector.classList.add('hidden');
+            if (siteIntro) siteIntro.classList.add('hidden');
+            if (termsFooter) termsFooter.classList.add('hidden');
+            
+            setTimeout(() => {
+                loadGalleryContent(galleryId);
+                loadingIndicator.classList.remove('active');
+                galleryContent.classList.add('active');
+            }, 800);
+        });
+    });
 };
 
 const loadGalleryContent = (galleryId) => {
@@ -689,26 +695,28 @@ const closeGalleryDirect = () => {
     refreshGalleryCounts();
     refreshGalleryCovers();
     
-    // Small delay so the spinner paints on the gallery before fade starts
+    // Double rAF: first ensures spinner is committed, second ensures it's painted
     requestAnimationFrame(() => {
-        galleryContent.classList.remove('active');
-        
-        setTimeout(() => {
-            // Restore homepage elements while spinner is still covering
-            gallerySelector.classList.remove('hidden');
-            if (siteIntro) siteIntro.classList.remove('hidden');
-            if (termsFooter) termsFooter.classList.remove('hidden');
-            currentGallery = null;
+        requestAnimationFrame(() => {
+            galleryContent.classList.remove('active');
             
-            // Force instant scroll while spinner covers everything
-            requestAnimationFrame(() => {
-                window.scrollTo({ top: homepageScrollY, behavior: 'instant' });
-                // Let the browser finish painting at the correct position
+            setTimeout(() => {
+                // Restore homepage elements while spinner is still covering
+                gallerySelector.classList.remove('hidden');
+                if (siteIntro) siteIntro.classList.remove('hidden');
+                if (termsFooter) termsFooter.classList.remove('hidden');
+                currentGallery = null;
+                
+                // Force instant scroll while spinner covers everything
                 requestAnimationFrame(() => {
-                    loadingIndicator.classList.remove('active');
+                    window.scrollTo({ top: homepageScrollY, behavior: 'instant' });
+                    // Let the browser finish painting at the correct position
+                    requestAnimationFrame(() => {
+                        loadingIndicator.classList.remove('active');
+                    });
                 });
-            });
-        }, 800);
+            }, 800);
+        });
     });
 };
 
