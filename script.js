@@ -650,6 +650,23 @@ const refreshGalleryCounts = () => {
     });
 };
 
+// Refresh gallery cover images if the most-liked image has changed
+const refreshGalleryCovers = () => {
+    Object.keys(galleries).forEach(key => {
+        const cover = document.querySelector(`.gallery-cover[data-gallery="${key}"]`);
+        if (cover && galleryImageData[key]) {
+            const mostLikedUrl = getMostLikedImageUrl(key);
+            if (mostLikedUrl) {
+                // Update directly since the cover may already be loaded (lazy-loaded class present)
+                cover.style.backgroundImage = `url(${mostLikedUrl})`;
+                cover.classList.add('lazy-loaded');
+                // Also update data-bg in case the observer re-fires
+                delete cover.dataset.bg;
+            }
+        }
+    });
+};
+
 // Direct close functions (no history manipulation) - used by popstate handler
 const closeGalleryDirect = () => {
     const galleryContent = document.getElementById('gallery-content');
@@ -662,8 +679,9 @@ const closeGalleryDirect = () => {
     // Cleanup masonry observer when leaving gallery
     destroyMasonryObserver();
     
-    // Refresh like counts so the selector shows updated totals
+    // Refresh like counts and cover images so the selector shows updated state
     refreshGalleryCounts();
+    refreshGalleryCovers();
     
     setTimeout(() => {
         gallerySelector.classList.remove('hidden');
@@ -768,6 +786,8 @@ const setupCanvasNavigation = () => {
     
     document.addEventListener('keydown', function(e) {
         if (!galleryContent.classList.contains('active')) return;
+        // If the modal is open, let the modal's own keydown handler deal with it
+        if (!modal.hasAttribute('hidden')) return;
         
         const scrollSpeed = 30;
         
