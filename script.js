@@ -149,16 +149,25 @@ const setupHistoryNavigation = () => {
     
     window.addEventListener('popstate', (e) => {
         const state = e.state;
-        
-        // If modal is open, close it first
+    
+        // 1. If image modal is open → close it
         if (!modal.hasAttribute('hidden')) {
             isPopstateClosing = true;
             closeModalDirect();
             isPopstateClosing = false;
             return;
         }
-        
-        // If gallery is open, close it and return to selector
+    
+        // 2. If terms modal is open → close it
+        const termsModal = document.getElementById('terms-modal');
+        if (termsModal && !termsModal.hasAttribute('hidden')) {
+            isPopstateClosing = true;
+            closeTermsModalDirect();
+            isPopstateClosing = false;
+            return;
+        }
+    
+        // 3. If gallery is open → close it
         const galleryContent = document.getElementById('gallery-content');
         if (galleryContent && galleryContent.classList.contains('active')) {
             isPopstateClosing = true;
@@ -168,8 +177,8 @@ const setupHistoryNavigation = () => {
             pushHomepageTrap();
             return;
         }
-        
-        // On homepage: re-push trap to disable back/swipe completely
+    
+        // 4. On homepage: re-push trap to disable back/swipe completely
         pushHomepageTrap();
     });
 };
@@ -727,6 +736,24 @@ const closeModalDirect = () => {
     document.body.style.overflow = 'auto';
 };
 
+// Direct close function for terms modal - no history manipulation
+const closeTermsModalDirect = () => {
+    const termsModal = document.getElementById('terms-modal');
+    if (termsModal) {
+        termsModal.setAttribute('hidden', '');
+        document.body.style.overflow = 'auto';
+    }
+};
+
+// Public close function - calls history.back()
+const closeTermsModal = () => {
+    if (isPopstateClosing) {
+        closeTermsModalDirect();
+        return;
+    }
+    history.back();
+};
+
 // Public close functions - called by UI clicks (back button, X, click outside, Escape)
 // These trigger history.back() which fires popstate, which calls the Direct versions
 const closeGallery = () => {
@@ -1170,30 +1197,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// TERMS MODAL
+// TERMS MODAL - GDPR COMPLIANT + HISTORY SUPPORT
 const termsModal = document.getElementById('terms-modal');
 const termsLink = document.getElementById('terms-link');
 const termsModalClose = document.getElementById('terms-modal-close');
 
 if (termsLink && termsModal) {
     termsLink.addEventListener('click', () => {
+        // Push state so the back button knows to close this modal
+        history.pushState({ page: 'terms' }, '', window.location.href);
         termsModal.removeAttribute('hidden');
         document.body.style.overflow = 'hidden';
     });
 }
 
 if (termsModalClose && termsModal) {
-    termsModalClose.addEventListener('click', () => {
-        termsModal.setAttribute('hidden', '');
-        document.body.style.overflow = 'auto';
-    });
+    termsModalClose.addEventListener('click', closeTermsModal);
 }
 
 if (termsModal) {
     termsModal.addEventListener('click', (e) => {
         if (e.target === termsModal) {
-            termsModal.setAttribute('hidden', '');
-            document.body.style.overflow = 'auto';
+            closeTermsModal();
         }
     });
 }
