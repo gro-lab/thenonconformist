@@ -204,3 +204,24 @@
   z-index: 350;
   box-shadow: var(--shadow-btn);
 }
+
+/* Inside cookie-banner.css – lines ~30–45 */
+.cookie-btn {
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--radius-lg);
+  font-size: 0.875rem;
+  cursor: pointer;
+  border: none;
+  font-weight: 500;
+
+  &-primary {                     /* compiles to .cookie-btn-primary */
+    background: var(--gradient-title);
+    color: white;
+  }
+
+  &-secondary {                   /* .cookie-btn-secondary */
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+}
