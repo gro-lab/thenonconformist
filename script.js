@@ -962,9 +962,6 @@ const toggleLike = async () => {
     spinner.className = 'like-btn-spinner';
     likeBtn.appendChild(spinner);
     
-    const likeSpinner = document.getElementById('like-spinner');
-    if (likeSpinner) likeSpinner.removeAttribute('hidden');
-    
     const docId = getDocIdFromUrl(currentModalImageUrl);
     const likedKey = `liked_${docId}`;
     const isCurrentlyLiked = localStorage.getItem(likedKey) === 'true';
