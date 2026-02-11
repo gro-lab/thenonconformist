@@ -679,10 +679,8 @@ const closeGalleryDirect = () => {
     const termsFooter = document.querySelector('.terms-footer');
     const loadingIndicator = document.getElementById('loading-indicator');
     
-    // Show loading spinner during transition
+    // Show loading spinner ON TOP of the gallery FIRST (visual anchor)
     loadingIndicator.classList.add('active');
-    
-    galleryContent.classList.remove('active');
     
     // Cleanup masonry observer when leaving gallery
     destroyMasonryObserver();
@@ -691,21 +689,27 @@ const closeGalleryDirect = () => {
     refreshGalleryCounts();
     refreshGalleryCovers();
     
-    setTimeout(() => {
-        gallerySelector.classList.remove('hidden');
-        if (siteIntro) siteIntro.classList.remove('hidden');
-        if (termsFooter) termsFooter.classList.remove('hidden');
-        currentGallery = null;
+    // Small delay so the spinner paints on the gallery before fade starts
+    requestAnimationFrame(() => {
+        galleryContent.classList.remove('active');
         
-        // Restore homepage scroll position, then hide spinner
-        requestAnimationFrame(() => {
-            window.scrollTo(0, homepageScrollY);
-            // Give the browser a frame to finish the scroll before hiding
+        setTimeout(() => {
+            // Restore homepage elements while spinner is still covering
+            gallerySelector.classList.remove('hidden');
+            if (siteIntro) siteIntro.classList.remove('hidden');
+            if (termsFooter) termsFooter.classList.remove('hidden');
+            currentGallery = null;
+            
+            // Force instant scroll while spinner covers everything
             requestAnimationFrame(() => {
-                loadingIndicator.classList.remove('active');
+                window.scrollTo({ top: homepageScrollY, behavior: 'instant' });
+                // Let the browser finish painting at the correct position
+                requestAnimationFrame(() => {
+                    loadingIndicator.classList.remove('active');
+                });
             });
-        });
-    }, 800);
+        }, 800);
+    });
 };
 
 const closeModalDirect = () => {
