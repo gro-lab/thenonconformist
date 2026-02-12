@@ -1,6 +1,7 @@
 // ============================================
-// STORE — Centralized Proxy-based state
-// Replaces all global variables with a reactive singleton
+// STORE — Centralized Proxy-based reactive state
+// Replaces ~20 global variables with a single
+// reactive, subscribable singleton.
 // ============================================
 
 import { EventBus } from './event-bus.js';
@@ -26,7 +27,7 @@ class Store {
   }
 
   set(key, value) {
-    this.state[key] = value; // triggers Proxy set trap
+    this.state[key] = value; // triggers Proxy
   }
 
   subscribe(key, callback) {
@@ -34,45 +35,8 @@ class Store {
   }
 }
 
-// ── Application State Singleton ──────────────
-export const store = new Store({
-  // Firebase
-  firebaseModules: null,
-  firebaseApp: null,
-  firebaseDb: null,
-  functionalCookiesEnabled: false,
+// ── Gallery configuration ────────────────────
 
-  // Image data
-  imageManifest: {},
-  likesCache: {},
-  galleryImageData: {},
-
-  // Gallery navigation
-  currentGallery: 'low',
-  currentGalleryImages: [],
-
-  // Modal
-  currentModalImageUrl: null,
-  currentModalImageIndex: -1,
-  isModalOpen: false,
-  isProcessing: false,
-
-  // Canvas drag
-  isDragging: false,
-  startX: 0,
-  startY: 0,
-  scrollX: 0,
-  scrollY: 0,
-  scrollLimits: { minX: 0, maxX: 0, minY: 0, maxY: 0 },
-
-  // Scroll preservation
-  homepageScrollY: 0,
-
-  // History navigation
-  isPopstateClosing: false,
-});
-
-// ── Static Configuration (never changes) ─────
 export const GALLERIES = {
   low: {
     title: 'Language of Windows',
@@ -100,12 +64,45 @@ export const GALLERIES = {
   },
 };
 
-// GitHub image hosting constants
-export const GITHUB = {
-  owner: 'gro-lab',
-  repo: 'thenonconformist',
-  branch: 'main',
-  get baseUrl() {
-    return `https://raw.githubusercontent.com/${this.owner}/${this.repo}/${this.branch}`;
-  },
-};
+// ── GitHub repository config ─────────────────
+
+export const GITHUB_OWNER = 'gro-lab';
+export const GITHUB_REPO = 'thenonconformist';
+export const GITHUB_BRANCH = 'main';
+
+// ── Singleton store instance ─────────────────
+
+export const store = new Store({
+  // Image data
+  imageManifest: {},
+  likesCache: {},
+  galleryImageData: {},
+
+  // Current gallery state
+  currentGallery: null,
+  currentGalleryImages: [],
+
+  // Modal state
+  currentModalImageUrl: null,
+  currentModalImageIndex: -1,
+  isModalOpen: false,
+
+  // Processing flag
+  isProcessing: false,
+
+  // Navigation
+  isPopstateClosing: false,
+  savedScrollY: 0,
+
+  // Canvas drag state
+  isDragging: false,
+  startX: 0,
+  startY: 0,
+  scrollX: 0,
+  scrollY: 0,
+  currentX: 0,
+  currentY: 0,
+
+  // GDPR / Cookies
+  functionalCookiesEnabled: false,
+});
