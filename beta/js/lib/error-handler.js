@@ -1,21 +1,26 @@
 // ============================================
-// ERROR HANDLER — Global error handling + async wrapper
-// Self-initializing: installs global handlers on import
+// ERROR HANDLER — Global safety nets
+// Catches uncaught errors and unhandled rejections.
+// Provides withErrorHandling() HOF for async functions.
 // ============================================
 
 class ErrorHandler {
   constructor() {
-    window.addEventListener('error', (e) =>
-      this.handle(e.error ?? new Error(e.message))
-    );
-    window.addEventListener('unhandledrejection', (e) =>
-      this.handle(e.reason)
-    );
+    window.addEventListener('error', (e) => {
+      this.handle(e.error ?? new Error(e.message));
+    });
+    window.addEventListener('unhandledrejection', (e) => {
+      this.handle(e.reason);
+    });
   }
 
   handle(error, context = {}) {
     const isExpected = error?.isOperational ?? false;
-    console.error(`[${error?.name || 'Error'}]`, error?.message, context);
+    console.error(
+      `[${error?.name || 'Error'}]`,
+      error?.message || error,
+      context
+    );
 
     if (isExpected) {
       this.showToast(error.message);
@@ -35,12 +40,12 @@ class ErrorHandler {
   }
 }
 
-// Singleton — installs global handlers immediately
+// Self-initializing — import this module to install global handlers
 export const errorHandler = new ErrorHandler();
 
 /**
  * Higher-order function that wraps an async function with error handling.
- * Eliminates try/catch boilerplate in every module.
+ * Eliminates repetitive try/catch boilerplate.
  */
 export function withErrorHandling(fn, context = {}) {
   return async (...args) => {
