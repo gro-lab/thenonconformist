@@ -2,7 +2,7 @@
     --accent-orange: #f28c28;
     --accent-purple: #6b5cff;
     --font-primary: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    --font-display: Georgia, "Times New Roman", Times, serif;
+    --font-display: Georgia, "Times New Roman", Times, serif; 
 }
 
 * {
@@ -67,6 +67,25 @@ body {
 .site-description a {
     color: var(--accent-orange);
     text-decoration: none;
+}
+
+.dashboard-link {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 10px 28px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #ffffff;
+    background: linear-gradient(135deg, var(--accent-orange), var(--accent-purple));
+    text-decoration: none;
+    letter-spacing: 0.05em;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.dashboard-link:hover {
+    opacity: 0.9;
+    transform: translateY(-2px);
 }
 
 /* Gallery Selector */
@@ -865,37 +884,27 @@ body {
     }
 }
 
-.hidden {
-    display: none !important;
-}
-
-/* ── Error Toast ────────────────────────────── */
+/* Error Toast */
 .error-toast {
-  position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #dc3545;
-  color: #fff;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 14px;
-  z-index: 10001;
-  animation: fadeInDown 0.3s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 71, 87, 0.95);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    z-index: 600;
+    max-width: 90vw;
+    text-align: center;
+    animation: fadeInItem 0.3s ease;
 }
 
 .error-toast[hidden] {
-  display: none;
+    display: none;
 }
 
-@keyframes fadeInDown {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
+.hidden {
+    display: none !important;
 }
