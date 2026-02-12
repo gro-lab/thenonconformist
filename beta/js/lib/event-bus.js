@@ -1,6 +1,7 @@
 // ============================================
 // EVENT BUS — Pub/sub for cross-module communication
-// Decouples modules so they never import each other directly
+// Modules never import each other directly;
+// they communicate through named events on this bus.
 // ============================================
 
 export class EventBus {
@@ -10,6 +11,9 @@ export class EventBus {
 
   /**
    * Subscribe to an event. Returns an unsubscribe function.
+   * @param {string} event
+   * @param {Function} fn
+   * @returns {Function} unsubscribe
    */
   on(event, fn) {
     (this.listeners[event] ??= []).push(fn);
@@ -20,21 +24,24 @@ export class EventBus {
 
   /**
    * Emit an event with optional data payload.
+   * @param {string} event
+   * @param {*} data
    */
   emit(event, data) {
     this.listeners[event]?.forEach((fn) => fn(data));
   }
 
   /**
-   * Remove a specific listener or all listeners for an event.
+   * Subscribe to an event, but only fire once.
+   * @param {string} event
+   * @param {Function} fn
    */
-  off(event, fn) {
-    if (!this.listeners[event]) return;
-    if (fn) {
-      this.listeners[event] = this.listeners[event].filter((f) => f !== fn);
-    } else {
-      delete this.listeners[event];
-    }
+  once(event, fn) {
+    const unsub = this.on(event, (data) => {
+      unsub();
+      fn(data);
+    });
+    return unsub;
   }
 }
 
