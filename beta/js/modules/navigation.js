@@ -1,39 +1,108 @@
-// js/modules/navigation.js
-import { navFSM, NAV_EVENTS } from '../lib/navigation-fsm.js';
-import { bus } from '../lib/event-bus.js';
+// ============================================
+// NAVIGATION MODULE — History API + Terms modal
+// Handles browser back/forward, terms modal open/close.
+// ============================================
+
 import { store } from '../lib/store.js';
+import { bus } from '../lib/event-bus.js';
+import { dom } from '../dom-elements.js';
+import { closeModalDirect } from './modal.js';
+import { closeGalleryDirect } from './gallery.js';
+
+let controller;
+
+// ── History API helpers ──────────────────────
 
 function pushHomepageTrap() {
-    history.replaceState({ page: 'home' }, '', window.location.href);
-    history.pushState({ page: 'home-trap' }, '', window.location.href);
+  history.replaceState({ type: 'home' }, '', window.location.pathname);
 }
 
-export function initNavigation() {
-    // Initial trap
+// ── Terms modal ──────────────────────────────
+
+function openTermsModal() {
+  if (dom.termsModal) {
+    dom.termsModal.hidden = false;
+    if (!store.get('isPopstateClosing')) {
+      history.pushState({ type: 'terms' }, '', '#terms');
+    }
+  }
+}
+
+function closeTermsModal() {
+  if (dom.termsModal) {
+    dom.termsModal.hidden = true;
+    if (!store.get('isPopstateClosing')) {
+      history.back();
+    }
+  }
+}
+
+function closeTermsModalDirect() {
+  if (dom.termsModal) dom.termsModal.hidden = true;
+}
+
+// ── Popstate handler ─────────────────────────
+
+function handlePopstate(e) {
+  // Priority order: modal → terms → gallery → homepage
+
+  // 1. Image modal open → close it
+  if (store.get('isModalOpen')) {
+    store.set('isPopstateClosing', true);
+    closeModalDirect();
+    store.set('isPopstateClosing', false);
+    return;
+  }
+
+  // 2. Terms modal open → close it
+  if (dom.termsModal && !dom.termsModal.hasAttribute('hidden')) {
+    store.set('isPopstateClosing', true);
+    closeTermsModalDirect();
+    store.set('isPopstateClosing', false);
+    return;
+  }
+
+  // 3. Gallery open → close it
+  if (dom.galleryContent?.classList.contains('active')) {
+    store.set('isPopstateClosing', true);
+    closeGalleryDirect();
+    store.set('isPopstateClosing', false);
     pushHomepageTrap();
+    return;
+  }
 
-    // Handle popstate (back button, swipe gesture)
-    window.addEventListener('popstate', (e) => {
-        const state = e.state || {};
+  // 4. On homepage → re-push trap
+  pushHomepageTrap();
+}
 
-        // If terms modal is open, close it directly
-        const termsModal = document.getElementById('terms-modal');
-        if (termsModal && !termsModal.hidden) {
-            termsModal.hidden = true;
-            document.body.style.overflow = 'auto';
-            pushHomepageTrap(); // restore trap
-            return;
-        }
+// ── Init / Destroy ───────────────────────────
 
-        // Delegate to FSM
-        navFSM.send(NAV_EVENTS.POPSTATE, state);
-    });
+export function initNavigation() {
+  controller = new AbortController();
+  const { signal } = controller;
 
-    // Sync store with FSM state
-    navFSM.on(({ current }) => {
-        store.set('navState', current);
-    });
+  // Set initial homepage trap
+  pushHomepageTrap();
 
-    // When we intentionally navigate home, push the trap again
-    bus.on(NAV_EVENTS.NAVIGATE_HOME, pushHomepageTrap);
+  // Listen for browser back / forward
+  window.addEventListener('popstate', handlePopstate, { signal });
+
+  // Terms modal: open
+  dom.termsLink?.addEventListener('click', openTermsModal, { signal });
+
+  // Terms modal: close via × button
+  dom.termsModalClose?.addEventListener('click', closeTermsModal, { signal });
+
+  // Terms modal: close via click outside
+  dom.termsModal?.addEventListener(
+    'click',
+    (e) => {
+      if (e.target === dom.termsModal) closeTermsModal();
+    },
+    { signal }
+  );
+}
+
+export function destroyNavigation() {
+  controller?.abort();
 }
