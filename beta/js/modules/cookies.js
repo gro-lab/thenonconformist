@@ -1,142 +1,172 @@
 // ============================================
-// COOKIES MODULE — GDPR consent, strategy pattern
-// 6 near-identical handlers → 1 delegated handler + strategies map
+// COOKIES MODULE — GDPR consent management
+// Strategy pattern: 6 handlers → 1 delegated handler
 // ============================================
 
-import { store } from './store.js';
-import { bus } from './event-bus.js';
-import { dom } from './dom-elements.js';
-import { initFirebase, fetchAllLikes, teardownFirebase } from './firebase.js';
+import { store } from '../lib/store.js';
+import { bus } from '../lib/event-bus.js';
+import { dom } from '../dom-elements.js';
+import { initFirebase, teardownFirebase, fetchAllLikes } from './firebase.js';
 
-let controller; // AbortController for lifecycle cleanup
+let controller;
 
-// ── Preference Builders (Strategy Pattern) ───
-
-function buildPrefs(overrides = {}) {
-  return {
-    essential: true,
-    functional: false,
-    version: '1.0',
-    timestamp: new Date().toISOString(),
-    ...overrides,
-  };
-}
+// ── Consent strategies ───────────────────────
 
 const strategies = {
-  acceptAll: () => buildPrefs({ functional: true }),
-  rejectAll: () => buildPrefs({ functional: false }),
-  save:      () => buildPrefs({
+  acceptAll: () => ({ essential: true, functional: true }),
+  rejectAll: () => ({ essential: true, functional: false }),
+  save: () => ({
+    essential: true,
     functional: dom.functionalCheckbox?.checked ?? false,
   }),
 };
 
-// ── Apply / Persist ──────────────────────────
+// ── Core consent logic ───────────────────────
 
-function persistPrefs(prefs) {
-  localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
-}
+function applyConsent(prefs, source) {
+  localStorage.setItem('cookieConsent', JSON.stringify(prefs));
+  store.set('functionalCookiesEnabled', prefs.functional);
 
-async function applyPrefs(prefs) {
-  console.log('🍪 Applying cookie preferences:', prefs);
+  // Hide banner
+  if (dom.cookieBanner) dom.cookieBanner.hidden = true;
+
+  // Hide settings modal if that's where the action came from
+  if (source === 'modal' && dom.cookieSettingsModal) {
+    dom.cookieSettingsModal.hidden = true;
+  }
+
+  // Show floating cookie button for future settings access
+  if (dom.cookieFloatBtn) dom.cookieFloatBtn.hidden = false;
 
   if (prefs.functional) {
-    store.set('functionalCookiesEnabled', true);
+    enableFunctionalFeatures();
+  } else {
+    disableFunctionalFeatures();
+  }
+
+  bus.emit('consent:updated', prefs);
+  console.log('🍪 Consent applied:', prefs);
+}
+
+async function enableFunctionalFeatures() {
+  try {
     await initFirebase();
     await fetchAllLikes();
-  } else {
-    store.set('functionalCookiesEnabled', false);
-    teardownFirebase();
+    bus.emit('gallery:covers:refresh');
+    bus.emit('gallery:reload');
+    console.log('✅ Functional features enabled');
+  } catch (error) {
+    console.error('❌ Error enabling functional features:', error);
   }
 }
 
-// ── Banner / Modal UI ────────────────────────
-
-function showBanner() {
-  dom.cookieBanner?.removeAttribute('hidden');
+function disableFunctionalFeatures() {
+  teardownFirebase();
+  localStorage.removeItem('likedImages');
+  console.log('🚫 Functional features disabled');
 }
 
-function hideBanner() {
-  dom.cookieBanner?.setAttribute('hidden', '');
-}
+// ── Cookie settings modal ────────────────────
 
-function showSettingsModal() {
-  // Pre-fill checkbox from saved prefs
-  const saved = localStorage.getItem('cookiePreferences');
-  if (saved) {
-    const prefs = JSON.parse(saved);
-    if (dom.functionalCheckbox) dom.functionalCheckbox.checked = prefs.functional || false;
+function openCookieSettings() {
+  if (dom.cookieSettingsModal) {
+    // Sync checkbox with current state
+    if (dom.functionalCheckbox) {
+      dom.functionalCheckbox.checked = store.get('functionalCookiesEnabled');
+    }
+    dom.cookieSettingsModal.hidden = false;
   }
-  dom.cookieSettingsModal?.removeAttribute('hidden');
 }
 
-function hideSettingsModal() {
-  dom.cookieSettingsModal?.setAttribute('hidden', '');
+function closeCookieSettings() {
+  if (dom.cookieSettingsModal) {
+    dom.cookieSettingsModal.hidden = true;
+  }
 }
 
-// ── Consent Handler (single delegated) ───────
-
-async function handleConsent(action, source) {
-  const strategy = strategies[action];
-  if (!strategy) return;
-
-  const prefs = strategy();
-  persistPrefs(prefs);
-
-  hideBanner();
-  if (source === 'modal') hideSettingsModal();
-
-  await applyPrefs(prefs);
-  location.reload();
-}
-
-// ── Init ─────────────────────────────────────
+// ── Init: check existing consent or show banner ──
 
 export function initCookieBanner() {
-  // Check for existing saved preferences
-  const saved = localStorage.getItem('cookiePreferences');
+  const saved = localStorage.getItem('cookieConsent');
 
   if (saved) {
-    const prefs = JSON.parse(saved);
-    // Apply without reload — just set the flag
-    if (prefs.functional) {
-      store.set('functionalCookiesEnabled', true);
+    try {
+      const prefs = JSON.parse(saved);
+      store.set('functionalCookiesEnabled', prefs.functional);
+      if (dom.cookieFloatBtn) dom.cookieFloatBtn.hidden = false;
+
+      if (prefs.functional) {
+        enableFunctionalFeatures();
+      }
+
+      console.log('🍪 Restored consent:', prefs);
+    } catch {
+      localStorage.removeItem('cookieConsent');
+      showBanner();
     }
   } else {
     showBanner();
   }
 }
 
+function showBanner() {
+  if (dom.cookieBanner) dom.cookieBanner.hidden = false;
+}
+
+// ── Bind all listeners ───────────────────────
+
 export function initCookieListeners() {
   controller = new AbortController();
   const { signal } = controller;
 
   // Banner buttons
-  dom.cookieAcceptBtn?.addEventListener('click', () =>
-    handleConsent('acceptAll', 'banner'), { signal });
-
-  dom.cookieRejectBtn?.addEventListener('click', () =>
-    handleConsent('rejectAll', 'banner'), { signal });
-
-  dom.cookieSettingsBtn?.addEventListener('click', () => {
-    hideBanner();
-    showSettingsModal();
-  }, { signal });
+  dom.cookieAcceptBtn?.addEventListener(
+    'click',
+    () => applyConsent(strategies.acceptAll(), 'banner'),
+    { signal }
+  );
+  dom.cookieRejectBtn?.addEventListener(
+    'click',
+    () => applyConsent(strategies.rejectAll(), 'banner'),
+    { signal }
+  );
+  dom.cookieSettingsBtn?.addEventListener('click', openCookieSettings, {
+    signal,
+  });
 
   // Settings modal buttons
-  dom.cookieSaveBtn?.addEventListener('click', () =>
-    handleConsent('save', 'modal'), { signal });
-
-  dom.cookieAcceptAllBtn?.addEventListener('click', () =>
-    handleConsent('acceptAll', 'modal'), { signal });
-
-  dom.cookieRejectAllBtn?.addEventListener('click', () =>
-    handleConsent('rejectAll', 'modal'), { signal });
+  dom.cookieAcceptAllBtn?.addEventListener(
+    'click',
+    () => applyConsent(strategies.acceptAll(), 'modal'),
+    { signal }
+  );
+  dom.cookieRejectAllBtn?.addEventListener(
+    'click',
+    () => applyConsent(strategies.rejectAll(), 'modal'),
+    { signal }
+  );
+  dom.cookieSaveBtn?.addEventListener(
+    'click',
+    () => applyConsent(strategies.save(), 'modal'),
+    { signal }
+  );
 
   // Settings modal close
-  dom.cookieModalClose?.addEventListener('click', hideSettingsModal, { signal });
+  dom.cookieModalClose?.addEventListener('click', closeCookieSettings, {
+    signal,
+  });
+  dom.cookieSettingsModal?.addEventListener(
+    'click',
+    (e) => {
+      if (e.target === dom.cookieSettingsModal) closeCookieSettings();
+    },
+    { signal }
+  );
 
-  // Floating cookie button
-  dom.cookieFloatBtn?.addEventListener('click', showSettingsModal, { signal });
+  // Floating cookie button to re-open settings
+  dom.cookieFloatBtn?.addEventListener('click', openCookieSettings, {
+    signal,
+  });
 }
 
 export function destroyCookies() {
