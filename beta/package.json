@@ -7,9 +7,9 @@
     "build": "node generate-manifest.js"
   },
   "dependencies": {
-    "image-size": "^1.1.1"
+    "image-size": "^1.2.1",
+    "sharp": "^0.34.5"
   },
-  "devDependencies": {},
   "repository": {
     "type": "git",
     "url": "https://github.com/gro-lab/thenonconformist.git"
