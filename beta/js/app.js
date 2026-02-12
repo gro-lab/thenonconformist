@@ -14,12 +14,10 @@ import {
   initGallery,
   loadManifest,
   setupGallerySelector,
-  setupCanvasNavigation,
   openGallery,
-  closeGalleryDirect,
   reloadCurrentGallery,
 } from './modules/gallery.js';
-import { initModal, closeModalDirect } from './modules/modal.js';
+import { initModal } from './modules/modal.js';
 import { initCookieBanner, initCookieListeners } from './modules/cookies.js';
 import { initNavigation } from './modules/navigation.js';
 
@@ -27,8 +25,6 @@ import { initNavigation } from './modules/navigation.js';
 
 bus.on('gallery:open', ({ galleryId }) => openGallery(galleryId));
 bus.on('gallery:reload', () => reloadCurrentGallery());
-bus.on('gallery:close', () => closeGalleryDirect());
-bus.on('modal:close', () => closeModalDirect());
 
 // ── Bootstrap ────────────────────────────────
 
