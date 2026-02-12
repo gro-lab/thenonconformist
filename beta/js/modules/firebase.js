@@ -1,146 +1,190 @@
 // ============================================
-// FIREBASE MODULE — Dynamic SDK loading + Firestore likes
-// SDK loaded ONLY after GDPR consent
+// FIREBASE MODULE — Dynamic SDK + Firestore CRUD
+// ✅ GDPR: SDK loaded ONLY after user consent
 // ============================================
 
-import { store } from './store.js';
-import { bus } from './event-bus.js';
+import { store } from '../lib/store.js';
+import { bus } from '../lib/event-bus.js';
 
-const FIREBASE_VERSION = '12.8.0';
-const FIREBASE_CDN = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}`;
+let firebaseModules = null;
+let app = null;
+let db = null;
 
-const FIREBASE_CONFIG = {
-  apiKey: 'AIzaSyBMt3p3OCOUcMb4mdpfaCEhzxhlsRSTej8',
-  authDomain: 'thenonconformistdotxyz.firebaseapp.com',
-  projectId: 'thenonconformistdotxyz',
-  storageBucket: 'thenonconformistdotxyz.firebasestorage.app',
-  messagingSenderId: '552037212425',
-  appId: '1:552037212425:web:b0ddaed6ebbc34442f73d8',
+// ── Dynamic Firebase loader ──────────────────
+
+const loadFirebaseSDK = async () => {
+  if (firebaseModules) return firebaseModules;
+
+  console.log('📦 Loading Firebase SDK dynamically...');
+
+  try {
+    const [appModule, firestoreModule] = await Promise.all([
+      import('https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js'),
+      import('https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js'),
+    ]);
+
+    firebaseModules = {
+      initializeApp: appModule.initializeApp,
+      getFirestore: firestoreModule.getFirestore,
+      collection: firestoreModule.collection,
+      doc: firestoreModule.doc,
+      getDoc: firestoreModule.getDoc,
+      setDoc: firestoreModule.setDoc,
+      updateDoc: firestoreModule.updateDoc,
+      increment: firestoreModule.increment,
+      getDocs: firestoreModule.getDocs,
+      serverTimestamp: firestoreModule.serverTimestamp,
+    };
+
+    console.log('✅ Firebase SDK loaded successfully');
+    return firebaseModules;
+  } catch (error) {
+    console.error('❌ Failed to load Firebase SDK:', error);
+    throw error;
+  }
 };
-
-// ── Helpers ──────────────────────────────────
-
-/** Encode a URL into a safe Firestore document ID. */
-export function getDocIdFromUrl(url) {
-  return btoa(url).replace(/[^a-zA-Z0-9]/g, '');
-}
-
-// ── SDK Loading ──────────────────────────────
-
-async function loadFirebaseSDK() {
-  if (store.get('firebaseModules')) return store.get('firebaseModules');
-
-  console.log('📦 Loading Firebase SDK dynamically…');
-
-  const [appModule, firestoreModule] = await Promise.all([
-    import(`${FIREBASE_CDN}/firebase-app.js`),
-    import(`${FIREBASE_CDN}/firebase-firestore.js`),
-  ]);
-
-  const modules = {
-    initializeApp:   appModule.initializeApp,
-    getFirestore:    firestoreModule.getFirestore,
-    collection:      firestoreModule.collection,
-    doc:             firestoreModule.doc,
-    getDoc:          firestoreModule.getDoc,
-    setDoc:          firestoreModule.setDoc,
-    updateDoc:       firestoreModule.updateDoc,
-    increment:       firestoreModule.increment,
-    getDocs:         firestoreModule.getDocs,
-    serverTimestamp: firestoreModule.serverTimestamp,
-  };
-
-  store.set('firebaseModules', modules);
-  console.log('✅ Firebase SDK loaded');
-  return modules;
-}
 
 // ── Init / Teardown ──────────────────────────
 
-export async function initFirebase() {
-  if (store.get('firebaseApp')) return;
+export const initFirebase = async () => {
+  if (app) return;
 
   const firebase = await loadFirebaseSDK();
-  const app = firebase.initializeApp(FIREBASE_CONFIG);
-  const db  = firebase.getFirestore(app);
 
-  store.set('firebaseApp', app);
-  store.set('firebaseDb', db);
+  const firebaseConfig = {
+    apiKey: 'AIzaSyBMt3p3OCOUcMb4mdpfaCEhzxhlsRSTej8',
+    authDomain: 'thenonconformistdotxyz.firebaseapp.com',
+    projectId: 'thenonconformistdotxyz',
+    storageBucket: 'thenonconformistdotxyz.firebasestorage.app',
+    messagingSenderId: '552037212425',
+    appId: '1:552037212425:web:b0ddaed6ebbc34442f73d8',
+  };
+
+  app = firebase.initializeApp(firebaseConfig);
+  db = firebase.getFirestore(app);
   console.log('✅ Firebase initialized');
-}
+};
 
-export function teardownFirebase() {
-  if (!store.get('firebaseApp')) return;
+export const teardownFirebase = () => {
+  if (app) {
+    console.log('🔥 Disconnecting Firebase...');
+    app = null;
+    db = null;
+    firebaseModules = null;
+    store.set('likesCache', {});
+    store.set('functionalCookiesEnabled', false);
+    console.log('✅ Firebase disconnected and cleaned up');
+  }
+};
 
-  console.log('🔥 Disconnecting Firebase…');
-  store.set('firebaseApp', null);
-  store.set('firebaseDb', null);
-  store.set('firebaseModules', null);
-  store.set('likesCache', {});
-  store.set('functionalCookiesEnabled', false);
-  console.log('✅ Firebase disconnected');
-}
+// ── Firestore helpers ────────────────────────
 
-// ── Likes CRUD ───────────────────────────────
+const createDocId = (url) => btoa(url).replace(/[/+=]/g, '_');
 
-export async function fetchAllLikes() {
-  const db      = store.get('firebaseDb');
-  const firebase = store.get('firebaseModules');
+export const fetchAllLikes = async () => {
+  if (!db || !firebaseModules) return {};
 
-  if (!store.get('functionalCookiesEnabled') || !db || !firebase) {
-    console.log('⚠️ Skipping likes fetch — Firebase not ready');
+  try {
+    const { collection, getDocs } = firebaseModules;
+    const snapshot = await getDocs(collection(db, 'image_likes'));
+    const likes = {};
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      if (data.url) {
+        likes[data.url] = data.likes || 0;
+      }
+    });
+    store.set('likesCache', likes);
+    console.log(`📊 Fetched likes for ${Object.keys(likes).length} images`);
+    return likes;
+  } catch (error) {
+    console.error('❌ Error fetching likes:', error);
     return {};
   }
+};
 
-  console.log('📊 Fetching all likes from Firestore…');
-  const snapshot = await firebase.getDocs(firebase.collection(db, 'image_likes'));
-  const likes = {};
+export const toggleLike = async (imageUrl) => {
+  if (!db || !firebaseModules || store.get('isProcessing')) return null;
+  store.set('isProcessing', true);
 
-  snapshot.forEach((doc) => {
-    likes[doc.id] = doc.data().likes || 0;
-  });
+  try {
+    const { doc, getDoc, setDoc, updateDoc, increment, serverTimestamp } =
+      firebaseModules;
 
-  store.set('likesCache', likes);
-  console.log(`❤️ Loaded ${Object.keys(likes).length} likes`);
-  return likes;
-}
+    const docId = createDocId(imageUrl);
+    const docRef = doc(db, 'image_likes', docId);
+    const likedImages = JSON.parse(localStorage.getItem('likedImages') || '{}');
+    const isCurrentlyLiked = likedImages[imageUrl];
 
-export async function updateLike(url, incrementValue) {
-  const db       = store.get('firebaseDb');
-  const firebase = store.get('firebaseModules');
+    const docSnap = await getDoc(docRef);
 
-  if (!store.get('functionalCookiesEnabled') || !db || !firebase) {
-    console.log('⚠️ Cannot update likes — Firebase not ready');
-    return null;
-  }
+    if (isCurrentlyLiked) {
+      // Unlike
+      if (docSnap.exists()) {
+        const currentLikes = docSnap.data().likes || 0;
+        await updateDoc(docRef, {
+          likes: Math.max(0, currentLikes - 1),
+          lastUpdated: serverTimestamp(),
+        });
+      }
+      delete likedImages[imageUrl];
+    } else {
+      // Like
+      if (docSnap.exists()) {
+        await updateDoc(docRef, {
+          likes: increment(1),
+          lastUpdated: serverTimestamp(),
+        });
+      } else {
+        await setDoc(docRef, {
+          url: imageUrl,
+          likes: 1,
+          createdAt: serverTimestamp(),
+          lastUpdated: serverTimestamp(),
+        });
+      }
+      likedImages[imageUrl] = true;
+    }
 
-  const docId  = getDocIdFromUrl(url);
-  const docRef = firebase.doc(db, 'image_likes', docId);
-  const snap   = await firebase.getDoc(docRef);
+    localStorage.setItem('likedImages', JSON.stringify(likedImages));
 
-  if (snap.exists()) {
-    await firebase.updateDoc(docRef, {
-      likes:       firebase.increment(incrementValue),
-      lastUpdated: firebase.serverTimestamp(),
-    });
-    const updated = await firebase.getDoc(docRef);
-    const newLikes = updated.data().likes;
-
-    const cache = { ...store.get('likesCache'), [docId]: newLikes };
+    // Refresh likes cache
+    const updatedSnap = await getDoc(docRef);
+    const newCount = updatedSnap.exists() ? updatedSnap.data().likes || 0 : 0;
+    const cache = { ...store.get('likesCache') };
+    cache[imageUrl] = newCount;
     store.set('likesCache', cache);
-    return newLikes;
+
+    // Emit events for UI updates
+    bus.emit('likes:updated', { url: imageUrl, count: newCount, isLiked: !isCurrentlyLiked });
+    bus.emit('gallery:covers:refresh');
+
+    return { count: newCount, isLiked: !isCurrentlyLiked };
+  } catch (error) {
+    console.error('❌ Error toggling like:', error);
+    return null;
+  } finally {
+    store.set('isProcessing', false);
   }
+};
 
-  // First like — create document
-  const initialLikes = Math.max(0, incrementValue);
-  await firebase.setDoc(docRef, {
-    url,
-    likes:       initialLikes,
-    createdAt:   firebase.serverTimestamp(),
-    lastUpdated: firebase.serverTimestamp(),
-  });
+export const getLikeCount = async (imageUrl) => {
+  const cached = store.get('likesCache')[imageUrl];
+  if (cached !== undefined) return cached;
 
-  const cache = { ...store.get('likesCache'), [docId]: initialLikes };
-  store.set('likesCache', cache);
-  return initialLikes;
-}
+  if (!db || !firebaseModules) return 0;
+
+  try {
+    const { doc, getDoc } = firebaseModules;
+    const docRef = doc(db, 'image_likes', createDocId(imageUrl));
+    const docSnap = await getDoc(docRef);
+    return docSnap.exists() ? docSnap.data().likes || 0 : 0;
+  } catch {
+    return 0;
+  }
+};
+
+export const isImageLiked = (imageUrl) => {
+  const likedImages = JSON.parse(localStorage.getItem('likedImages') || '{}');
+  return !!likedImages[imageUrl];
+};
