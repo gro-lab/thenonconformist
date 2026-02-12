@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Nonconformist | Dashboard</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <style>
+        /* ========================================
+           TOKENS
+           ======================================== */
+        :root {
+            --bg-primary: #0a0a14;
+            --bg-card: rgba(255, 255, 255, 0.03);
+            --bg-card-hover: rgba(255, 255, 255, 0.06);
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --border-light: rgba(255, 255, 255, 0.15);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --text-tertiary: rgba(255, 255, 255, 0.45);
+            --accent-orange: #f28c28;
+            --accent-purple: #6b5cff;
+            --accent-gradient: linear-gradient(135deg, var(--accent-orange), var(--accent-purple));
+            --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --font-display: Georgia, "Times New Roman", Times, serif;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+            --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.3);
+            --transition-fast: 0.2s ease;
+            --transition-smooth: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* ========================================
+           BASE
+           ======================================== */
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        ::selection {
+            background-color: var(--accent-orange);
+            color: white;
+        }
+
+        /* ========================================
+           LAYOUT
+           ======================================== */
+        .dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 30px 60px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto auto 1fr;
+            gap: 24px;
+            min-height: 100vh;
+        }
+
+        .dashboard-header {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding-bottom: 8px;
+        }
+
+        /* ========================================
+           HEADER
+           ======================================== */
+        .brand {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .brand-title {
+            font-family: var(--font-display);
+            font-size: 1.6rem;
+            font-weight: 700;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.2;
+        }
+
+        .brand-subtitle {
+            font-size: 0.7rem;
+            color: var(--text-tertiary);
+            letter-spacing: 0.25em;
+            text-transform: uppercase;
+        }
+
+        .header-right {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 2px;
+        }
+
+        .clock {
+            font-size: 2.8rem;
+            font-weight: 200;
+            letter-spacing: -0.02em;
+            line-height: 1;
+            color: var(--text-primary);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .date-display {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            letter-spacing: 0.05em;
+        }
+
+        .portfolio-link {
+            font-size: 0.75rem;
+            color: var(--accent-orange);
+            text-decoration: none;
+            opacity: 0.8;
+            transition: opacity var(--transition-fast);
+            margin-top: 4px;
+        }
+
+        .portfolio-link:hover {
+            opacity: 1;
+        }
+
+        /* ========================================
+           CARDS
+           ======================================== */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            transition: border-color var(--transition-smooth), background var(--transition-smooth);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            border-color: var(--border-light);
+            background: var(--bg-card-hover);
+        }
+
+        .card-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: var(--text-tertiary);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-label::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent-gradient);
+            flex-shrink: 0;
+        }
+
+        /* ========================================
+           QUOTE CARD
+           ======================================== */
+        .quote-card {
+            grid-column: 1 / -1;
+        }
+
+        .quote-text {
+            font-family: var(--font-display);
+            font-size: 1.35rem;
+            font-style: italic;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            max-width: 800px;
+            transition: opacity 0.6s ease;
+        }
+
+        .quote-author {
+            margin-top: 12px;
+            font-size: 0.85rem;
+            color: var(--text-tertiary);
+            font-weight: 500;
+        }
+
+        .quote-author::before {
+            content: '— ';
+        }
+
+        .quote-refresh {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: 1px solid var(--border-subtle);
+            color: var(--text-tertiary);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-fast);
+        }
+
+        .quote-refresh:hover {
+            border-color: var(--accent-orange);
+            color: var(--accent-orange);
+            transform: rotate(90deg);
+        }
+
+        /* ========================================
+           PHOTO OF THE DAY
+           ======================================== */
+        .photo-card {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .photo-container {
+            flex: 1;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            position: relative;
+            min-height: 340px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .photo-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            transition: opacity 0.8s ease;
+        }
+
+        .photo-img.loaded {
+            opacity: 1;
+        }
+
+        .photo-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+        }
+
+        .photo-gallery-name {
+            font-size: 0.8rem;
+            color: var(--text-tertiary);
+        }
+
+        .photo-gallery-tag {
+            font-size: 0.7rem;
+            padding: 3px 10px;
+            border-radius: 999px;
+            background: rgba(242, 140, 40, 0.12);
+            color: var(--accent-orange);
+        }
+
+        .photo-loading {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .photo-loading-spinner {
+            width: 28px;
+            height: 28px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-top-color: var(--accent-orange);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ========================================
+           WEATHER CARD
+           ======================================== */
+        .weather-card {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .weather-current {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .weather-icon {
+            font-size: 3rem;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+
+        .weather-info {
+            flex: 1;
+        }
+
+        .weather-temp {
+            font-size: 2.4rem;
+            font-weight: 200;
+            line-height: 1;
+            letter-spacing: -0.02em;
+        }
+
+        .weather-temp-unit {
+            font-size: 1rem;
+            color: var(--text-tertiary);
+            font-weight: 400;
+        }
+
+        .weather-condition {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .weather-location {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+            margin-top: 2px;
+        }
+
+        .weather-details {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .weather-detail {
+            text-align: center;
+        }
+
+        .weather-detail-value {
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .weather-detail-label {
+            font-size: 0.7rem;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-top: 2px;
+        }
+
+        .weather-forecast {
+            display: flex;
+            gap: 8px;
+            margin-top: auto;
+            padding-top: 16px;
+        }
+
+        .forecast-day {
+            flex: 1;
+            text-align: center;
+            padding: 10px 4px;
+            border-radius: var(--radius-sm);
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-subtle);
+        }
+
+        .forecast-day-name {
+            font-size: 0.65rem;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .forecast-icon {
+            font-size: 1.3rem;
+            margin: 4px 0;
+        }
+
+        .forecast-temps {
+            font-size: 0.75rem;
+        }
+
+        .forecast-high {
+            color: var(--text-secondary);
+        }
+
+        .forecast-low {
+            color: var(--text-tertiary);
+        }
+
+        .weather-error {
+            color: var(--text-tertiary);
+            font-size: 0.85rem;
+            font-style: italic;
+        }
+
+        /* ========================================
+           TODO CARD
+           ======================================== */
+        .todo-card {
+            grid-column: 1 / -1;
+        }
+
+        .todo-input-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .todo-input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 10px 16px;
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color var(--transition-fast);
+        }
+
+        .todo-input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .todo-input:focus {
+            border-color: var(--accent-orange);
+        }
+
+        .todo-add-btn {
+            background: var(--accent-gradient);
+            border: none;
+            color: white;
+            width: 42px;
+            height: 42px;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: opacity var(--transition-fast), transform var(--transition-fast);
+        }
+
+        .todo-add-btn:hover {
+            opacity: 0.9;
+            transform: scale(1.05);
+        }
+
+        .todo-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        .todo-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .todo-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .todo-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .todo-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid transparent;
+            transition: all var(--transition-fast);
+            animation: todoSlideIn 0.3s ease;
+        }
+
+        @keyframes todoSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .todo-item:hover {
+            border-color: var(--border-subtle);
+        }
+
+        .todo-checkbox {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border: 1.5px solid var(--border-light);
+            border-radius: 4px;
+            cursor: pointer;
+            flex-shrink: 0;
+            position: relative;
+            transition: all var(--transition-fast);
+        }
+
+        .todo-checkbox:checked {
+            background: var(--accent-gradient);
+            border-color: transparent;
+        }
+
+        .todo-checkbox:checked::after {
+            content: '';
+            position: absolute;
+            left: 5px;
+            top: 2px;
+            width: 5px;
+            height: 9px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+
+        .todo-text {
+            flex: 1;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            transition: all var(--transition-fast);
+        }
+
+        .todo-item.completed .todo-text {
+            text-decoration: line-through;
+            color: var(--text-tertiary);
+        }
+
+        .todo-delete {
+            background: none;
+            border: none;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            font-size: 0.85rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            opacity: 0;
+            transition: all var(--transition-fast);
+        }
+
+        .todo-item:hover .todo-delete {
+            opacity: 1;
+        }
+
+        .todo-delete:hover {
+            color: #ff4757;
+            background: rgba(255, 71, 87, 0.1);
+        }
+
+        .todo-empty {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-tertiary);
+            font-size: 0.85rem;
+            font-style: italic;
+        }
+
+        .todo-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .todo-count {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+        }
+
+        .todo-clear-btn {
+            background: none;
+            border: none;
+            color: var(--text-tertiary);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: color var(--transition-fast);
+        }
+
+        .todo-clear-btn:hover {
+            color: #ff4757;
+        }
+
+        /* ========================================
+           FOOTER
+           ======================================== */
+        .dashboard-footer {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding-top: 8px;
+        }
+
+        .footer-text {
+            font-size: 0.7rem;
+            color: var(--text-tertiary);
+            letter-spacing: 0.1em;
+        }
+
+        .footer-text a {
+            color: var(--accent-orange);
+            text-decoration: none;
+            transition: opacity var(--transition-fast);
+        }
+
+        .footer-text a:hover {
+            opacity: 0.8;
+        }
+
+        /* ========================================
+           ENTRANCE ANIMATIONS
+           ======================================== */
+        .card {
+            opacity: 0;
+            transform: translateY(16px);
+            animation: cardReveal 0.6s ease forwards;
+        }
+
+        .card:nth-child(2) { animation-delay: 0.08s; }
+        .card:nth-child(3) { animation-delay: 0.16s; }
+        .card:nth-child(4) { animation-delay: 0.24s; }
+        .card:nth-child(5) { animation-delay: 0.32s; }
+
+        @keyframes cardReveal {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ========================================
+           RESPONSIVE
+           ======================================== */
+        @media (max-width: 900px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+                padding: 24px 20px 40px;
+                gap: 16px;
+            }
+
+            .dashboard-header {
+                flex-direction: column;
+                gap: 16px;
+            }
+
+            .header-right {
+                align-items: flex-start;
+            }
+
+            .clock {
+                font-size: 2.2rem;
+            }
+
+            .quote-text {
+                font-size: 1.15rem;
+            }
+
+            .photo-container {
+                min-height: 280px;
+            }
+
+            .weather-details {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .forecast-day {
+                padding: 8px 2px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .dashboard {
+                padding: 16px 14px 30px;
+                gap: 12px;
+            }
+
+            .brand-title {
+                font-size: 1.3rem;
+            }
+
+            .clock {
+                font-size: 1.8rem;
+            }
+
+            .card {
+                padding: 18px;
+            }
+
+            .photo-container {
+                min-height: 220px;
+            }
+
+            .weather-forecast {
+                flex-wrap: wrap;
+            }
+
+            .forecast-day {
+                min-width: calc(33% - 6px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- HEADER -->
+        <header class="dashboard-header">
+            <div class="brand">
+                <div class="brand-title">THE NONCONFORMIST</div>
+                <div class="brand-subtitle">Your daily dashboard</div>
+            </div>
+            <div class="header-right">
+                <div class="clock" id="clock">--:--</div>
+                <div class="date-display" id="date-display">Loading...</div>
+                <a href="https://thenonconformist.xyz" class="portfolio-link" target="_blank" rel="noopener">Visit portfolio &rarr;</a>
+            </div>
+        </header>
+
+        <!-- QUOTE -->
+        <div class="card quote-card">
+            <div class="card-label">Quote of the moment</div>
+            <button class="quote-refresh" id="quote-refresh" title="New quote">&#x21bb;</button>
+            <div class="quote-text" id="quote-text">Loading...</div>
+            <div class="quote-author" id="quote-author"></div>
+        </div>
+
+        <!-- PHOTO OF THE DAY -->
+        <div class="card photo-card">
+            <div class="card-label">Photo of the day</div>
+            <div class="photo-container" id="photo-container">
+                <div class="photo-loading" id="photo-loading">
+                    <div class="photo-loading-spinner"></div>
+                </div>
+                <img class="photo-img" id="photo-img" alt="Photo of the day">
+            </div>
+            <div class="photo-meta">
+                <span class="photo-gallery-name" id="photo-gallery-name">Loading...</span>
+                <span class="photo-gallery-tag" id="photo-gallery-tag"></span>
+            </div>
+        </div>
+
+        <!-- WEATHER -->
+        <div class="card weather-card">
+            <div class="card-label">Weather</div>
+            <div id="weather-content">
+                <div class="weather-current">
+                    <div class="weather-icon" id="weather-icon">&#x2601;</div>
+                    <div class="weather-info">
+                        <div class="weather-temp" id="weather-temp">--<span class="weather-temp-unit">&deg;C</span></div>
+                        <div class="weather-condition" id="weather-condition">Loading...</div>
+                        <div class="weather-location" id="weather-location">Timi&#x219;oara, Romania</div>
+                    </div>
+                </div>
+                <div class="weather-details" id="weather-details">
+                    <div class="weather-detail">
+                        <div class="weather-detail-value" id="weather-humidity">--%</div>
+                        <div class="weather-detail-label">Humidity</div>
+                    </div>
+                    <div class="weather-detail">
+                        <div class="weather-detail-value" id="weather-wind">-- km/h</div>
+                        <div class="weather-detail-label">Wind</div>
+                    </div>
+                    <div class="weather-detail">
+                        <div class="weather-detail-value" id="weather-feelslike">--&deg;</div>
+                        <div class="weather-detail-label">Feels like</div>
+                    </div>
+                </div>
+                <div class="weather-forecast" id="weather-forecast"></div>
+            </div>
+        </div>
+
+        <!-- TODO -->
+        <div class="card todo-card">
+            <div class="card-label">Today's tasks</div>
+            <div class="todo-input-row">
+                <input type="text" class="todo-input" id="todo-input" placeholder="What needs doing today?" maxlength="120">
+                <button class="todo-add-btn" id="todo-add-btn" title="Add task">+</button>
+            </div>
+            <ul class="todo-list" id="todo-list"></ul>
+            <div class="todo-footer">
+                <span class="todo-count" id="todo-count"></span>
+                <button class="todo-clear-btn" id="todo-clear-btn">Clear completed</button>
+            </div>
+        </div>
+
+        <!-- FOOTER -->
+        <footer class="dashboard-footer">
+            <div class="footer-text">Art is a human right &middot; <a href="https://thenonconformist.xyz">thenonconformist.xyz</a></div>
+        </footer>
+    </div>
+
+    <script>
+    // ============================================
+    // PHOTOGRAPHY QUOTES
+    // ============================================
+    const QUOTES = [
+        { text: "Your first 10,000 photographs are your worst.", author: "Henri Cartier-Bresson" },
+        { text: "The camera is an instrument that teaches people how to see without a camera.", author: "Dorothea Lange" },
+        { text: "To photograph is to hold one's breath, when all faculties converge to capture fleeting reality.", author: "Henri Cartier-Bresson" },
+        { text: "Photography takes an instant out of time, altering life by holding it still.", author: "Dorothea Lange" },
+        { text: "The best thing about a photograph is that it never changes, even when the people in it do.", author: "Andy Warhol" },
+        { text: "There is one thing the photograph must contain: the humanity of the moment.", author: "Robert Frank" },
+        { text: "A photograph is a secret about a secret. The more it tells you the less you know.", author: "Diane Arbus" },
+        { text: "In photography there is a reality so subtle that it becomes more real than reality.", author: "Alfred Stieglitz" },
+        { text: "Photography is the story I fail to put into words.", author: "Destin Sparks" },
+        { text: "You don't take a photograph, you make it.", author: "Ansel Adams" },
+        { text: "The world just does not fit conveniently into the format of a 35mm camera.", author: "W. Eugene Smith" },
+        { text: "When I photograph, what I'm really doing is seeking answers to things.", author: "Wynn Bullock" },
+        { text: "I don't trust words. I trust pictures.", author: "Gilles Peress" },
+        { text: "The eye should learn to listen before it looks.", author: "Robert Frank" },
+        { text: "Photographs are just light and time.", author: "Abelardo Morell" },
+        { text: "It is more important to click with people than to click the shutter.", author: "Alfred Eisenstaedt" },
+        { text: "Once you learn to care, you can record images with your mind or on film. There is no difference between the two.", author: "Gordon Parks" },
+        { text: "We are making photographs to understand what our lives mean to us.", author: "Ralph Hattersley" },
+        { text: "Which of my photographs is my favorite? The one I'm going to take tomorrow.", author: "Imogen Cunningham" },
+        { text: "The whole point of taking pictures is so that you don't have to explain things with words.", author: "Elliott Erwitt" },
+        { text: "Beauty can be seen in all things. Seeing and composing the beauty is what separates the snapshot from the photograph.", author: "Matt Hardy" },
+        { text: "A good photograph is one that communicates a fact, touches the heart, and leaves the viewer a changed person for having seen it.", author: "Irving Penn" },
+        { text: "Only photograph what you love.", author: "Tim Walker" },
+        { text: "If I could tell the story in words, I wouldn't need to lug around a camera.", author: "Lewis Hine" },
+        { text: "Photography for me is not looking, it's feeling.", author: "Don McCullin" },
+        { text: "Art is not what you see, but what you make others see.", author: "Edgar Degas" },
+        { text: "Creativity takes courage.", author: "Henri Matisse" },
+        { text: "Every artist was first an amateur.", author: "Ralph Waldo Emerson" },
+        { text: "Art enables us to find ourselves and lose ourselves at the same time.", author: "Thomas Merton" },
+        { text: "The purpose of art is washing the dust of daily life off our souls.", author: "Pablo Picasso" }
+    ];
+
+    // ============================================
+    // GALLERY CONFIG (mirrors main site)
+    // ============================================
+    const GALLERIES = {
+        'LoW': { title: 'Language of Windows', color: '#FF6B35' },
+        'SoL': { title: 'Snapshots of Life', color: '#9D4EDD' },
+        'R':   { title: 'Reflections', color: '#06FFA5' },
+        'SA':  { title: 'Street Art', color: '#FFD23F' }
+    };
+
+    const GITHUB_BASE = 'https://raw.githubusercontent.com/gro-lab/thenonconformist/main';
+
+    // ============================================
+    // CLOCK & DATE
+    // ============================================
+    const updateClock = () => {
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const mins = String(now.getMinutes()).padStart(2, '0');
+        document.getElementById('clock').textContent = `${hours}:${mins}`;
+
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('date-display').textContent = now.toLocaleDateString('en-US', options);
+    };
+
+    // ============================================
+    // QUOTES
+    // ============================================
+    let currentQuoteIndex = -1;
+
+    const seededRandom = (seed) => {
+        let x = Math.sin(seed) * 10000;
+        return x - Math.floor(x);
+    };
+
+    const showQuote = (forceNew = false) => {
+        let idx;
+        if (forceNew) {
+            do {
+                idx = Math.floor(Math.random() * QUOTES.length);
+            } while (idx === currentQuoteIndex && QUOTES.length > 1);
+        } else {
+            // Seed by date so quote is consistent for the day
+            const today = new Date();
+            const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+            idx = Math.floor(seededRandom(seed) * QUOTES.length);
+        }
+        currentQuoteIndex = idx;
+        const q = QUOTES[idx];
+        const textEl = document.getElementById('quote-text');
+        const authorEl = document.getElementById('quote-author');
+
+        textEl.style.opacity = '0';
+        setTimeout(() => {
+            textEl.textContent = `\u201C${q.text}\u201D`;
+            authorEl.textContent = q.author;
+            textEl.style.opacity = '1';
+        }, 300);
+    };
+
+    // ============================================
+    // PHOTO OF THE DAY
+    // ============================================
+    const loadPhotoOfTheDay = async () => {
+        try {
+            const resp = await fetch(`${GITHUB_BASE}/images.json`);
+            if (!resp.ok) throw new Error('Manifest fetch failed');
+            const manifest = await resp.json();
+
+            // Collect all images across galleries
+            const allImages = [];
+            for (const [dir, images] of Object.entries(manifest)) {
+                if (!GALLERIES[dir]) continue;
+                images.forEach(img => {
+                    allImages.push({ dir, img, gallery: GALLERIES[dir] });
+                });
+            }
+
+            if (allImages.length === 0) throw new Error('No images in manifest');
+
+            // Pick photo seeded by date
+            const today = new Date();
+            const daySeed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+            const photoIndex = Math.floor(seededRandom(daySeed + 42) * allImages.length);
+            const chosen = allImages[photoIndex];
+
+            const filename = chosen.img.originalName || `${chosen.dir}-${chosen.img.index}.${chosen.img.ext}`;
+            // Use thumbnail for faster loading
+            const thumbnailUrl = `${GITHUB_BASE}/images/thumbnails/${chosen.dir}/${filename}`;
+            const fullUrl = `${GITHUB_BASE}/images/${chosen.dir}/${filename}`;
+
+            const imgEl = document.getElementById('photo-img');
+            const loadingEl = document.getElementById('photo-loading');
+
+            // Try thumbnail first, fall back to full image
+            imgEl.onload = () => {
+                imgEl.classList.add('loaded');
+                if (loadingEl) loadingEl.style.display = 'none';
+            };
+            imgEl.onerror = () => {
+                // Fallback to full-size image
+                imgEl.onerror = () => {
+                    if (loadingEl) loadingEl.innerHTML = '<span style="color: rgba(255,255,255,0.3); font-size: 0.8rem;">Could not load image</span>';
+                };
+                imgEl.src = fullUrl;
+            };
+            imgEl.src = thumbnailUrl;
+            imgEl.alt = `${chosen.gallery.title} - Image ${chosen.img.index}`;
+
+            document.getElementById('photo-gallery-name').textContent = `From "${chosen.gallery.title}" collection`;
+            document.getElementById('photo-gallery-tag').textContent = `#${chosen.img.index}`;
+
+        } catch (err) {
+            console.warn('Photo of the day error:', err);
+            document.getElementById('photo-loading').innerHTML = '<span style="color: rgba(255,255,255,0.3); font-size: 0.8rem;">Could not load today\'s photo</span>';
+            document.getElementById('photo-gallery-name').textContent = 'Unavailable';
+        }
+    };
+
+    // ============================================
+    // WEATHER (Open-Meteo, free, no API key)
+    // ============================================
+    const WMO_CODES = {
+        0: { desc: 'Clear sky', icon: '\u2600\uFE0F' },
+        1: { desc: 'Mainly clear', icon: '\uD83C\uDF24\uFE0F' },
+        2: { desc: 'Partly cloudy', icon: '\u26C5' },
+        3: { desc: 'Overcast', icon: '\u2601\uFE0F' },
+        45: { desc: 'Fog', icon: '\uD83C\uDF2B\uFE0F' },
+        48: { desc: 'Depositing rime fog', icon: '\uD83C\uDF2B\uFE0F' },
+        51: { desc: 'Light drizzle', icon: '\uD83C\uDF26\uFE0F' },
+        53: { desc: 'Moderate drizzle', icon: '\uD83C\uDF26\uFE0F' },
+        55: { desc: 'Dense drizzle', icon: '\uD83C\uDF27\uFE0F' },
+        61: { desc: 'Slight rain', icon: '\uD83C\uDF26\uFE0F' },
+        63: { desc: 'Moderate rain', icon: '\uD83C\uDF27\uFE0F' },
+        65: { desc: 'Heavy rain', icon: '\uD83C\uDF27\uFE0F' },
+        66: { desc: 'Freezing rain', icon: '\uD83C\uDF28\uFE0F' },
+        67: { desc: 'Heavy freezing rain', icon: '\uD83C\uDF28\uFE0F' },
+        71: { desc: 'Slight snow', icon: '\uD83C\uDF28\uFE0F' },
+        73: { desc: 'Moderate snow', icon: '\u2744\uFE0F' },
+        75: { desc: 'Heavy snow', icon: '\u2744\uFE0F' },
+        77: { desc: 'Snow grains', icon: '\u2744\uFE0F' },
+        80: { desc: 'Slight showers', icon: '\uD83C\uDF26\uFE0F' },
+        81: { desc: 'Moderate showers', icon: '\uD83C\uDF27\uFE0F' },
+        82: { desc: 'Violent showers', icon: '\uD83C\uDF27\uFE0F' },
+        85: { desc: 'Slight snow showers', icon: '\uD83C\uDF28\uFE0F' },
+        86: { desc: 'Heavy snow showers', icon: '\u2744\uFE0F' },
+        95: { desc: 'Thunderstorm', icon: '\u26C8\uFE0F' },
+        96: { desc: 'Thunderstorm with hail', icon: '\u26C8\uFE0F' },
+        99: { desc: 'Thunderstorm with heavy hail', icon: '\u26C8\uFE0F' }
+    };
+
+    const getWeatherInfo = (code) => WMO_CODES[code] || { desc: 'Unknown', icon: '\u2601\uFE0F' };
+
+    const loadWeather = async () => {
+        // Timișoara coordinates
+        const lat = 45.7489;
+        const lon = 21.2087;
+
+        try {
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Europe%2FBucharest&forecast_days=5`;
+            const resp = await fetch(url);
+            if (!resp.ok) throw new Error('Weather API error');
+            const data = await resp.json();
+
+            const current = data.current;
+            const daily = data.daily;
+            const weatherInfo = getWeatherInfo(current.weather_code);
+
+            document.getElementById('weather-icon').textContent = weatherInfo.icon;
+            document.getElementById('weather-temp').innerHTML = `${Math.round(current.temperature_2m)}<span class="weather-temp-unit">\u00B0C</span>`;
+            document.getElementById('weather-condition').textContent = weatherInfo.desc;
+            document.getElementById('weather-humidity').textContent = `${current.relative_humidity_2m}%`;
+            document.getElementById('weather-wind').textContent = `${Math.round(current.wind_speed_10m)} km/h`;
+            document.getElementById('weather-feelslike').textContent = `${Math.round(current.apparent_temperature)}\u00B0`;
+
+            // 5-day forecast
+            const forecastEl = document.getElementById('weather-forecast');
+            forecastEl.innerHTML = '';
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+            for (let i = 1; i < Math.min(daily.time.length, 5); i++) {
+                const date = new Date(daily.time[i] + 'T12:00:00');
+                const dayName = i === 1 ? 'Tmrw' : dayNames[date.getDay()];
+                const info = getWeatherInfo(daily.weather_code[i]);
+
+                const dayEl = document.createElement('div');
+                dayEl.className = 'forecast-day';
+                dayEl.innerHTML = `
+                    <div class="forecast-day-name">${dayName}</div>
+                    <div class="forecast-icon">${info.icon}</div>
+                    <div class="forecast-temps">
+                        <span class="forecast-high">${Math.round(daily.temperature_2m_max[i])}\u00B0</span>
+                        <span class="forecast-low"> ${Math.round(daily.temperature_2m_min[i])}\u00B0</span>
+                    </div>
+                `;
+                forecastEl.appendChild(dayEl);
+            }
+
+        } catch (err) {
+            console.warn('Weather error:', err);
+            document.getElementById('weather-content').innerHTML = '<p class="weather-error">Could not load weather data. Check your connection.</p>';
+        }
+    };
+
+    // ============================================
+    // TODO LIST (localStorage)
+    // ============================================
+    const TODO_STORAGE_KEY = 'nonconformist_dashboard_todos';
+
+    const loadTodos = () => {
+        try {
+            return JSON.parse(localStorage.getItem(TODO_STORAGE_KEY)) || [];
+        } catch {
+            return [];
+        }
+    };
+
+    const saveTodos = (todos) => {
+        localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify(todos));
+    };
+
+    const renderTodos = () => {
+        const todos = loadTodos();
+        const listEl = document.getElementById('todo-list');
+        const countEl = document.getElementById('todo-count');
+
+        if (todos.length === 0) {
+            listEl.innerHTML = '<li class="todo-empty">Nothing here yet. Add a task above.</li>';
+            countEl.textContent = '';
+            return;
+        }
+
+        listEl.innerHTML = '';
+        todos.forEach((todo, idx) => {
+            const li = document.createElement('li');
+            li.className = `todo-item${todo.done ? ' completed' : ''}`;
+            li.innerHTML = `
+                <input type="checkbox" class="todo-checkbox" ${todo.done ? 'checked' : ''} data-idx="${idx}">
+                <span class="todo-text">${escapeHtml(todo.text)}</span>
+                <button class="todo-delete" data-idx="${idx}" title="Delete">&times;</button>
+            `;
+            listEl.appendChild(li);
+        });
+
+        const remaining = todos.filter(t => !t.done).length;
+        const total = todos.length;
+        countEl.textContent = `${remaining} of ${total} remaining`;
+    };
+
+    const addTodo = (text) => {
+        if (!text.trim()) return;
+        const todos = loadTodos();
+        todos.unshift({ text: text.trim(), done: false, created: Date.now() });
+        saveTodos(todos);
+        renderTodos();
+    };
+
+    const toggleTodo = (idx) => {
+        const todos = loadTodos();
+        if (todos[idx]) {
+            todos[idx].done = !todos[idx].done;
+            saveTodos(todos);
+            renderTodos();
+        }
+    };
+
+    const deleteTodo = (idx) => {
+        const todos = loadTodos();
+        todos.splice(idx, 1);
+        saveTodos(todos);
+        renderTodos();
+    };
+
+    const clearCompleted = () => {
+        const todos = loadTodos().filter(t => !t.done);
+        saveTodos(todos);
+        renderTodos();
+    };
+
+    const escapeHtml = (str) => {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    };
+
+    // ============================================
+    // EVENT LISTENERS
+    // ============================================
+    const setupEventListeners = () => {
+        // Quote refresh
+        document.getElementById('quote-refresh').addEventListener('click', () => showQuote(true));
+
+        // Todo input
+        const todoInput = document.getElementById('todo-input');
+        const todoAddBtn = document.getElementById('todo-add-btn');
+
+        todoAddBtn.addEventListener('click', () => {
+            addTodo(todoInput.value);
+            todoInput.value = '';
+            todoInput.focus();
+        });
+
+        todoInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                addTodo(todoInput.value);
+                todoInput.value = '';
+            }
+        });
+
+        // Todo list delegation
+        document.getElementById('todo-list').addEventListener('click', (e) => {
+            const target = e.target;
+            if (target.classList.contains('todo-checkbox')) {
+                toggleTodo(parseInt(target.dataset.idx));
+            } else if (target.classList.contains('todo-delete')) {
+                deleteTodo(parseInt(target.dataset.idx));
+            }
+        });
+
+        // Clear completed
+        document.getElementById('todo-clear-btn').addEventListener('click', clearCompleted);
+    };
+
+    // ============================================
+    // INIT
+    // ============================================
+    const init = async () => {
+        updateClock();
+        setInterval(updateClock, 10000);
+
+        showQuote();
+        setupEventListeners();
+        renderTodos();
+
+        // Load async widgets in parallel
+        await Promise.allSettled([
+            loadPhotoOfTheDay(),
+            loadWeather()
+        ]);
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+    </script>
+</body>
+</html>
