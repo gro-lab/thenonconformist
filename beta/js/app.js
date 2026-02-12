@@ -1,47 +1,76 @@
-// js/app.js
-import { store } from './lib/store.js';
-import { bus } from './lib/event-bus.js';
-import { errorHandler } from './lib/error-handler.js';
-import { initCookieConsent } from './modules/cookies.js';
-import { initFirebase, teardownFirebase } from './modules/firebase.js'; // will be triggered by consent
-import { initGallery, openGallery, closeGallery } from './modules/gallery.js';
-import { initModal, closeModal } from './modules/modal.js';
-import { initNavigation } from './modules/navigation.js';
-import { NAV_EVENTS } from './lib/navigation-fsm.js';
+// ============================================
+// APP.JS — Entry point / Orchestrator
+// Single DOMContentLoaded, clear initialization order
+// ============================================
 
-// Also import terms modal handler (simple)
-import { initTermsModal } from './modules/terms.js'; // we'll add this small module
+import { store } from './store.js';
+import { bus } from './event-bus.js';
+import './error-handler.js'; // Self-initializing — installs global handlers
 
-// Ensure DOM is ready
-async function bootstrap() {
-    try {
-        // 1. Cookie consent (restores preferences, may enable Firebase)
-        initCookieConsent();
+// Modules
+import { initFirebase, fetchAllLikes } from './firebase.js';
+import {
+  initGallery,
+  loadManifest,
+  setupGallerySelector,
+  setupCanvasNavigation,
+  setupBackButton,
+  openGallery,
+  reloadCurrentGallery,
+} from './gallery.js';
+import { initModal } from './modal.js';
+import { initCookieBanner, initCookieListeners } from './cookies.js';
+import { initNavigation } from './navigation.js';
 
-        // 2. Navigation FSM & History
-        initNavigation();
+// ── Wire cross-module events via bus ─────────
 
-        // 3. Gallery (loads manifest, builds UI)
-        await initGallery();
+bus.on('gallery:open', ({ galleryId }) => openGallery(galleryId));
+bus.on('gallery:reload', () => reloadCurrentGallery());
 
-        // 4. Modal
-        initModal();
+// ── Bootstrap ────────────────────────────────
 
-        // 5. Terms modal (simple)
-        initTermsModal();
+async function init() {
+  try {
+    console.log('🚀 Initializing The Nonconformist…');
 
-        // 6. Wire FSM actions to actual UI functions
-        bus.on(NAV_EVENTS.CLOSE_GALLERY, () => closeGallery({ skipHistory: true }));
-        bus.on(NAV_EVENTS.CLOSE_PHOTO, () => closeModal({ skipHistory: true }));
+    // 1. Cookie consent (sync — just reads localStorage & shows banner)
+    initCookieBanner();
 
-        console.log('✅ App initialized');
-    } catch (err) {
-        errorHandler.handle(err, { context: 'bootstrap' });
+    // 2. Load image manifest
+    await loadManifest();
+
+    // 3. Firebase — only if user consented
+    if (store.get('functionalCookiesEnabled')) {
+      console.log('🔑 Functional cookies enabled → initializing Firebase…');
+      await initFirebase();
+      await fetchAllLikes();
+    } else {
+      console.log('🔑 Functional cookies not enabled → default likes (0)');
     }
+
+    // 4. Initialize all modules (registers listeners via AbortController)
+    initGallery();
+    initModal();
+    initCookieListeners();
+
+    // 5. Build gallery selector UI
+    await setupGallerySelector();
+
+    // 6. Canvas drag/wheel/keyboard
+    setupCanvasNavigation();
+    setupBackButton();
+
+    // 7. History API navigation + Terms modal
+    initNavigation();
+
+    console.log('✅ Initialization complete');
+  } catch (error) {
+    console.error('❌ Init error:', error);
+  }
 }
 
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', bootstrap);
+  document.addEventListener('DOMContentLoaded', init);
 } else {
-    bootstrap();
+  init();
 }
