@@ -1,34 +1,42 @@
-// js/lib/event-bus.js
+// ============================================
+// EVENT BUS — Pub/sub for cross-module communication
+// Decouples modules so they never import each other directly
+// ============================================
+
 export class EventBus {
-    constructor() {
-        this.listeners = new Map();
-    }
+  constructor() {
+    this.listeners = {};
+  }
 
-    on(event, fn) {
-        if (!this.listeners.has(event)) this.listeners.set(event, []);
-        this.listeners.get(event).push(fn);
-        return () => {
-            const arr = this.listeners.get(event);
-            if (arr) this.listeners.set(event, arr.filter(f => f !== fn));
-        };
-    }
+  /**
+   * Subscribe to an event. Returns an unsubscribe function.
+   */
+  on(event, fn) {
+    (this.listeners[event] ??= []).push(fn);
+    return () => {
+      this.listeners[event] = this.listeners[event].filter((f) => f !== fn);
+    };
+  }
 
-    emit(event, data) {
-        this.listeners.get(event)?.forEach(fn => fn(data));
-    }
+  /**
+   * Emit an event with optional data payload.
+   */
+  emit(event, data) {
+    this.listeners[event]?.forEach((fn) => fn(data));
+  }
 
-    once(event, fn) {
-        const wrapper = (data) => {
-            fn(data);
-            this.off(event, wrapper);
-        };
-        return this.on(event, wrapper);
+  /**
+   * Remove a specific listener or all listeners for an event.
+   */
+  off(event, fn) {
+    if (!this.listeners[event]) return;
+    if (fn) {
+      this.listeners[event] = this.listeners[event].filter((f) => f !== fn);
+    } else {
+      delete this.listeners[event];
     }
-
-    off(event, fn) {
-        const arr = this.listeners.get(event);
-        if (arr) this.listeners.set(event, arr.filter(f => f !== fn));
-    }
+  }
 }
 
+// Singleton instance shared across all modules
 export const bus = new EventBus();
