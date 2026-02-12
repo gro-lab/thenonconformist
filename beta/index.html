@@ -67,7 +67,7 @@
     <!-- EXTERNAL CONNECTIONS - GDPR COMPLIANT -->
     <!-- ============================================ -->
     <!-- ✅ GDPR FIX: Third-party connections (Firebase/Google) are loaded -->
-    <!-- dynamically ONLY AFTER user consent in script.js -->
+    <!-- dynamically ONLY AFTER user consent in js/modules/firebase.js -->
     <!-- Images hosted on GitHub - functional requirement, minimal privacy impact -->
     <link rel="dns-prefetch" href="https://raw.githubusercontent.com">
     
@@ -140,6 +140,9 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <!-- Global Error Toast -->
+    <div id="error-container" class="error-toast" hidden></div>
+
     <!-- Site Title and Description -->
     <div class="site-intro">
         <h1 class="site-title">THE NONCONFORMIST</h1>
@@ -149,7 +152,8 @@
         <p class="site-description">If you visit my <a href="https://www.instagram.com/then0nc0nformist/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" class="social-link"> <span>Instagram</span></a> or <a href="https://www.facebook.com/then0nc0nformist/" target="_blank" rel="noopener noreferrer" aria-label="Facebook" class="social-link"><span>Facebook</span></a> you can follow my daily chronicle of life in pictures. </p>
         <p class="site-description"><a href="mailto:then-onconformist@outlook.com" aria-label="Email" class="social-link"><span>Email</span></a> me for more!</p> 
     </div>
- <!-- Gallery Selector View -->
+
+    <!-- Gallery Selector View -->
     <div id="gallery-selector" class="gallery-selector">
         <div class="gallery-cover" data-gallery="low">
             <div class="gallery-cover-content">
@@ -186,7 +190,7 @@
 
     <!-- Terms Link -->
     <div class="terms-footer">
-        <button id="terms-link" class="terms-link">Terms & Conditions / Privacy Policy</button>
+        <button id="terms-link" class="terms-link">Terms &amp; Conditions / Privacy Policy</button>
     </div>
 
     <!-- Loading Indicator -->
@@ -227,18 +231,18 @@
         </button>
     </div>
 
-  <!-- Terms Modal -->
+    <!-- Terms Modal -->
     <div id="terms-modal" class="modal terms-modal" hidden>
         <button class="modal-close" id="terms-modal-close">×</button>
         <div class="modal-content terms-content">
-            <h2>Terms & Conditions / Privacy Policy</h2>
+            <h2>Terms &amp; Conditions / Privacy Policy</h2>
             <div class="terms-text">
                 <h3>1. Data Controller</h3>
                 <p>This website is operated by a private individual, the author and curator of the artistic project The Nonconformist.</p>
                 <ul>
                     <li><strong>Data Controller:</strong> Peter Grosspersky</li>
                     <li><strong>Country:</strong> Romania</li>
-                    <li><strong>Email:</strong> <a href="mailto:then-onconformist@outlook.com" class="__cf_email__" data-cfemail="205448454e0d4f4e434f4e464f524d495354604f55544c4f4f4b0e434f4d"><span class="__cf_email__" data-cfemail="15617d707b387a7b767a7b737a67787c6661557a6061797a7a7e3b767a78">then-onconformist@outlook.com</span></a></li>
+                    <li><strong>Email:</strong> <a href="mailto:then-onconformist@outlook.com">then-onconformist@outlook.com</a></li>
                 </ul>
                 <p>Under Regulation (EU) 2016/679 (GDPR), the above person acts as the data controller responsible for the processing of personal data through this website.</p>
 
@@ -254,7 +258,7 @@
                     <li>your cookie / storage preferences</li>
                     <li>local information related to the "like" feature (to prevent repeated likes from the same browser)</li>
                 </ul>
-               <p>
+                <p>
                   This data is processed in a pseudonymous manner and is not used to identify
                   individuals. The website does not combine this data with other information to
                   identify users.
@@ -323,7 +327,6 @@
                   required to load images hosted on external platforms.
                 </p>
 
-
                 <h3>7. International data transfers</h3>
                 <p>Firebase is a service provided by Google LLC (United States). Google relies on Standard Contractual Clauses (SCCs) approved by the European Commission for international data transfers.</p>
 
@@ -346,7 +349,7 @@
                 <p>This Privacy Policy may be updated from time to time. The current version will always be available on this website.</p>
 
                 <h3>11. Contact</h3>
-                <p>For any questions regarding this Privacy Policy or to exercise your rights, contact us at: <a href="mailto:then-onconformist@outlook.com" data-cfemail="483c202d266527262b27262e273a25213b3c08273d3c24272723662b2725">then-onconformist@outlook.com</a></p>
+                <p>For any questions regarding this Privacy Policy or to exercise your rights, contact us at: <a href="mailto:then-onconformist@outlook.com">then-onconformist@outlook.com</a></p>
 
                 <h3>12. Photography and Artistic Expression</h3>
                 <p>Images displayed on this website may include public spaces and individuals captured in street photography contexts. These images are published under:</p>
@@ -355,7 +358,7 @@
                     <li><strong>Journalistic and artistic exemptions</strong> where applicable under EU and Romanian law</li>
                     <li><strong>Legitimate interest</strong> (Article 6(1)(f)) for documentary and artistic purposes</li>
                 </ul>
-                <p>If you appear in a photograph and wish for it to be removed, please contact us at <a href="mailto:then-onconformist@outlook.com"><span class="__cf_email__" data-cfemail="c9bda1aca7e4a6a7aaa6a7afa6bba4a0babd89a6bcbda5a6a6a2e7aaa6a4">then-onconformist@outlook.com</a> with:</p>
+                <p>If you appear in a photograph and wish for it to be removed, please contact us at <a href="mailto:then-onconformist@outlook.com">then-onconformist@outlook.com</a> with:</p>
                 <ul>
                     <li>The specific image URL and gallery name</li>
                     <li>Your reason for removal request</li>
@@ -411,7 +414,6 @@
               We use essential technologies and optional functional storage to enable site features.
             </p>
 
-            
             <div class="cookie-categories">
                 <div class="cookie-category">
                     <div class="cookie-category-header">
@@ -447,9 +449,9 @@
             </div>
             
             <div class="cookie-modal-actions">
+                <button id="cookie-save-btn" class="cookie-btn cookie-btn-primary">Save Preferences</button>
                 <button id="cookie-accept-all-btn" class="cookie-btn cookie-btn-secondary">Accept All</button>
                 <button id="cookie-reject-all-btn" class="cookie-btn cookie-btn-secondary">Reject All</button>
-                <button id="cookie-save-btn" class="cookie-btn cookie-btn-primary">Save Preferences</button>
             </div>
         </div>
     </div>
@@ -460,8 +462,8 @@
     </button>
 
     <!-- ============================================ -->
-    <!-- JAVASCRIPT - ES6 MODULE -->
+    <!-- JAVASCRIPT - ES6 MODULE ENTRY POINT -->
     <!-- ============================================ -->
-    <script type="module" src="script.js"></script>
+    <script type="module" src="js/app.js"></script>
 </body>
 </html>
