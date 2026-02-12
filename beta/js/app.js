@@ -1,26 +1,26 @@
 // ============================================
 // APP.JS — Entry point / Orchestrator
-// Single DOMContentLoaded, clear initialization order
+// Single DOMContentLoaded, clear initialization order.
+// Cross-module wiring via event bus.
 // ============================================
 
-import { store } from './store.js';
-import { bus } from './event-bus.js';
-import './error-handler.js'; // Self-initializing — installs global handlers
+import { store } from './lib/store.js';
+import { bus } from './lib/event-bus.js';
+import './lib/error-handler.js'; // Self-initializing — installs global handlers
 
 // Modules
-import { initFirebase, fetchAllLikes } from './firebase.js';
+import { initFirebase, fetchAllLikes } from './modules/firebase.js';
 import {
   initGallery,
   loadManifest,
   setupGallerySelector,
   setupCanvasNavigation,
-  setupBackButton,
   openGallery,
   reloadCurrentGallery,
-} from './gallery.js';
-import { initModal } from './modal.js';
-import { initCookieBanner, initCookieListeners } from './cookies.js';
-import { initNavigation } from './navigation.js';
+} from './modules/gallery.js';
+import { initModal } from './modules/modal.js';
+import { initCookieBanner, initCookieListeners } from './modules/cookies.js';
+import { initNavigation } from './modules/navigation.js';
 
 // ── Wire cross-module events via bus ─────────
 
@@ -33,41 +33,52 @@ async function init() {
   try {
     console.log('🚀 Initializing The Nonconformist…');
 
-    // 1. Cookie consent (sync — just reads localStorage & shows banner)
+    // 1. Cookie consent (sync — reads localStorage & shows banner if needed)
     initCookieBanner();
 
     // 2. Load image manifest
     await loadManifest();
 
-    // 3. Firebase — only if user consented
+    // 3. If functional cookies already accepted, init Firebase + fetch likes
     if (store.get('functionalCookiesEnabled')) {
-      console.log('🔑 Functional cookies enabled → initializing Firebase…');
-      await initFirebase();
-      await fetchAllLikes();
-    } else {
-      console.log('🔑 Functional cookies not enabled → default likes (0)');
+      try {
+        await initFirebase();
+        await fetchAllLikes();
+      } catch (err) {
+        console.warn('⚠️ Firebase init skipped:', err.message);
+      }
     }
 
-    // 4. Initialize all modules (registers listeners via AbortController)
+    // 4. Setup gallery selector (cover images, counts)
+    await setupGallerySelector();
+
+    // 5. Init all module listeners
     initGallery();
     initModal();
     initCookieListeners();
-
-    // 5. Build gallery selector UI
-    await setupGallerySelector();
-
-    // 6. Canvas drag/wheel/keyboard
-    setupCanvasNavigation();
-    setupBackButton();
-
-    // 7. History API navigation + Terms modal
     initNavigation();
 
-    console.log('✅ Initialization complete');
+    // 6. Hide loading indicator
+    const loading = document.getElementById('loading-indicator');
+    if (loading) {
+      loading.classList.remove('active');
+      setTimeout(() => { loading.style.display = 'none'; }, 800);
+    }
+
+    console.log('✅ The Nonconformist initialized successfully');
   } catch (error) {
-    console.error('❌ Init error:', error);
+    console.error('❌ Initialization error:', error);
+
+    // Hide loading indicator on error too
+    const loading = document.getElementById('loading-indicator');
+    if (loading) {
+      loading.classList.remove('active');
+      loading.style.display = 'none';
+    }
   }
 }
+
+// ── Start ────────────────────────────────────
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
