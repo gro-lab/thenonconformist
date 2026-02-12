@@ -1,521 +1,527 @@
 // ============================================
-// GALLERY MODULE â€” Selector, masonry grid, canvas navigation
+// GALLERY MODULE — Selector, masonry grid, canvas navigation
+// Handles: manifest loading, cover images, grid rendering,
+// drag/wheel/touch/keyboard canvas navigation, lazy loading.
 // ============================================
 
-import { store, GALLERIES, GITHUB } from './store.js';
-import { bus } from './event-bus.js';
-import { createObserver } from './create-observer.js';
-import { dom } from './dom-elements.js';
-import { getDocIdFromUrl } from './firebase.js';
+import { store, GALLERIES, GITHUB_OWNER, GITHUB_REPO, GITHUB_BRANCH } from '../lib/store.js';
+import { bus } from '../lib/event-bus.js';
+import { dom } from '../dom-elements.js';
+import { createObserver } from '../lib/create-observer.js';
 
-let controller;        // AbortController for lifecycle cleanup
-let masonryObs = null; // current masonry IntersectionObserver handle
-let coverObs   = null; // current cover IntersectionObserver handle
+let controller;
+let lazyObserver = null;
 
-// â”€â”€ Image URL helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Utilities ────────────────────────────────
+
+const debounce = (fn, delay) => {
+  let timeoutId;
+  return (...args) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), delay);
+  };
+};
+
+// ── Image URL builders ───────────────────────
 
 function createImageUrl(dir, imageData) {
-  const filename = imageData.originalName || `${dir}-${imageData.index}.${imageData.ext}`;
-  return `${GITHUB.baseUrl}/images/${dir}/${filename}`;
+  const filename = typeof imageData === 'string' ? imageData : imageData.filename;
+  return `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/images/${dir}/${filename}`;
 }
 
 function createThumbnailUrl(dir, imageData) {
-  const filename = imageData.originalName || `${dir}-${imageData.index}.${imageData.ext}`;
-  return `${GITHUB.baseUrl}/images/thumbnails/${dir}/${filename}`;
+  const filename = typeof imageData === 'string' ? imageData : imageData.filename;
+  return `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/images/thumbnails/${dir}/${filename}`;
 }
 
-// â”€â”€ Sorting â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-function stableSortByLikes(items) {
-  return [...items].sort((a, b) => {
-    if (b.likes !== a.likes) return b.likes - a.likes;
-    return a.originalIndex - b.originalIndex;
-  });
-}
-
-// â”€â”€ Manifest â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Manifest loading ─────────────────────────
 
 export async function loadManifest() {
   try {
-    const url = `${GITHUB.baseUrl}/images.json`;
-    const response = await fetch(url);
+    const manifestUrl = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/images.json`;
+    console.log('📦 Loading manifest...');
+    const response = await fetch(manifestUrl);
 
-    if (!response.ok) return generateFallbackManifest();
+    if (!response.ok) throw new Error(`Manifest fetch failed: ${response.status}`);
 
     const manifest = await response.json();
     store.set('imageManifest', manifest);
-    console.log('âœ… Manifest loaded');
+    console.log('✅ Manifest loaded:', Object.keys(manifest));
     return manifest;
   } catch (error) {
-    console.warn('âš ï¸ Manifest load error:', error);
-    return generateFallbackManifest();
+    console.error('❌ Error loading manifest:', error);
+    throw error;
   }
 }
 
-function generateFallbackManifest() {
-  const manifest = {};
-  Object.keys(GALLERIES).forEach((key) => {
-    const dir = GALLERIES[key].dir;
-    manifest[dir] = [];
-    for (let i = 1; i <= 50; i++) {
-      manifest[dir].push({
-        index: i,
-        ext: 'JPEG',
-        originalName: `${dir}-${i}.JPEG`,
-        width: 1920,
-        height: 1080,
-        aspectRatio: '16:9',
-        orientation: 'horizontal',
-        aspectDecimal: 16 / 9,
-      });
-    }
-  });
-  store.set('imageManifest', manifest);
-  return manifest;
-}
+// ── Gallery covers: most-liked image as background ──
 
-// â”€â”€ Gallery Data Loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function getMostLikedImageUrl(galleryKey) {
+  const gallery = GALLERIES[galleryKey];
+  if (!gallery) return null;
 
-export async function loadGalleryData(galleryKey) {
-  const gallery   = GALLERIES[galleryKey];
-  const manifest  = store.get('imageManifest');
-  const imageList = manifest[gallery.dir] || [];
-
-  if (imageList.length === 0) return [];
+  const manifest = store.get('imageManifest');
+  const images = manifest[gallery.dir];
+  if (!images || images.length === 0) return null;
 
   const likesCache = store.get('likesCache');
 
-  const images = imageList.map((imageData, originalIndex) => {
-    const url   = createImageUrl(gallery.dir, imageData);
-    const docId = getDocIdFromUrl(url);
-    const likes = likesCache[docId] ?? 0;
+  // Sort by likes descending
+  const sorted = images
+    .map((img) => {
+      const url = createImageUrl(gallery.dir, img);
+      return { imageData: img, url, likes: likesCache[url] || 0 };
+    })
+    .sort((a, b) => b.likes - a.likes);
 
-    return {
-      url,
-      likes,
-      originalIndex,
-      gallery: galleryKey,
-      title: gallery.title,
-      alt: `${gallery.title} - Image ${imageData.index}`,
-      aspectRatio:
-        imageData.aspectDecimal ||
-        (imageData.width && imageData.height
-          ? imageData.width / imageData.height
-          : imageData.orientation === 'vertical' ? 9 / 16 : 16 / 9),
-      imageData,
-    };
-  });
-
-  const data = { ...store.get('galleryImageData'), [galleryKey]: images };
-  store.set('galleryImageData', data);
-  return images;
+  // Use thumbnail for cover to keep load fast
+  return createThumbnailUrl(gallery.dir, sorted[0].imageData);
 }
 
-function getMostLikedImageUrl(galleryKey) {
-  const allData = store.get('galleryImageData');
-  const images  = allData[galleryKey];
-  if (!images?.length) return '';
+export function setupGallerySelector() {
+  const manifest = store.get('imageManifest');
 
-  const sorted = stableSortByLikes(images);
-  return createThumbnailUrl(GALLERIES[galleryKey].dir, sorted[0].imageData);
-}
+  // Set cover images and counts
+  const coverPromises = [];
 
-// â”€â”€ Lazy-loading image helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  document.querySelectorAll('.gallery-cover').forEach((cover) => {
+    const galleryId = cover.dataset.gallery;
+    const gallery = GALLERIES[galleryId];
+    if (!gallery) return;
 
-function lazyLoadBg(item) {
-  const bgUrl = item.dataset.bg;
-  if (!bgUrl) return;
-
-  const img = new Image();
-  img.onload = () => {
-    item.style.backgroundImage = `url(${bgUrl})`;
-    item.classList.add('lazy-loaded');
-    delete item.dataset.bg;
-  };
-  img.onerror = () => {
-    item.classList.add('lazy-error');
-    delete item.dataset.bg;
-  };
-  img.src = bgUrl;
-}
-
-// â”€â”€ Gallery Selector Setup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-export async function setupGallerySelector() {
-  console.log('ðŸ”„ Setting up gallery selectorâ€¦');
-
-  await Promise.all(Object.keys(GALLERIES).map(loadGalleryData));
-
-  // Cover observer for lazy-loading gallery cover images
-  coverObs?.disconnect();
-  coverObs = createObserver({
-    rootMargin: '50px',
-    once: true,
-    onIntersect(entry) {
-      lazyLoadBg(entry.target);
-    },
-  });
-
-  const allData = store.get('galleryImageData');
-
-  Object.keys(GALLERIES).forEach((key) => {
-    const cover = document.querySelector(`.gallery-cover[data-gallery="${key}"]`);
-    const countEl = document.getElementById(`${key}-count`);
-
-    if (cover && allData[key]) {
-      const url = getMostLikedImageUrl(key);
-      if (url) {
-        cover.dataset.bg = url;
-        coverObs.observe(cover);
-      }
+    // Set image count
+    const countEl = document.getElementById(`${galleryId}-count`);
+    const images = manifest[gallery.dir];
+    if (countEl && images) {
+      countEl.textContent = `${images.length} photographs`;
     }
 
-    if (countEl && allData[key]) {
-      const count = allData[key].length;
-      const totalLikes = allData[key].reduce((sum, img) => sum + (img.likes || 0), 0);
-      countEl.textContent = `${count} Works ${totalLikes} Likes`;
+    // Set cover background from most liked image
+    const coverUrl = getMostLikedImageUrl(galleryId);
+    if (coverUrl) {
+      const img = new Image();
+      const promise = new Promise((resolve) => {
+        img.onload = () => {
+          cover.style.backgroundImage = `url('${coverUrl}')`;
+          resolve();
+        };
+        img.onerror = () => resolve(); // Don't block on error
+      });
+      img.src = coverUrl;
+      coverPromises.push(promise);
     }
   });
 
-  // Event delegation for gallery cover clicks
-  dom.gallerySelector?.addEventListener(
-    'click',
-    (e) => {
-      const cover = e.target.closest('.gallery-cover[data-gallery]');
-      if (cover) bus.emit('gallery:open', { galleryId: cover.dataset.gallery });
-    },
-    { signal: controller?.signal }
-  );
-
-  console.log('âœ… Gallery selector ready');
+  return Promise.all(coverPromises);
 }
 
-// â”€â”€ Open / Close Gallery â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+export function refreshGalleryCovers() {
+  document.querySelectorAll('.gallery-cover').forEach((cover) => {
+    const galleryId = cover.dataset.gallery;
+    const newUrl = getMostLikedImageUrl(galleryId);
+    if (newUrl) {
+      cover.style.backgroundImage = `url('${newUrl}')`;
+    }
+  });
+}
+
+// ── Open / Close gallery ─────────────────────
 
 export function openGallery(galleryId) {
+  const gallery = GALLERIES[galleryId];
+  if (!gallery) return;
+
+  store.set('savedScrollY', window.scrollY);
   store.set('currentGallery', galleryId);
-  store.set('homepageScrollY', window.scrollY || document.documentElement.scrollTop);
 
-  history.pushState({ page: 'gallery', gallery: galleryId }, '', window.location.href);
+  // Update header
+  if (dom.galleryTitle) dom.galleryTitle.textContent = gallery.title;
+  if (dom.gallerySubtitle) dom.gallerySubtitle.textContent = gallery.subtitle;
 
-  const siteIntro   = document.querySelector('.site-intro');
-  const termsFooter = document.querySelector('.terms-footer');
+  // Render masonry grid
+  renderMasonryGrid(galleryId);
 
-  dom.loadingIndicator?.classList.add('active');
-  dom.galleryTitle.textContent    = GALLERIES[galleryId].title;
-  dom.gallerySubtitle.textContent = GALLERIES[galleryId].subtitle;
+  // Show gallery content, hide selector
+  if (dom.galleryContent) dom.galleryContent.classList.add('active');
+  if (dom.gallerySelector) dom.gallerySelector.classList.add('hidden');
 
-  // Double rAF ensures spinner is painted before DOM swap
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      dom.gallerySelector?.classList.add('hidden');
-      siteIntro?.classList.add('hidden');
-      termsFooter?.classList.add('hidden');
+  // Hide site intro and terms footer
+  document.querySelector('.site-intro')?.classList.add('hidden');
+  document.querySelector('.terms-footer')?.classList.add('hidden');
 
-      setTimeout(() => {
-        loadGalleryContent(galleryId);
-        dom.loadingIndicator?.classList.remove('active');
-        dom.galleryContent?.classList.add('active');
-      }, 800);
-    });
-  });
+  // Push history state
+  if (!store.get('isPopstateClosing')) {
+    history.pushState({ type: 'gallery', id: galleryId }, '', `#${galleryId}`);
+  }
+
+  // Reset canvas position
+  resetCanvasPosition();
 }
 
 export function closeGalleryDirect() {
-  const siteIntro   = document.querySelector('.site-intro');
-  const termsFooter = document.querySelector('.terms-footer');
+  if (dom.galleryContent) dom.galleryContent.classList.remove('active');
+  if (dom.gallerySelector) dom.gallerySelector.classList.remove('hidden');
 
-  dom.loadingIndicator?.classList.add('active');
-  masonryObs?.disconnect();
-  masonryObs = null;
+  document.querySelector('.site-intro')?.classList.remove('hidden');
+  document.querySelector('.terms-footer')?.classList.remove('hidden');
 
-  refreshGalleryCounts();
-  refreshGalleryCovers();
+  // Disconnect lazy observer
+  lazyObserver?.disconnect();
 
+  // Restore scroll position
+  const savedY = store.get('savedScrollY');
   requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      dom.galleryContent?.classList.remove('active');
-
-      setTimeout(() => {
-        dom.gallerySelector?.classList.remove('hidden');
-        siteIntro?.classList.remove('hidden');
-        termsFooter?.classList.remove('hidden');
-        store.set('currentGallery', null);
-
-        requestAnimationFrame(() => {
-          window.scrollTo({ top: store.get('homepageScrollY'), behavior: 'instant' });
-          requestAnimationFrame(() => {
-            dom.loadingIndicator?.classList.remove('active');
-          });
-        });
-      }, 800);
-    });
+    window.scrollTo(0, savedY);
   });
+
+  store.set('currentGallery', null);
 }
 
-export function closeGallery() {
-  if (store.get('isPopstateClosing')) {
-    closeGalleryDirect();
-    return;
-  }
-  history.back();
-}
+// ── Masonry grid rendering ───────────────────
 
-// â”€â”€ Masonry Grid Rendering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-function loadGalleryContent(galleryId) {
+function renderMasonryGrid(galleryId) {
   const gallery = GALLERIES[galleryId];
-  const allData = store.get('galleryImageData');
-  const images  = allData[galleryId];
+  if (!gallery || !dom.masonryGrid) return;
 
-  if (!images?.length) {
-    console.error(`No images found for gallery: ${galleryId}`);
-    return;
+  const manifest = store.get('imageManifest');
+  const images = manifest[gallery.dir];
+  if (!images) return;
+
+  const likesCache = store.get('likesCache');
+
+  // Sort by likes
+  const sortedImages = images
+    .map((img) => {
+      const url = createImageUrl(gallery.dir, img);
+      return {
+        imageData: img,
+        url,
+        thumbnailUrl: createThumbnailUrl(gallery.dir, img),
+        likes: likesCache[url] || 0,
+      };
+    })
+    .sort((a, b) => b.likes - a.likes);
+
+  store.set('currentGalleryImages', sortedImages.map((s) => s.url));
+
+  // Build HTML
+  dom.masonryGrid.innerHTML = sortedImages
+    .map((item, index) => {
+      const orientation = getOrientation(item.imageData);
+      const aspectStyle = getAspectStyle(item.imageData);
+      return `
+        <div class="masonry-item ${orientation}" 
+             data-index="${index}" 
+             data-url="${item.url}"
+             style="animation-delay: ${index * 0.05}s; ${aspectStyle}">
+          <img data-src="${item.thumbnailUrl}" 
+               alt="${gallery.title} photograph ${index + 1}"
+               loading="lazy"
+               style="width: 100%; height: 100%; object-fit: cover;">
+          <div class="item-overlay">
+            <span class="item-likes">${item.likes > 0 ? '♥ ' + item.likes : ''}</span>
+          </div>
+        </div>`;
+    })
+    .join('');
+
+  // Setup lazy loading
+  setupLazyLoading();
+}
+
+function getOrientation(imageData) {
+  if (typeof imageData === 'object' && imageData.width && imageData.height) {
+    const ratio = imageData.width / imageData.height;
+    if (ratio > 1.2) return 'horizontal';
+    if (ratio < 0.8) return 'vertical';
+    return 'square';
   }
+  return 'vertical'; // default
+}
 
-  masonryObs?.disconnect();
-  dom.masonryGrid.innerHTML = '';
+function getAspectStyle(imageData) {
+  if (typeof imageData === 'object' && imageData.width && imageData.height) {
+    return `aspect-ratio: ${imageData.width}/${imageData.height};`;
+  }
+  return '';
+}
 
-  const sorted = stableSortByLikes(images);
-  store.set('currentGalleryImages', sorted);
+export function reloadCurrentGallery() {
+  const currentGallery = store.get('currentGallery');
+  if (currentGallery) {
+    renderMasonryGrid(currentGallery);
+  }
+}
 
-  console.log(`ðŸŽ¨ Rendering ${sorted.length} images for ${galleryId}`);
+// ── Lazy loading ─────────────────────────────
 
-  masonryObs = createObserver({
-    rootMargin: '0px',
+function setupLazyLoading() {
+  lazyObserver?.disconnect();
+
+  lazyObserver = createObserver({
+    targets: '#masonry-grid img[data-src]',
+    rootMargin: '200px 0px',
     once: true,
     onIntersect(entry) {
-      lazyLoadBg(entry.target);
+      const img = entry.target;
+      if (img.dataset.src) {
+        img.src = img.dataset.src;
+        img.removeAttribute('data-src');
+        img.addEventListener('load', () => {
+          img.closest('.masonry-item')?.classList.add('is-visible');
+        }, { once: true });
+      }
     },
   });
+}
 
-  sorted.forEach((image, index) => {
-    const item = document.createElement('div');
+// ── Canvas navigation (drag, wheel, touch, keyboard) ──
 
-    let orientation = 'square';
-    if (image.aspectRatio > 1.2) orientation = 'horizontal';
-    else if (image.aspectRatio < 0.8) orientation = 'vertical';
+let touchStartX = 0;
+let touchStartY = 0;
+let isTouchDragging = false;
 
-    item.className = `masonry-item ${orientation}`;
-    item.style.animationDelay = `${index * 0.05}s`;
-    item.dataset.bg = image.url;
-    item.dataset.imageIndex = index;
-
-    const overlay = document.createElement('div');
-    overlay.className = 'item-overlay';
-    overlay.style.opacity = '0';
-    overlay.innerHTML = `
-      <div class="item-category">${gallery.title}</div>
-      <div class="item-title">Image ${image.imageData.index}</div>
-      <div class="item-likes">â™¥ ${image.likes}</div>
-    `;
-
-    item.addEventListener('mouseenter', () => { overlay.style.opacity = '1'; });
-    item.addEventListener('mouseleave', () => { overlay.style.opacity = '0'; });
-
-    item.addEventListener('click', () => {
-      bus.emit('modal:open', {
-        imageUrl: image.url,
-        category: gallery.title,
-        galleryKey: galleryId,
-        imageIndex: index,
-      });
-    });
-
-    item.appendChild(overlay);
-    dom.masonryGrid.appendChild(item);
-    masonryObs.observe(item);
-  });
-
+function resetCanvasPosition() {
   store.set('scrollX', 0);
   store.set('scrollY', 0);
-
-  setTimeout(() => {
-    calculateScrollLimits();
-    updateCanvasTransform();
-  }, 100);
-  setTimeout(calculateScrollLimits, 500);
+  store.set('currentX', 0);
+  store.set('currentY', 0);
+  if (dom.canvasContainer) {
+    dom.canvasContainer.style.transform = 'translate(0px, 0px)';
+  }
 }
 
-// Publicly re-render current gallery (called after like updates)
-export function reloadCurrentGallery() {
-  const current = store.get('currentGallery');
-  if (current) loadGalleryContent(current);
+function updateCanvasPosition() {
+  const x = store.get('currentX');
+  const y = store.get('currentY');
+  if (dom.canvasContainer) {
+    dom.canvasContainer.style.transform = `translate(${x}px, ${y}px)`;
+  }
 }
 
-// â”€â”€ Refresh Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-function refreshGalleryCounts() {
-  const allData = store.get('galleryImageData');
-  Object.keys(GALLERIES).forEach((key) => {
-    const countEl = document.getElementById(`${key}-count`);
-    if (countEl && allData[key]) {
-      const count      = allData[key].length;
-      const totalLikes = allData[key].reduce((sum, img) => sum + (img.likes || 0), 0);
-      countEl.textContent = `${count} Works ${totalLikes} Likes`;
-    }
-  });
-}
-
-function refreshGalleryCovers() {
-  const allData = store.get('galleryImageData');
-  Object.keys(GALLERIES).forEach((key) => {
-    const cover = document.querySelector(`.gallery-cover[data-gallery="${key}"]`);
-    if (cover && allData[key]) {
-      const url = getMostLikedImageUrl(key);
-      if (url) {
-        cover.style.backgroundImage = `url(${url})`;
-        cover.classList.add('lazy-loaded');
-        delete cover.dataset.bg;
-      }
-    }
-  });
-}
-
-// â”€â”€ Canvas Navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-function updateCanvasTransform() {
+function clampPosition(x, y) {
   const container = dom.canvasContainer;
-  if (container) {
-    container.style.transform = `translate(${store.get('scrollX')}px, ${store.get('scrollY')}px)`;
-  }
+  const canvas = dom.infiniteCanvas;
+  if (!container || !canvas) return { x, y };
+
+  const containerRect = container.getBoundingClientRect();
+  const canvasRect = canvas.getBoundingClientRect();
+
+  const maxScrollX = Math.max(0, containerRect.width - canvasRect.width + 100);
+  const maxScrollY = Math.max(0, containerRect.height - canvasRect.height + 100);
+
+  return {
+    x: Math.max(-maxScrollX, Math.min(100, x)),
+    y: Math.max(-maxScrollY, Math.min(100, y)),
+  };
 }
 
-function clampScroll() {
-  const limits = store.get('scrollLimits');
-  store.set('scrollX', Math.max(limits.minX, Math.min(limits.maxX, store.get('scrollX'))));
-  store.set('scrollY', Math.max(limits.minY, Math.min(limits.maxY, store.get('scrollY'))));
+// Mouse drag
+function onMouseDown(e) {
+  if (e.target.closest('.masonry-item') || e.target.closest('.back-button')) return;
+  store.set('isDragging', true);
+  store.set('startX', e.clientX - store.get('currentX'));
+  store.set('startY', e.clientY - store.get('currentY'));
+  if (dom.infiniteCanvas) dom.infiniteCanvas.style.cursor = 'grabbing';
 }
 
-function calculateScrollLimits() {
-  const grid     = dom.masonryGrid;
-  const canvas   = dom.infiniteCanvas;
-  const viewport = dom.galleryContent;
-  if (!grid || !canvas || !viewport) return;
-
-  const gridRect     = grid.getBoundingClientRect();
-  const viewportRect = viewport.getBoundingClientRect();
-
-  const style         = getComputedStyle(canvas);
-  const paddingLeft   = parseInt(style.paddingLeft) || 20;
-  const paddingRight  = parseInt(style.paddingRight) || 20;
-  const paddingTop    = parseInt(style.paddingTop) || 120;
-  const paddingBottom = parseInt(style.paddingBottom) || 80;
-
-  const scrollableW = Math.max(0, gridRect.width  - viewportRect.width  + paddingLeft + paddingRight);
-  const scrollableH = Math.max(0, gridRect.height - viewportRect.height + paddingTop  + paddingBottom);
-
-  store.set('scrollLimits', {
-    minX: -scrollableW, maxX: scrollableW,
-    minY: -scrollableH, maxY: scrollableH,
-  });
+function onMouseMove(e) {
+  if (!store.get('isDragging')) return;
+  e.preventDefault();
+  const rawX = e.clientX - store.get('startX');
+  const rawY = e.clientY - store.get('startY');
+  const clamped = clampPosition(rawX, rawY);
+  store.set('currentX', clamped.x);
+  store.set('currentY', clamped.y);
+  updateCanvasPosition();
 }
 
-export function setupCanvasNavigation() {
-  const canvas         = dom.infiniteCanvas;
-  const galleryContent = dom.galleryContent;
-  if (!canvas) return;
+function onMouseUp() {
+  store.set('isDragging', false);
+  if (dom.infiniteCanvas) dom.infiniteCanvas.style.cursor = 'grab';
+}
 
-  const { signal } = controller;
+// Wheel scroll
+function onWheel(e) {
+  if (!dom.galleryContent?.classList.contains('active')) return;
+  e.preventDefault();
+  const rawX = store.get('currentX') - e.deltaX;
+  const rawY = store.get('currentY') - e.deltaY;
+  const clamped = clampPosition(rawX, rawY);
+  store.set('currentX', clamped.x);
+  store.set('currentY', clamped.y);
+  updateCanvasPosition();
+}
 
-  function isGalleryActive() {
-    return galleryContent?.classList.contains('active');
-  }
+// Touch
+function onTouchStart(e) {
+  if (e.target.closest('.masonry-item')) return;
+  const touch = e.touches[0];
+  touchStartX = touch.clientX;
+  touchStartY = touch.clientY;
+  isTouchDragging = false;
+  store.set('startX', touch.clientX - store.get('currentX'));
+  store.set('startY', touch.clientY - store.get('currentY'));
+}
 
-  // â”€â”€ Mouse drag â”€â”€
-  canvas.addEventListener('mousedown', (e) => {
-    if (!isGalleryActive()) return;
-    store.set('isDragging', true);
-    store.set('startX', e.clientX - store.get('scrollX'));
-    store.set('startY', e.clientY - store.get('scrollY'));
-    canvas.style.cursor = 'grabbing';
+function onTouchMove(e) {
+  if (e.target.closest('.masonry-item')) return;
+  const touch = e.touches[0];
+  const dx = Math.abs(touch.clientX - touchStartX);
+  const dy = Math.abs(touch.clientY - touchStartY);
+
+  if (dx > 5 || dy > 5) {
+    isTouchDragging = true;
+    // Prevent default only for canvas dragging, not for item clicks
     e.preventDefault();
-  }, { signal });
+  }
 
-  document.addEventListener('mousemove', (e) => {
-    if (!store.get('isDragging') || !isGalleryActive()) return;
-    store.set('scrollX', e.clientX - store.get('startX'));
-    store.set('scrollY', e.clientY - store.get('startY'));
-    clampScroll();
-    updateCanvasTransform();
-  }, { signal });
+  if (!isTouchDragging) return;
 
-  document.addEventListener('mouseup', () => {
-    store.set('isDragging', false);
-    canvas.style.cursor = '';
-  }, { signal });
-
-  // â”€â”€ Touch drag â”€â”€
-  canvas.addEventListener('touchstart', (e) => {
-    if (!isGalleryActive() || e.touches.length !== 1) return;
-    store.set('isDragging', true);
-    store.set('startX', e.touches[0].clientX - store.get('scrollX'));
-    store.set('startY', e.touches[0].clientY - store.get('scrollY'));
-  }, { passive: false, signal });
-
-  document.addEventListener('touchmove', (e) => {
-    if (!store.get('isDragging') || !isGalleryActive() || e.touches.length !== 1) return;
-    store.set('scrollX', e.touches[0].clientX - store.get('startX'));
-    store.set('scrollY', e.touches[0].clientY - store.get('startY'));
-    clampScroll();
-    updateCanvasTransform();
-  }, { passive: false, signal });
-
-  document.addEventListener('touchend', () => {
-    store.set('isDragging', false);
-  }, { signal });
-
-  // â”€â”€ Keyboard navigation â”€â”€
-  document.addEventListener('keydown', (e) => {
-    if (!isGalleryActive()) return;
-    // Let modal handle its own keys
-    if (!dom.modal?.hasAttribute('hidden')) return;
-
-    const speed = 30;
-    switch (e.key) {
-      case 'ArrowLeft':  store.set('scrollX', store.get('scrollX') + speed); break;
-      case 'ArrowRight': store.set('scrollX', store.get('scrollX') - speed); break;
-      case 'ArrowUp':    store.set('scrollY', store.get('scrollY') + speed); break;
-      case 'ArrowDown':  store.set('scrollY', store.get('scrollY') - speed); break;
-      case 'Escape':     closeGallery(); return;
-      default: return;
-    }
-    clampScroll();
-    updateCanvasTransform();
-  }, { signal });
-
-  // â”€â”€ Wheel â”€â”€
-  canvas.addEventListener('wheel', (e) => {
-    if (!isGalleryActive()) return;
-    e.preventDefault();
-    store.set('scrollX', store.get('scrollX') - e.deltaX * 0.5);
-    store.set('scrollY', store.get('scrollY') - e.deltaY * 0.5);
-    clampScroll();
-    updateCanvasTransform();
-  }, { passive: false, signal });
-
-  // â”€â”€ Resize â”€â”€
-  window.addEventListener('resize', () => {
-    if (isGalleryActive()) setTimeout(calculateScrollLimits, 100);
-  }, { signal });
+  const rawX = touch.clientX - store.get('startX');
+  const rawY = touch.clientY - store.get('startY');
+  const clamped = clampPosition(rawX, rawY);
+  store.set('currentX', clamped.x);
+  store.set('currentY', clamped.y);
+  updateCanvasPosition();
 }
 
-// â”€â”€ Back Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function onTouchEnd() {
+  isTouchDragging = false;
+}
+
+// Keyboard
+function onKeydown(e) {
+  if (!dom.galleryContent?.classList.contains('active')) return;
+  // Don't close gallery if modal is open
+  if (store.get('isModalOpen')) return;
+
+  const step = 100;
+  let x = store.get('currentX');
+  let y = store.get('currentY');
+
+  switch (e.key) {
+    case 'ArrowUp':
+      y += step;
+      break;
+    case 'ArrowDown':
+      y -= step;
+      break;
+    case 'ArrowLeft':
+      x += step;
+      break;
+    case 'ArrowRight':
+      x -= step;
+      break;
+    case 'Escape':
+      closeGalleryDirect();
+      if (!store.get('isPopstateClosing')) {
+        history.pushState({ type: 'home' }, '', window.location.pathname);
+      }
+      return;
+    default:
+      return;
+  }
+
+  e.preventDefault();
+  const clamped = clampPosition(x, y);
+  store.set('currentX', clamped.x);
+  store.set('currentY', clamped.y);
+  updateCanvasPosition();
+}
+
+// ── Grid item clicks → open modal ────────────
+
+function onGridClick(e) {
+  // Ignore if dragging
+  if (store.get('isDragging') || isTouchDragging) return;
+
+  const item = e.target.closest('.masonry-item');
+  if (!item) return;
+
+  e.stopPropagation();
+
+  const url = item.dataset.url;
+  const index = parseInt(item.dataset.index, 10);
+
+  bus.emit('photo:selected', { url, index });
+}
+
+// ── Back button ──────────────────────────────
 
 export function setupBackButton() {
-  dom.backButton?.addEventListener('click', closeGallery, { signal: controller?.signal });
+  // Handled through event delegation in initGallery
 }
 
-// â”€â”€ Lifecycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function onBackClick() {
+  closeGalleryDirect();
+  if (!store.get('isPopstateClosing')) {
+    history.pushState({ type: 'home' }, '', window.location.pathname);
+  }
+}
+
+// ── Setup gallery selector click delegation ──
+
+function onSelectorClick(e) {
+  const cover = e.target.closest('.gallery-cover');
+  if (!cover) return;
+
+  const galleryId = cover.dataset.gallery;
+  if (galleryId) {
+    bus.emit('gallery:open', { galleryId });
+  }
+}
+
+// ── Init / Destroy ───────────────────────────
 
 export function initGallery() {
   controller = new AbortController();
+  const { signal } = controller;
+
+  // Gallery selector delegation
+  dom.gallerySelector?.addEventListener('click', onSelectorClick, { signal });
+
+  // Canvas navigation — mouse
+  dom.infiniteCanvas?.addEventListener('mousedown', onMouseDown, { signal });
+  document.addEventListener('mousemove', onMouseMove, { signal });
+  document.addEventListener('mouseup', onMouseUp, { signal });
+
+  // Canvas navigation — wheel
+  dom.infiniteCanvas?.addEventListener('wheel', onWheel, { passive: false, signal });
+
+  // Canvas navigation — touch (iOS safe: passive false for touchmove only)
+  dom.infiniteCanvas?.addEventListener('touchstart', onTouchStart, { passive: true, signal });
+  dom.infiniteCanvas?.addEventListener('touchmove', onTouchMove, { passive: false, signal });
+  dom.infiniteCanvas?.addEventListener('touchend', onTouchEnd, { passive: true, signal });
+
+  // Canvas navigation — keyboard
+  document.addEventListener('keydown', onKeydown, { signal });
+
+  // Grid item clicks
+  dom.masonryGrid?.addEventListener('click', onGridClick, { signal });
+
+  // Back button
+  dom.backButton?.addEventListener('click', onBackClick, { signal });
+
+  // Debounced resize
+  window.addEventListener('resize', debounce(() => {
+    if (store.get('currentGallery')) {
+      resetCanvasPosition();
+    }
+  }, 150), { signal });
+
+  // Listen for cover refresh events
+  bus.on('gallery:covers:refresh', refreshGalleryCovers);
 }
 
 export function destroyGallery() {
   controller?.abort();
-  masonryObs?.disconnect();
-  coverObs?.disconnect();
-  masonryObs = null;
-  coverObs   = null;
+  lazyObserver?.disconnect();
+}
+
+// ── Setup canvas navigation (called from app.js) ──
+
+export function setupCanvasNavigation() {
+  // Canvas navigation is set up in initGallery() via event listeners.
+  // This export exists for API compatibility.
 }
