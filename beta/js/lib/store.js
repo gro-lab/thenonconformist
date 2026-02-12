@@ -1,74 +1,111 @@
-// js/lib/store.js
-import { bus } from './event-bus.js';
+// ============================================
+// STORE — Centralized Proxy-based state
+// Replaces all global variables with a reactive singleton
+// ============================================
+
+import { EventBus } from './event-bus.js';
 
 class Store {
-    constructor(initialState) {
-        this.state = new Proxy(initialState, {
-            set: (target, key, value) => {
-                const oldValue = target[key];
-                if (oldValue === value) return true;
-                target[key] = value;
-                bus.emit(`state:${key}`, { key, value, oldValue });
-                bus.emit('state:changed', { key, value, oldValue });
-                return true;
-            }
-        });
-    }
-
-    get(key) {
-        return this.state[key];
-    }
-
-    set(key, value) {
-        this.state[key] = value;
-    }
-
-    // Convenience: update an object property deeply (simple merge)
-    patch(key, updates) {
-        const current = this.get(key);
-        if (current && typeof current === 'object') {
-            this.set(key, { ...current, ...updates });
+  constructor(initialState) {
+    this.events = new EventBus();
+    this.state = new Proxy(initialState, {
+      set: (target, key, value) => {
+        const oldValue = target[key];
+        target[key] = value;
+        if (oldValue !== value) {
+          this.events.emit(`state:${key}`, { key, value, oldValue });
+          this.events.emit('state:changed', { key, value, oldValue });
         }
-    }
+        return true;
+      },
+    });
+  }
 
-    subscribe(key, callback) {
-        return bus.on(`state:${key}`, callback);
-    }
+  get(key) {
+    return this.state[key];
+  }
+
+  set(key, value) {
+    this.state[key] = value; // triggers Proxy set trap
+  }
+
+  subscribe(key, callback) {
+    return this.events.on(`state:${key}`, callback);
+  }
 }
 
+// ── Application State Singleton ──────────────
 export const store = new Store({
-    // ----- Gallery state -----
-    currentGallery: null,          // 'low', 'sol', 'r', 'sa'
-    galleryImageData: {},         // { low: [...], sol: [...], ... }
-    imageManifest: {},           // raw manifest from images.json
-    likesCache: {},             // docId -> like count
-    currentGalleryImages: [],   // sorted images for open gallery
-    currentModalImageUrl: null,
-    currentModalImageIndex: -1,
+  // Firebase
+  firebaseModules: null,
+  firebaseApp: null,
+  firebaseDb: null,
+  functionalCookiesEnabled: false,
 
-    // ----- UI state -----
-    isModalOpen: false,
-    isGalleryOpen: false,
-    isTermsModalOpen: false,
-    isCookieModalOpen: false,
+  // Image data
+  imageManifest: {},
+  likesCache: {},
+  galleryImageData: {},
 
-    // ----- Canvas navigation -----
-    scrollX: 0,
-    scrollY: 0,
-    scrollLimits: { minX: 0, maxX: 0, minY: 0, maxY: 0 },
-    isDragging: false,
-    dragStart: { x: 0, y: 0 },
+  // Gallery navigation
+  currentGallery: 'low',
+  currentGalleryImages: [],
 
-    // ----- Scroll memory -----
-    homepageScrollY: 0,
+  // Modal
+  currentModalImageUrl: null,
+  currentModalImageIndex: -1,
+  isModalOpen: false,
+  isProcessing: false,
 
-    // ----- Consent -----
-    functionalCookiesEnabled: false,
-    cookiePreferences: null,
+  // Canvas drag
+  isDragging: false,
+  startX: 0,
+  startY: 0,
+  scrollX: 0,
+  scrollY: 0,
+  scrollLimits: { minX: 0, maxX: 0, minY: 0, maxY: 0 },
 
-    // ----- Navigation FSM -----
-    navState: 'browsing',        // browsing, viewingGallery, viewingPhoto
+  // Scroll preservation
+  homepageScrollY: 0,
 
-    // ----- Misc -----
-    isProcessing: false,        // for like button debounce
+  // History navigation
+  isPopstateClosing: false,
 });
+
+// ── Static Configuration (never changes) ─────
+export const GALLERIES = {
+  low: {
+    title: 'Language of Windows',
+    dir: 'LoW',
+    subtitle: 'Exploring the silent stories behind glass',
+    color: '#FF6B35',
+  },
+  sol: {
+    title: 'Snapshots of Life',
+    dir: 'SoL',
+    subtitle: 'Capturing the raw essence of everyday moments',
+    color: '#9D4EDD',
+  },
+  r: {
+    title: 'Reflections',
+    dir: 'R',
+    subtitle: 'Where reality meets its mirror image',
+    color: '#06FFA5',
+  },
+  sa: {
+    title: 'Street Art',
+    dir: 'SA',
+    subtitle: 'Urban expressions and vibrant creativity',
+    color: '#FFD23F',
+  },
+};
+
+// GitHub image hosting constants
+export const GITHUB = {
+  owner: 'gro-lab',
+  repo: 'thenonconformist',
+  branch: 'main',
+  get baseUrl() {
+    return `https://raw.githubusercontent.com/${this.owner}/${this.repo}/${this.branch}`;
+  },
+};
