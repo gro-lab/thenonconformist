@@ -69,6 +69,25 @@ body {
     text-decoration: none;
 }
 
+.dashboard-link {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 10px 28px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #ffffff;
+    background: linear-gradient(135deg, var(--accent-orange), var(--accent-purple));
+    text-decoration: none;
+    letter-spacing: 0.05em;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.dashboard-link:hover {
+    opacity: 0.9;
+    transform: translateY(-2px);
+}
+
 /* Gallery Selector */
 .gallery-selector {
     max-width: 1400px;
