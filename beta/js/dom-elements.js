@@ -1,25 +1,26 @@
 // ============================================
-// DOM ELEMENTS — Centralized Proxy-based DOM cache
-// Lazy queries, auto-detects stale references via .isConnected
+// DOM ELEMENTS — Proxy-based lazy cache
+// Replaces scattered document.getElementById / querySelector calls.
+// Auto-revalidates via .isConnected check.
+//
+// Usage:
+//   import { dom } from '../dom-elements.js';
+//   dom.galleryContent  // cached querySelector('#gallery-content')
 // ============================================
 
-/**
- * Map of logical names → CSS selectors.
- * Every module uses `dom.galleryContent` instead of raw document.querySelector().
- */
 const selectors = {
-  // Gallery selector
+  // Gallery selector view
   gallerySelector:    '#gallery-selector',
+  loadingIndicator:   '#loading-indicator',
 
   // Gallery content view
   galleryContent:     '#gallery-content',
-  galleryTitle:       '#current-gallery-title',
-  gallerySubtitle:    '#current-gallery-subtitle',
-  masonryGrid:        '#masonry-grid',
   infiniteCanvas:     '#infinite-canvas',
   canvasContainer:    '#canvas-transform-container',
+  masonryGrid:        '#masonry-grid',
   backButton:         '#back-button',
-  loadingIndicator:   '#loading-indicator',
+  galleryTitle:       '#current-gallery-title',
+  gallerySubtitle:    '#current-gallery-subtitle',
 
   // Image modal
   modal:              '#modal',
@@ -60,14 +61,9 @@ const cache = new Map();
 
 /**
  * Proxy-based DOM cache.
- *
  * - Lazily queries the DOM on first access.
  * - Caches the result for subsequent accesses.
- * - Automatically re-queries if the cached element is detached (.isConnected === false).
- *
- * Usage:
- *   import { dom } from './dom-elements.js';
- *   dom.galleryContent  // returns the element, cached
+ * - Automatically re-queries if the cached element is detached.
  */
 export const dom = new Proxy(selectors, {
   get(target, key) {
@@ -85,7 +81,6 @@ export const dom = new Proxy(selectors, {
 /**
  * Clear cached DOM references.
  * Call with no args to flush everything, or pass specific keys.
- * Useful after innerHTML replacements or SPA route transitions.
  */
 export function clearDomCache(...keys) {
   if (keys.length) {
