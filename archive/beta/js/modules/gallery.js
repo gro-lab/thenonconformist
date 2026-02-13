@@ -1,10 +1,12 @@
 // js/modules/gallery.js
+// Gallery grid, masonry layout, lazy loading, cover images
 import { store } from '../lib/store.js';
 import { bus } from '../lib/event-bus.js';
 import { dom, clearDomCache } from '../dom-elements.js';
 import { errorHandler, withErrorHandling } from '../lib/error-handler.js';
-import { createObserver } from '../lib/create-observer.js';
+import { createObserver } from '../lib/create-observer.js'; // we'll need to create this helper
 
+// Gallery configuration
 const galleries = {
   low: {
     title: 'Language of Windows',
@@ -32,10 +34,7 @@ const galleries = {
   }
 };
 
-// Module-level observer references for cleanup
-let currentMasonryObserver = null;
-let currentCoverObserver = null;
-
+// Stable sort by likes
 const stableSortByLikes = (items) => {
   return [...items].sort((a, b) => {
     if (b.likes !== a.likes) return b.likes - a.likes;
@@ -43,6 +42,7 @@ const stableSortByLikes = (items) => {
   });
 };
 
+// Create image URLs
 const createImageUrl = (dir, imageData) => {
   const owner = 'gro-lab';
   const repo = 'thenonconformist';
@@ -59,6 +59,7 @@ const createThumbnailUrl = (dir, imageData) => {
   return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/thumbnails/${dir}/${filename}`;
 };
 
+// Load manifest
 const loadManifest = withErrorHandling(async () => {
   const owner = 'gro-lab';
   const repo = 'thenonconformist';
@@ -73,6 +74,7 @@ const loadManifest = withErrorHandling(async () => {
   return manifest;
 }, { module: 'gallery' });
 
+// Fallback manifest generator (same as original)
 const generateFallbackManifest = () => {
   const manifest = {};
   const defaultExtensions = {
@@ -102,6 +104,7 @@ const generateFallbackManifest = () => {
   return manifest;
 };
 
+// Load gallery data for a specific key – updates store.galleryImageData
 const loadGalleryData = (galleryKey) => {
   const gallery = galleries[galleryKey];
   const dir = gallery.dir;
@@ -128,12 +131,14 @@ const loadGalleryData = (galleryKey) => {
     };
   });
 
+  // Update store
   const galleryImageData = store.get('galleryImageData') || {};
   galleryImageData[galleryKey] = images;
   store.set('galleryImageData', galleryImageData);
   return images;
 };
 
+// Get most liked image for cover
 const getMostLikedImageUrl = (galleryKey) => {
   const galleryImageData = store.get('galleryImageData') || {};
   const images = galleryImageData[galleryKey];
@@ -143,6 +148,7 @@ const getMostLikedImageUrl = (galleryKey) => {
   return createThumbnailUrl(gallery.dir, sorted[0].imageData);
 };
 
+// Update gallery counts in UI
 const refreshGalleryCounts = () => {
   const galleryImageData = store.get('galleryImageData') || {};
   Object.keys(galleries).forEach(key => {
@@ -155,6 +161,7 @@ const refreshGalleryCounts = () => {
   });
 };
 
+// Refresh gallery cover images
 const refreshGalleryCovers = () => {
   Object.keys(galleries).forEach(key => {
     const cover = document.querySelector(`.gallery-cover[data-gallery="${key}"]`);
@@ -169,15 +176,15 @@ const refreshGalleryCovers = () => {
   });
 };
 
+// Setup gallery selector (cover images, counts)
 const setupGallerySelector = async () => {
   console.log('🔄 Setting up gallery selector...');
 
+  // Load data for all galleries
   await Promise.all(Object.keys(galleries).map(key => loadGalleryData(key)));
 
-  // Disconnect previous cover observer if any
-  if (currentCoverObserver) currentCoverObserver.disconnect();
-
-  currentCoverObserver = createObserver({
+  // Setup cover images with lazy observer
+  const coverObserver = createObserver({
     targets: '.gallery-cover[data-gallery]',
     rootMargin: '50px',
     once: true,
@@ -202,12 +209,14 @@ const setupGallerySelector = async () => {
     const mostLikedUrl = getMostLikedImageUrl(key);
     if (cover && mostLikedUrl) {
       cover.dataset.bg = mostLikedUrl;
-      currentCoverObserver.observe(cover);
+      coverObserver.observe(cover);
     }
   });
 
+  // Update counts
   refreshGalleryCounts();
 
+  // Attach click handlers
   document.querySelectorAll('.gallery-cover').forEach(cover => {
     cover.addEventListener('click', function() {
       const galleryId = this.dataset.gallery;
@@ -218,7 +227,9 @@ const setupGallerySelector = async () => {
   console.log('✅ Gallery selector setup complete');
 };
 
-const loadGalleryContent = (galleryId) => {
+// Load gallery content into masonry grid
+const loadGalleryContent = (galleryId, options = {}) => {
+  const { preserveScroll = false, showLoading = true } = options;
   const masonryGrid = dom.masonryGrid;
   const gallery = galleries[galleryId];
   const galleryImageData = store.get('galleryImageData') || {};
@@ -229,15 +240,17 @@ const loadGalleryContent = (galleryId) => {
     return;
   }
 
+  if (showLoading && dom.loadingIndicator) {
+    dom.loadingIndicator.classList.add('active');
+  }
+
   masonryGrid.innerHTML = '';
 
   const sortedImages = stableSortByLikes(images);
   store.set('currentGalleryImages', sortedImages);
 
-  // Disconnect previous masonry observer
-  if (currentMasonryObserver) currentMasonryObserver.disconnect();
-
-  currentMasonryObserver = createObserver({
+  // Create masonry observer for lazy loading
+  const masonryObserver = createObserver({
     targets: '.masonry-item', // will observe after creation
     rootMargin: '0px',
     once: true,
@@ -290,49 +303,71 @@ const loadGalleryContent = (galleryId) => {
 
     masonryItem.appendChild(overlay);
     masonryGrid.appendChild(masonryItem);
-    currentMasonryObserver.observe(masonryItem);
+    masonryObserver.observe(masonryItem);
   });
 
+  // Update header
   if (dom.currentGalleryTitle) dom.currentGalleryTitle.textContent = gallery.title;
   if (dom.currentGallerySubtitle) dom.currentGallerySubtitle.textContent = gallery.subtitle;
 
-  store.set('scrollX', 0);
-  store.set('scrollY', 0);
+  if (!preserveScroll) {
+    // Reset scroll only if not preserving
+    store.set('scrollX', 0);
+    store.set('scrollY', 0);
+  }
+
+  if (showLoading && dom.loadingIndicator) {
+    setTimeout(() => {
+      dom.loadingIndicator.classList.remove('active');
+    }, 100);
+  }
+
   setTimeout(() => {
     bus.emit('gallery:contentLoaded', galleryId);
   }, 100);
 };
 
+// Public function to re‑fetch gallery data and refresh UI
+const updateGalleryData = (galleryId) => {
+  loadGalleryData(galleryId);
+  refreshGalleryCounts();
+  refreshGalleryCovers();
+};
+
+// Public init
 export const initGallery = async () => {
   console.log('🖼️ Initializing gallery module...');
 
+  // Load manifest (or fallback)
   try {
     await loadManifest();
   } catch {
     generateFallbackManifest();
   }
 
+  // Setup selector UI
   await setupGallerySelector();
 
+  // Subscribe to events
   bus.on('gallery:open', (galleryId) => {
     store.set('currentGallery', galleryId);
     store.set('isGalleryOpen', true);
-    
-    // Store the current scroll position BEFORE any DOM changes
-    const currentScrollY = window.scrollY;
-    console.log('📌 Storing homepage scrollY:', currentScrollY);
-    store.set('homepageScrollY', currentScrollY);
+    // Save scroll position
+    store.set('homepageScrollY', window.scrollY);
 
+    // Show loading indicator
     if (dom.loadingIndicator) dom.loadingIndicator.classList.add('active');
 
+    // Hide selector, show gallery
     if (dom.gallerySelector) dom.gallerySelector.classList.add('hidden');
     document.querySelector('.site-intro')?.classList.add('hidden');
     document.querySelector('.terms-footer')?.classList.add('hidden');
 
+    // Double rAF to ensure spinner shows
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         setTimeout(() => {
-          loadGalleryContent(galleryId);
+          loadGalleryContent(galleryId, { preserveScroll: false, showLoading: true });
           if (dom.loadingIndicator) dom.loadingIndicator.classList.remove('active');
           if (dom.galleryContent) dom.galleryContent.classList.add('active');
         }, 800);
@@ -340,25 +375,23 @@ export const initGallery = async () => {
     });
   });
 
-  bus.on('gallery:close', () => {
-    // Clean up masonry observer
-    if (currentMasonryObserver) {
-      currentMasonryObserver.disconnect();
-      currentMasonryObserver = null;
-    }
-  });
-
   bus.on('consent:applied', () => {
+    // Refresh gallery data (likes may have changed)
     Object.keys(galleries).forEach(key => loadGalleryData(key));
     refreshGalleryCounts();
     refreshGalleryCovers();
+    // If gallery is open, refresh its content
     if (store.get('isGalleryOpen')) {
-      loadGalleryContent(store.get('currentGallery'));
+      loadGalleryContent(store.get('currentGallery'), { preserveScroll: true, showLoading: false });
     }
   });
 
-  bus.on('like:updated', () => {
-    refreshGalleryCounts();
-    refreshGalleryCovers();
+  // Listen for like updates – now includes galleryId
+  bus.on('like:updated', ({ galleryId }) => {
+    updateGalleryData(galleryId);
+    // If this gallery is currently open, re‑render with scroll preserved
+    if (store.get('isGalleryOpen') && store.get('currentGallery') === galleryId) {
+      loadGalleryContent(galleryId, { preserveScroll: true, showLoading: false });
+    }
   });
 };
