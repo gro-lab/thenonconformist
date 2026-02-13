@@ -201,7 +201,6 @@ body {
     border: none;
     color: rgba(255, 255, 255, 0.6);
     font-size: 0.9rem;
-    text-decoration: underline;
     cursor: pointer;
     transition: color 0.3s ease;
     text-decoration: none;
