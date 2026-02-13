@@ -66,9 +66,6 @@
     <!-- ============================================ -->
     <!-- EXTERNAL CONNECTIONS - GDPR COMPLIANT -->
     <!-- ============================================ -->
-    <!-- ✅ GDPR FIX: Third-party connections (Firebase/Google) are loaded -->
-    <!-- dynamically ONLY AFTER user consent in script.js -->
-    <!-- Images hosted on GitHub - functional requirement, minimal privacy impact -->
     <link rel="dns-prefetch" href="https://raw.githubusercontent.com">
     
     <!-- ============================================ -->
@@ -133,10 +130,10 @@
     }
     </script>
     
-    
     <!-- ============================================ -->
-    <!-- STYLESHEET -->
+    <!-- STYLESHEET (MODULAR) -->
     <!-- ============================================ -->
+    <!-- <link rel="stylesheet" href="css/main.css"> -->
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -146,10 +143,11 @@
         <p class="site-subtitle">ART IS A HUMAN RIGHT</p>
         <p class="site-description">Welcome to my world! The world of A Nonconformist. In my work, as in life, I don't look for perfection. I look for emotions. I want images to tell stories: evocative and inspiring. Building a connection to your own story. There is beauty everywhere if you just open your mind and heart to see it. Besides beauty, I'm looking for truth and honesty. Capturing the world in all its glory and misery. See the colors and wonder. Use your imagination to see the best of humanity.</p>
         <br/>
-        <p class="site-description">If you visit my <a href="https://www.instagram.com/then0nc0nformist/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" class="social-link"> <span>Instagram</span></a> you can follow my daily chronicle of life in pictures. </p>
+        <p class="site-description">If you visit my <a href="https://www.instagram.com/then0nc0nformist/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" class="social-link"> <span>Instagram</span></a> or <a href="https://www.facebook.com/then0nc0nformist/" target="_blank" rel="noopener noreferrer" aria-label="Facebook" class="social-link"><span>Facebook</span></a> you can follow my daily chronicle of life in pictures. </p>
         <p class="site-description"><a href="mailto:then-onconformist@outlook.com" aria-label="Email" class="social-link"><span>Email</span></a> me for more!</p> 
     </div>
- <!-- Gallery Selector View -->
+    
+    <!-- Gallery Selector View -->
     <div id="gallery-selector" class="gallery-selector">
         <div class="gallery-cover" data-gallery="low">
             <div class="gallery-cover-content">
@@ -227,7 +225,7 @@
         </button>
     </div>
 
-  <!-- Terms Modal -->
+    <!-- Terms Modal -->
     <div id="terms-modal" class="modal terms-modal" hidden>
         <button class="modal-close" id="terms-modal-close">×</button>
         <div class="modal-content terms-content">
@@ -238,7 +236,7 @@
                 <ul>
                     <li><strong>Data Controller:</strong> Peter Grosspersky</li>
                     <li><strong>Country:</strong> Romania</li>
-                    <li><strong>Email:</strong> <a href="mailto:then-onconformist@outlook.com" class="__cf_email__" data-cfemail="205448454e0d4f4e434f4e464f524d495354604f55544c4f4f4b0e434f4d"><span class="__cf_email__" data-cfemail="15617d707b387a7b767a7b737a67787c6661557a6061797a7a7e3b767a78">then-onconformist@outlook.com</span></a></li>
+                    <li><strong>Email:</strong> <a href="mailto:then-onconformist@outlook.com">then-onconformist@outlook.com</a></li>
                 </ul>
                 <p>Under Regulation (EU) 2016/679 (GDPR), the above person acts as the data controller responsible for the processing of personal data through this website.</p>
 
@@ -323,7 +321,6 @@
                   required to load images hosted on external platforms.
                 </p>
 
-
                 <h3>7. International data transfers</h3>
                 <p>Firebase is a service provided by Google LLC (United States). Google relies on Standard Contractual Clauses (SCCs) approved by the European Commission for international data transfers.</p>
 
@@ -346,7 +343,7 @@
                 <p>This Privacy Policy may be updated from time to time. The current version will always be available on this website.</p>
 
                 <h3>11. Contact</h3>
-                <p>For any questions regarding this Privacy Policy or to exercise your rights, contact us at: <a href="mailto:then-onconformist@outlook.com" data-cfemail="483c202d266527262b27262e273a25213b3c08273d3c24272723662b2725">then-onconformist@outlook.com</a></p>
+                <p>For any questions regarding this Privacy Policy or to exercise your rights, contact us at: <a href="mailto:then-onconformist@outlook.com">then-onconformist@outlook.com</a></p>
 
                 <h3>12. Photography and Artistic Expression</h3>
                 <p>Images displayed on this website may include public spaces and individuals captured in street photography contexts. These images are published under:</p>
@@ -355,7 +352,7 @@
                     <li><strong>Journalistic and artistic exemptions</strong> where applicable under EU and Romanian law</li>
                     <li><strong>Legitimate interest</strong> (Article 6(1)(f)) for documentary and artistic purposes</li>
                 </ul>
-                <p>If you appear in a photograph and wish for it to be removed, please contact us at <a href="mailto:then-onconformist@outlook.com"><span class="__cf_email__" data-cfemail="c9bda1aca7e4a6a7aaa6a7afa6bba4a0babd89a6bcbda5a6a6a2e7aaa6a4">then-onconformist@outlook.com</a> with:</p>
+                <p>If you appear in a photograph and wish for it to be removed, please contact us at <a href="mailto:then-onconformist@outlook.com">then-onconformist@outlook.com</a> with:</p>
                 <ul>
                     <li>The specific image URL and gallery name</li>
                     <li>Your reason for removal request</li>
@@ -394,10 +391,10 @@
         <div class="cookie-content">
             <h3>We value your privacy</h3>
             <p>We use essential technologies and optional functional storage to enable features such as <span style="color: #f28c28">image likes</span>.</p>
-            <div class="cookie-actions">
-                <button id="cookie-settings-btn" class="cookie-btn cookie-btn-secondary">Settings</button>
-                <button id="cookie-reject-btn" class="cookie-btn cookie-btn-secondary">Reject All</button>
-                <button id="cookie-accept-btn" class="cookie-btn cookie-btn-primary">Accept All</button>
+            <div class="cookie-actions" id="cookie-ui">
+                <button data-consent="settings" data-source="banner" class="cookie-btn cookie-btn-secondary">Settings</button>
+                <button data-consent="rejectAll" data-source="banner" class="cookie-btn cookie-btn-secondary">Reject All</button>
+                <button data-consent="acceptAll" data-source="banner" class="cookie-btn cookie-btn-primary">Accept All</button>
             </div>
         </div>
     </div>
@@ -411,7 +408,6 @@
               We use essential technologies and optional functional storage to enable site features.
             </p>
 
-            
             <div class="cookie-categories">
                 <div class="cookie-category">
                     <div class="cookie-category-header">
@@ -446,10 +442,10 @@
                 </div>
             </div>
             
-            <div class="cookie-modal-actions">
-                <button id="cookie-accept-all-btn" class="cookie-btn cookie-btn-secondary">Accept All</button>
-                <button id="cookie-reject-all-btn" class="cookie-btn cookie-btn-secondary">Reject All</button>
-                <button id="cookie-save-btn" class="cookie-btn cookie-btn-primary">Save Preferences</button> 
+            <div class="cookie-modal-actions" id="cookie-modal-ui">
+                <button data-consent="save" data-source="modal" class="cookie-btn cookie-btn-primary">Save Preferences</button>
+                <button data-consent="acceptAll" data-source="modal" class="cookie-btn cookie-btn-secondary">Accept All</button>
+                <button data-consent="rejectAll" data-source="modal" class="cookie-btn cookie-btn-secondary">Reject All</button>
             </div>
         </div>
     </div>
@@ -460,8 +456,8 @@
     </button>
 
     <!-- ============================================ -->
-    <!-- JAVASCRIPT - ES6 MODULE -->
+    <!-- JAVASCRIPT - ES6 MODULE ENTRY POINT -->
     <!-- ============================================ -->
-    <script type="module" src="script.js"></script>
+    <script type="module" src="js/app.js"></script>
 </body>
 </html>

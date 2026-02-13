@@ -1,4 +1,4 @@
-// js/modules/firebase.js
+// js/modules/firebase.js (fixed like event handling)
 // Firebase module - dynamically loaded only after user consent
 import { store } from '../lib/store.js';
 import { errorHandler, withErrorHandling } from '../lib/error-handler.js';
@@ -146,6 +146,15 @@ export const updateLike = withErrorHandling(async (url, increment_value) => {
     return initialLikes;
   }
 }, { module: 'firebase' });
+
+// Listen for like toggle events from modal
+bus.on('like:toggle', async ({ url, increment }) => {
+  if (!store.get('functionalCookiesEnabled')) return;
+  const newLikes = await updateLike(url, increment);
+  if (newLikes !== null) {
+    bus.emit('like:updated', { url, newLikes });
+  }
+});
 
 // Subscribe to consent changes to (re)init or teardown
 bus.on('consent:updated', (prefs) => {

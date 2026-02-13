@@ -884,6 +884,32 @@ body {
     }
 }
 
+/* Error Toast */
+.error-toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 71, 87, 0.95);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    z-index: 600;
+    max-width: 90vw;
+    text-align: center;
+    animation: fadeInItem 0.3s ease;
+}
+
+.error-toast[hidden] {
+    display: none;
+}
+
 .hidden {
     display: none !important;
+}
+
+
+#cookie-settings-modal .modal-close {
+    display: none;
 }

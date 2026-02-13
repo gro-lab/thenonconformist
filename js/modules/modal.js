@@ -102,21 +102,21 @@ const toggleLike = async () => {
     return;
   }
 
-  // Emit event for firebase module to handle
-  bus.emit('like:toggle', { url: currentPhoto });
-
-  // Optimistic UI update? We'll let the like:updated event handle it.
-  // But to give immediate feedback, we can toggle the heart class
   const docId = btoa(currentPhoto).replace(/[^a-zA-Z0-9]/g, '');
   const likedKey = `liked_${docId}`;
   const isCurrentlyLiked = localStorage.getItem(likedKey) === 'true';
-  // Toggle local storage optimistically
+  const increment = isCurrentlyLiked ? -1 : 1;
+
+  // Emit event for firebase module to handle
+  bus.emit('like:toggle', { url: currentPhoto, increment });
+
+  // Optimistic UI update
   if (isCurrentlyLiked) {
     localStorage.removeItem(likedKey);
   } else {
     localStorage.setItem(likedKey, 'true');
   }
-  updateLikeButton(); // update heart
+  updateLikeButton(); // update heart immediately
 };
 
 // Setup event listeners
@@ -164,11 +164,16 @@ const subscribeToEvents = () => {
 
   // When likes are updated (from firebase)
   bus.on('like:updated', ({ url, newLikes }) => {
+    // Update cache (firebase already did, but ensure store is updated)
+    // Then refresh button UI
     if (store.get('currentPhoto') === url) {
-      // Update like count in modal
-      const likeCountEl = dom.likeCount;
-      if (likeCountEl) likeCountEl.textContent = newLikes;
+      updateLikeButton();
     }
+  });
+
+  // Listen for modal close event from navigation (popstate)
+  bus.on('modal:close', () => {
+    closeModal();
   });
 };
 

@@ -226,7 +226,7 @@ const handlePopState = (e) => {
 
   const state = e.state || {};
 
-  // If modal is open, close it
+  // If picture modal is open, close it
   if (store.get('isModalOpen')) {
     bus.emit('modal:close'); // let modal module handle it
     isPopstateHandling = false;
@@ -236,6 +236,18 @@ const handlePopState = (e) => {
   // If terms modal is open, close it
   if (store.get('isTermsModalOpen')) {
     performCloseTermsModal();
+    isPopstateHandling = false;
+    return;
+  }
+
+  // If cookie modal is open, close it
+  if (store.get('isCookieModalOpen')) {
+    // Import dynamically to avoid circular dependency
+    import('./cookies.js').then(module => {
+      module.closeCookieModal?.();
+    }).catch(err => {
+      console.error('Failed to load cookies module:', err);
+    });
     isPopstateHandling = false;
     return;
   }

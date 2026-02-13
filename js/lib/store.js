@@ -1,4 +1,4 @@
-// js/lib/store.js
+// js/lib/store.js (updated with isCookieModalOpen)
 // Proxy-based reactive state store with event bus integration
 import { bus } from './event-bus.js';
 
@@ -63,6 +63,7 @@ const initialState = {
   isModalOpen: false,
   isGalleryOpen: false,
   isTermsModalOpen: false,
+  isCookieModalOpen: false, // added for cookie settings modal
   
   // Like/counts
   likesCache: {},
