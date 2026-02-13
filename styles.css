@@ -204,6 +204,7 @@ body {
     text-decoration: underline;
     cursor: pointer;
     transition: color 0.3s ease;
+    text-decoration: none;
 }
 
 .terms-link:hover {
