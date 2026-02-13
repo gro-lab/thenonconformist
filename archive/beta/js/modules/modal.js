@@ -1,10 +1,13 @@
 // js/modules/modal.js
+// Modal lightbox with navigation and like functionality
 import { store } from '../lib/store.js';
 import { bus } from '../lib/event-bus.js';
 import { dom } from '../dom-elements.js';
+import { errorHandler } from '../lib/error-handler.js';
 
-let isProcessing = false; // prevent double like clicks
+let currentAbortController = null;
 
+// Update like button UI based on current photo
 const updateLikeButton = () => {
   const currentPhoto = store.get('currentPhoto');
   if (!currentPhoto) return;
@@ -17,6 +20,7 @@ const updateLikeButton = () => {
 
   if (likeCountEl) likeCountEl.textContent = likes;
 
+  // Check if liked in localStorage (only if functional enabled)
   let isLiked = false;
   if (store.get('functionalCookiesEnabled')) {
     const likedKey = `liked_${docId}`;
@@ -33,6 +37,7 @@ const updateLikeButton = () => {
   }
 };
 
+// Navigate modal to previous/next image
 const navigateModal = (direction) => {
   const currentIndex = store.get('currentPhotoIndex');
   const images = store.get('currentGalleryImages') || [];
@@ -53,7 +58,9 @@ const navigateModal = (direction) => {
   updateLikeButton();
 };
 
+// Open modal
 const openModal = ({ url, galleryId, index }) => {
+  // Push history state
   history.pushState({ page: 'modal', gallery: galleryId }, '', window.location.href);
 
   store.set('currentPhoto', url);
@@ -66,6 +73,7 @@ const openModal = ({ url, galleryId, index }) => {
 
   updateLikeButton();
 
+  // Show/hide navigation buttons based on image count
   const images = store.get('currentGalleryImages') || [];
   if (images.length <= 1) {
     if (dom.modalPrev) dom.modalPrev.style.display = 'none';
@@ -76,6 +84,7 @@ const openModal = ({ url, galleryId, index }) => {
   }
 };
 
+// Close modal
 const closeModal = () => {
   store.set('isModalOpen', false);
   store.set('currentPhoto', null);
@@ -84,6 +93,7 @@ const closeModal = () => {
   document.body.style.overflow = 'auto';
 };
 
+// Toggle like
 const toggleLike = async () => {
   const currentPhoto = store.get('currentPhoto');
   if (!currentPhoto) return;
@@ -91,58 +101,48 @@ const toggleLike = async () => {
     alert('Please accept functional cookies to use the like feature.');
     return;
   }
-  if (isProcessing) return;
-
-  isProcessing = true;
-  const likeBtn = dom.likeBtn;
-  if (likeBtn) {
-    likeBtn.disabled = true;
-    likeBtn.classList.add('loading');
-    // Add spinner
-    const spinner = document.createElement('div');
-    spinner.className = 'like-btn-spinner';
-    likeBtn.appendChild(spinner);
-  }
 
   const docId = btoa(currentPhoto).replace(/[^a-zA-Z0-9]/g, '');
   const likedKey = `liked_${docId}`;
   const isCurrentlyLiked = localStorage.getItem(likedKey) === 'true';
   const increment = isCurrentlyLiked ? -1 : 1;
+  const galleryId = store.get('currentGallery');
 
-  try {
-    // Emit event for firebase module
-    bus.emit('like:toggle', { url: currentPhoto, increment });
+  // Emit event for firebase module to handle, including galleryId
+  bus.emit('like:toggle', { url: currentPhoto, increment, galleryId });
 
-    // Optimistic UI update
-    if (isCurrentlyLiked) {
-      localStorage.removeItem(likedKey);
-    } else {
-      localStorage.setItem(likedKey, 'true');
-    }
-    updateLikeButton();
-  } finally {
-    isProcessing = false;
-    if (likeBtn) {
-      likeBtn.disabled = false;
-      likeBtn.classList.remove('loading');
-      const spinner = likeBtn.querySelector('.like-btn-spinner');
-      if (spinner) spinner.remove();
-    }
+  // Optimistic UI update
+  if (isCurrentlyLiked) {
+    localStorage.removeItem(likedKey);
+  } else {
+    localStorage.setItem(likedKey, 'true');
   }
+  updateLikeButton(); // update heart immediately
 };
 
+// Setup event listeners
 const setupEventListeners = () => {
-  const abortController = new AbortController();
-  const { signal } = abortController;
+  // Abort previous controller if any
+  if (currentAbortController) currentAbortController.abort();
+  currentAbortController = new AbortController();
+  const { signal } = currentAbortController;
 
+  // Modal close button
   dom.modalClose?.addEventListener('click', closeModal, { signal });
+
+  // Click on modal background
   dom.modal?.addEventListener('click', (e) => {
     if (e.target === dom.modal) closeModal();
   }, { signal });
+
+  // Like button
   dom.likeBtn?.addEventListener('click', toggleLike, { signal });
+
+  // Navigation buttons
   dom.modalPrev?.addEventListener('click', () => navigateModal('prev'), { signal });
   dom.modalNext?.addEventListener('click', () => navigateModal('next'), { signal });
 
+  // Keyboard navigation
   document.addEventListener('keydown', (e) => {
     if (!store.get('isModalOpen')) return;
     if (e.key === 'Escape') closeModal();
@@ -150,6 +150,7 @@ const setupEventListeners = () => {
     else if (e.key === 'ArrowRight') navigateModal('next');
   }, { signal });
 
+  // Handle history back
   window.addEventListener('popstate', (e) => {
     if (store.get('isModalOpen')) {
       closeModal();
@@ -157,22 +158,37 @@ const setupEventListeners = () => {
   }, { signal });
 };
 
+// Subscribe to events
 const subscribeToEvents = () => {
+  // When photo selected from gallery
   bus.on('photo:select', openModal);
-  bus.on('like:updated', ({ url }) => {
+
+  // When likes are updated (from firebase)
+  bus.on('like:updated', ({ url, newLikes }) => {
+    // Update cache (firebase already did, but ensure store is updated)
+    // Then refresh button UI
     if (store.get('currentPhoto') === url) {
       updateLikeButton();
     }
   });
-  bus.on('modal:close', closeModal);
+
+  // Listen for modal close event from navigation (popstate)
+  bus.on('modal:close', () => {
+    closeModal();
+  });
 };
 
+// Public init
 export const initModal = () => {
   console.log('🔲 Initializing modal module...');
   setupEventListeners();
   subscribeToEvents();
 };
 
+// Cleanup (if needed)
 export const destroyModal = () => {
-  // Cleanup handled by AbortController, but we could store it if needed
+  if (currentAbortController) {
+    currentAbortController.abort();
+    currentAbortController = null;
+  }
 };
