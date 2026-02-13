@@ -281,7 +281,8 @@ const loadGalleryContent = (galleryId, options = {}) => {
 
     masonryItem.className = `masonry-item ${orientation}`;
     masonryItem.style.animationDelay = `${index * 0.05}s`;
-    masonryItem.dataset.bg = image.url;
+    // Set thumbnail as background image
+    masonryItem.dataset.bg = createThumbnailUrl(gallery.dir, image.imageData);
     masonryItem.dataset.imageId = index;
 
     const overlay = document.createElement('div');
@@ -352,8 +353,6 @@ export const initGallery = async () => {
   bus.on('gallery:open', (galleryId) => {
     store.set('currentGallery', galleryId);
     store.set('isGalleryOpen', true);
-    // Save scroll position
-    store.set('homepageScrollY', window.scrollY);
 
     // Show loading indicator
     if (dom.loadingIndicator) dom.loadingIndicator.classList.add('active');
