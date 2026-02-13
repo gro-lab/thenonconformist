@@ -60,7 +60,7 @@ const navigateModal = (direction) => {
 
 // Open modal
 const openModal = ({ url, galleryId, index }) => {
-  // Push history state
+  // Push history state so that back closes the modal
   history.pushState({ page: 'modal', gallery: galleryId }, '', window.location.href);
 
   store.set('currentPhoto', url);
@@ -84,7 +84,7 @@ const openModal = ({ url, galleryId, index }) => {
   }
 };
 
-// Close modal
+// Close modal (called only from popstate handler or internally when resetting)
 const closeModal = () => {
   store.set('isModalOpen', false);
   store.set('currentPhoto', null);
@@ -127,12 +127,12 @@ const setupEventListeners = () => {
   currentAbortController = new AbortController();
   const { signal } = currentAbortController;
 
-  // Modal close button
-  dom.modalClose?.addEventListener('click', closeModal, { signal });
+  // Modal close button – use history.back() to let popstate handle closing
+  dom.modalClose?.addEventListener('click', () => history.back(), { signal });
 
-  // Click on modal background
+  // Click on modal background – also use history.back()
   dom.modal?.addEventListener('click', (e) => {
-    if (e.target === dom.modal) closeModal();
+    if (e.target === dom.modal) history.back();
   }, { signal });
 
   // Like button
@@ -142,20 +142,16 @@ const setupEventListeners = () => {
   dom.modalPrev?.addEventListener('click', () => navigateModal('prev'), { signal });
   dom.modalNext?.addEventListener('click', () => navigateModal('next'), { signal });
 
-  // Keyboard navigation
+  // Keyboard navigation – Escape calls history.back()
   document.addEventListener('keydown', (e) => {
     if (!store.get('isModalOpen')) return;
-    if (e.key === 'Escape') closeModal();
+    if (e.key === 'Escape') history.back();
     else if (e.key === 'ArrowLeft') navigateModal('prev');
     else if (e.key === 'ArrowRight') navigateModal('next');
   }, { signal });
 
-  // Handle history back
-  window.addEventListener('popstate', (e) => {
-    if (store.get('isModalOpen')) {
-      closeModal();
-    }
-  }, { signal });
+  // Handle history back – popstate is handled in navigation module,
+  // which emits 'modal:close'. We subscribe to that below.
 };
 
 // Subscribe to events
