@@ -281,7 +281,8 @@ const loadGalleryContent = (galleryId, options = {}) => {
 
     masonryItem.className = `masonry-item ${orientation}`;
     masonryItem.style.animationDelay = `${index * 0.05}s`;
-    masonryItem.dataset.bg = image.url;
+    // Set thumbnail as background image
+    masonryItem.dataset.bg = createThumbnailUrl(gallery.dir, image.imageData);
     masonryItem.dataset.imageId = index;
 
     const overlay = document.createElement('div');
@@ -334,8 +335,6 @@ const updateGalleryData = (galleryId) => {
   refreshGalleryCovers();
 };
 
-// ... (everything above remains the same)
-
 // Public init
 export const initGallery = async () => {
   console.log('🖼️ Initializing gallery module...');
@@ -354,7 +353,6 @@ export const initGallery = async () => {
   bus.on('gallery:open', (galleryId) => {
     store.set('currentGallery', galleryId);
     store.set('isGalleryOpen', true);
-    // ⬇️ REMOVED the line that saves homepageScrollY – now handled by navigation
 
     // Show loading indicator
     if (dom.loadingIndicator) dom.loadingIndicator.classList.add('active');
@@ -396,23 +394,3 @@ export const initGallery = async () => {
     }
   });
 };
-
-  bus.on('consent:applied', () => {
-    // Refresh gallery data (likes may have changed)
-    Object.keys(galleries).forEach(key => loadGalleryData(key));
-    refreshGalleryCounts();
-    refreshGalleryCovers();
-    // If gallery is open, refresh its content
-    if (store.get('isGalleryOpen')) {
-      loadGalleryContent(store.get('currentGallery'), { preserveScroll: true, showLoading: false });
-    }
-  });
-
-  // Listen for like updates – now includes galleryId
-  bus.on('like:updated', ({ galleryId }) => {
-    updateGalleryData(galleryId);
-    // If this gallery is currently open, re‑render with scroll preserved
-    if (store.get('isGalleryOpen') && store.get('currentGallery') === galleryId) {
-      loadGalleryContent(galleryId, { preserveScroll: true, showLoading: false });
-    }
-  });
