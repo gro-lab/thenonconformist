@@ -106,9 +106,10 @@ const toggleLike = async () => {
   const likedKey = `liked_${docId}`;
   const isCurrentlyLiked = localStorage.getItem(likedKey) === 'true';
   const increment = isCurrentlyLiked ? -1 : 1;
+  const galleryId = store.get('currentGallery');
 
-  // Emit event for firebase module to handle
-  bus.emit('like:toggle', { url: currentPhoto, increment });
+  // Emit event for firebase module to handle, including galleryId
+  bus.emit('like:toggle', { url: currentPhoto, increment, galleryId });
 
   // Optimistic UI update
   if (isCurrentlyLiked) {
