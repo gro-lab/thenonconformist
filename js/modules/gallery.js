@@ -416,4 +416,3 @@ export const initGallery = async () => {
       loadGalleryContent(galleryId, { preserveScroll: true, showLoading: false });
     }
   });
-};
