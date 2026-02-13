@@ -317,7 +317,11 @@ export const initGallery = async () => {
   bus.on('gallery:open', (galleryId) => {
     store.set('currentGallery', galleryId);
     store.set('isGalleryOpen', true);
-    store.set('homepageScrollY', window.scrollY);
+    
+    // Store the current scroll position BEFORE any DOM changes
+    const currentScrollY = window.scrollY;
+    console.log('📌 Storing homepage scrollY:', currentScrollY);
+    store.set('homepageScrollY', currentScrollY);
 
     if (dom.loadingIndicator) dom.loadingIndicator.classList.add('active');
 
