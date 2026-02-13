@@ -1,4 +1,4 @@
-// js/modules/navigation.js (spinner removed on close)
+// js/modules/navigation.js
 // Navigation module: history API, back button, canvas panning, swipe, keyboard
 import { store } from '../lib/store.js';
 import { bus } from '../lib/event-bus.js';
@@ -142,14 +142,16 @@ const handleKeyDown = (e) => {
 
 // ==================== Gallery Open/Close ====================
 const openGallery = (galleryId) => {
+  // Capture current scroll position BEFORE any DOM changes
+  const currentScrollY = window.scrollY;
+  console.log('📌 Storing homepage scrollY:', currentScrollY);
+  store.set('homepageScrollY', currentScrollY);
+  
   store.set('currentGallery', galleryId);
   store.set('isGalleryOpen', true);
-  store.set('homepageScrollY', window.scrollY);
 
   // Push history state
   history.pushState({ page: 'gallery', gallery: galleryId }, '', window.location.href);
-
-  // The event to open gallery is emitted by the gallery cover click; we do not re-emit here.
 };
 
 const closeGallery = () => {
@@ -162,13 +164,9 @@ const closeGallery = () => {
 };
 
 const performCloseGallery = () => {
-  // 🚫 Spinner removed – no loading indicator when closing
-  // if (dom.loadingIndicator) dom.loadingIndicator.classList.add('active'); // removed
-
   // Emit event for gallery module to clean up
   bus.emit('gallery:close');
 
-  // Double rAF for smooth transition
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       dom.galleryContent?.classList.remove('active');
@@ -179,8 +177,13 @@ const performCloseGallery = () => {
         document.querySelector('.terms-footer')?.classList.remove('hidden');
         store.set('isGalleryOpen', false);
 
-        // Restore scroll
-        window.scrollTo({ top: store.get('homepageScrollY'), behavior: 'instant' });
+        // Restore scroll position after DOM is updated
+        const savedScrollY = store.get('homepageScrollY');
+        console.log('📌 Restoring homepage scrollY:', savedScrollY);
+        
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: savedScrollY, behavior: 'instant' });
+        });
 
         // Ensure loading indicator is hidden (if any other code added it)
         if (dom.loadingIndicator) dom.loadingIndicator.classList.remove('active');
@@ -326,6 +329,12 @@ const subscribeToEvents = () => {
 // Public init
 export const initNavigation = () => {
   console.log('🧭 Initializing navigation module...');
+  
+  // Disable automatic browser scroll restoration
+  if ('scrollRestoration' in history) {
+    history.scrollRestoration = 'manual';
+  }
+  
   abortController = new AbortController();
 
   pushHomepageTrap();
