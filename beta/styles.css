@@ -908,3 +908,8 @@ body {
 .hidden {
     display: none !important;
 }
+
+
+#cookie-settings-modal .modal-close {
+    display: none;
+}

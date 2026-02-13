@@ -66,9 +66,6 @@
     <!-- ============================================ -->
     <!-- EXTERNAL CONNECTIONS - GDPR COMPLIANT -->
     <!-- ============================================ -->
-    <!-- ✅ GDPR FIX: Third-party connections (Firebase/Google) are loaded -->
-    <!-- dynamically ONLY AFTER user consent in script.js -->
-    <!-- Images hosted on GitHub - functional requirement, minimal privacy impact -->
     <link rel="dns-prefetch" href="https://raw.githubusercontent.com">
     
     <!-- ============================================ -->
@@ -134,8 +131,9 @@
     </script>
     
     <!-- ============================================ -->
-    <!-- STYLESHEET -->
+    <!-- STYLESHEET (MODULAR) -->
     <!-- ============================================ -->
+    <!-- <link rel="stylesheet" href="css/main.css"> -->
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -145,17 +143,16 @@
         <p class="site-subtitle">ART IS A HUMAN RIGHT</p>
         <p class="site-description">Welcome to my world! The world of A Nonconformist. In my work, as in life, I don't look for perfection. I look for emotions. I want images to tell stories: evocative and inspiring. Building a connection to your own story. There is beauty everywhere if you just open your mind and heart to see it. Besides beauty, I'm looking for truth and honesty. Capturing the world in all its glory and misery. See the colors and wonder. Use your imagination to see the best of humanity.</p>
         <br/>
-        <p class="site-description">If you visit my <a href="https://www.instagram.com/then0nc0nformist/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" class="social-link"><span>Instagram</span></a> or <a href="https://www.facebook.com/then0nc0nformist/" target="_blank" rel="noopener noreferrer" aria-label="Facebook" class="social-link"><span>Facebook</span></a> you can follow my daily chronicle of life in pictures.</p>
-        <p class="site-description"><a href="mailto:then-onconformist@outlook.com" aria-label="Email" class="social-link"><span>Email</span></a> me for more!</p>
-        <a href="dashboard.html" class="dashboard-link" aria-label="Personal Dashboard">My Dashboard</a>
+        <p class="site-description">If you visit my <a href="https://www.instagram.com/then0nc0nformist/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" class="social-link"> <span>Instagram</span></a> or <a href="https://www.facebook.com/then0nc0nformist/" target="_blank" rel="noopener noreferrer" aria-label="Facebook" class="social-link"><span>Facebook</span></a> you can follow my daily chronicle of life in pictures. </p>
+        <p class="site-description"><a href="mailto:then-onconformist@outlook.com" aria-label="Email" class="social-link"><span>Email</span></a> me for more!</p> 
     </div>
-
+    
     <!-- Gallery Selector View -->
     <div id="gallery-selector" class="gallery-selector">
         <div class="gallery-cover" data-gallery="low">
             <div class="gallery-cover-content">
                 <div class="gallery-title gallery-title-low">Language of Windows</div>
-                <div class="gallery-description-text">Sometimes we look through them, sometimes at them. They let the light in, and keep the cold out. Sometimes we express ourselves with them, sometimes we reflect in them. As does the world around us. They talk about history, or the future yet to come. They tell their stories — stories of humanity, past, present and future. The Language of Windows has been talking for decades and are still talking now. They frame our perception of the world, creating boundaries between interior and exterior spaces.</div>
+                <div class="gallery-description-text">Sometimes we look through them, sometimes at them. They let the light in, and keep the cold out. Sometimes we express ourselves with them, sometimes we reflect in them. As does the world around us. They talk about history, or the future yet to come. They tell their stories - stories of humanity, past, present and future. The Language of Windows has been talking for decades and are still talking now. They frame our perception of the world, creating boundaries between interior and exterior spaces.</div>
                 <div class="gallery-count" id="low-count">Loading...</div>
             </div>
         </div>
@@ -191,7 +188,7 @@
     </div>
 
     <!-- Loading Indicator -->
-    <div id="loading-indicator" class="loading-indicator active">
+    <div id="loading-indicator" class="loading-indicator">
         <div class="loading-spinner"></div>
     </div>
 
@@ -255,7 +252,11 @@
                     <li>your cookie / storage preferences</li>
                     <li>local information related to the "like" feature (to prevent repeated likes from the same browser)</li>
                 </ul>
-                <p>This data is processed in a pseudonymous manner and is not used to identify individuals. The website does not combine this data with other information to identify users.</p>
+               <p>
+                  This data is processed in a pseudonymous manner and is not used to identify
+                  individuals. The website does not combine this data with other information to
+                  identify users.
+                </p>
 
                 <h4>3.2. Firebase (Google) processing</h4>
                 <p>If you enable optional functionality, the website uses Firebase Firestore, a service provided by Google, to:</p>
@@ -289,12 +290,23 @@
                 <p>✅ Third-party services (Firebase) are loaded ONLY after you accept functional cookies.</p>
 
                 <h3>5. Legal basis for processing</h3>
-                <p>Depending on the specific processing activity, personal data is processed based on the following legal grounds:</p>
+                <p>
+                  Depending on the specific processing activity, personal data is processed
+                  based on the following legal grounds:
+                </p>
                 <ul>
-                    <li><strong>Article 6(1)(a) GDPR — Consent</strong>, for optional functional features such as image likes enabled via Firebase.</li>
-                    <li><strong>Article 6(1)(f) GDPR — Legitimate interest</strong>, for the publication of artistic photographs and the handling of user correspondence.</li>
+                  <li>
+                    <strong>Article 6(1)(a) GDPR – Consent</strong>, for optional functional
+                    features such as image likes enabled via Firebase.
+                  </li>
+                  <li>
+                    <strong>Article 6(1)(f) GDPR – Legitimate interest</strong>, for the
+                    publication of artistic photographs and the handling of user correspondence.
+                  </li>
                 </ul>
-                <p>Each processing activity is limited to its stated purpose.</p>
+                <p>
+                  Each processing activity is limited to its stated purpose.
+                </p>
 
                 <h3>6. Cookies and similar technologies</h3>
                 <p>This website does not use advertising or tracking cookies.</p>
@@ -304,7 +316,10 @@
                     <li>local storage for preferences and the "like" feature</li>
                 </ul>
                 <p>Optional functionality is disabled by default and activated only after consent.</p>
-                <p>The website may perform minimal technical network requests (such as DNS resolution) required to load images hosted on external platforms.</p>
+                <p>
+                  The website may perform minimal technical network requests (such as DNS resolution)
+                  required to load images hosted on external platforms.
+                </p>
 
                 <h3>7. International data transfers</h3>
                 <p>Firebase is a service provided by Google LLC (United States). Google relies on Standard Contractual Clauses (SCCs) approved by the European Commission for international data transfers.</p>
@@ -369,17 +384,17 @@
                 </ul>
             </div>
         </div>
-    </div>
+    </div> 
 
     <!-- Cookie Banner -->
     <div id="cookie-banner" class="cookie-banner" hidden>
         <div class="cookie-content">
             <h3>We value your privacy</h3>
             <p>We use essential technologies and optional functional storage to enable features such as <span style="color: #f28c28">image likes</span>.</p>
-            <div class="cookie-actions">
-                <button id="cookie-settings-btn" class="cookie-btn cookie-btn-secondary">Settings</button>
-                <button id="cookie-reject-btn" class="cookie-btn cookie-btn-secondary">Reject All</button>
-                <button id="cookie-accept-btn" class="cookie-btn cookie-btn-primary">Accept All</button>
+            <div class="cookie-actions" id="cookie-ui">
+                <button data-consent="settings" data-source="banner" class="cookie-btn cookie-btn-secondary">Settings</button>
+                <button data-consent="rejectAll" data-source="banner" class="cookie-btn cookie-btn-secondary">Reject All</button>
+                <button data-consent="acceptAll" data-source="banner" class="cookie-btn cookie-btn-primary">Accept All</button>
             </div>
         </div>
     </div>
@@ -389,7 +404,9 @@
         <button class="modal-close" id="cookie-modal-close">×</button>
         <div class="modal-content cookie-settings-content">
             <h2>Cookie Settings</h2>
-            <p class="cookie-intro">We use essential technologies and optional functional storage to enable site features.</p>
+            <p class="cookie-intro">
+              We use essential technologies and optional functional storage to enable site features.
+            </p>
 
             <div class="cookie-categories">
                 <div class="cookie-category">
@@ -403,7 +420,9 @@
                             <span class="cookie-slider"></span>
                         </label>
                     </div>
-                    <p class="cookie-category-description">These cookies are necessary for the website to function.</p>
+                    <p class="cookie-category-description">
+                        These cookies are necessary for the website to function.
+                    </p>
                 </div>
 
                 <div class="cookie-category">
@@ -417,26 +436,27 @@
                             <span class="cookie-slider"></span>
                         </label>
                     </div>
-                    <p class="cookie-category-description">Remembers which images you've liked.</p>
+                    <p class="cookie-category-description">
+                        Remembers which images you've liked.
+                    </p>
                 </div>
             </div>
             
-            <div class="cookie-modal-actions">
-                <button id="cookie-accept-all-btn" class="cookie-btn cookie-btn-secondary">Accept All</button>
-                <button id="cookie-reject-all-btn" class="cookie-btn cookie-btn-secondary">Reject All</button>
-                <button id="cookie-save-btn" class="cookie-btn cookie-btn-primary">Save Preferences</button>
+            <div class="cookie-modal-actions" id="cookie-modal-ui">
+                <button data-consent="save" data-source="modal" class="cookie-btn cookie-btn-primary">Save Preferences</button>
+                <button data-consent="acceptAll" data-source="modal" class="cookie-btn cookie-btn-secondary">Accept All</button>
+                <button data-consent="rejectAll" data-source="modal" class="cookie-btn cookie-btn-secondary">Reject All</button>
             </div>
         </div>
     </div>
 
-    <!-- Cookie Settings Float Button -->
-    <button id="cookie-float-btn" class="cookie-float-btn" hidden aria-label="Cookie Settings">🍪</button>
-
-    <!-- Error Toast -->
-    <div id="error-container" class="error-toast" hidden></div>
+    <!-- Cookie Settings Floating Button -->
+    <button id="cookie-float-btn" class="cookie-float-btn" aria-label="Cookie Settings">
+        🍪
+    </button>
 
     <!-- ============================================ -->
-    <!-- MAIN SCRIPT — ES6 Module Entry Point -->
+    <!-- JAVASCRIPT - ES6 MODULE ENTRY POINT -->
     <!-- ============================================ -->
     <script type="module" src="js/app.js"></script>
 </body>

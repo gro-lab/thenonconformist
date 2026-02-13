@@ -1,84 +1,47 @@
-// ============================================
-// APP.JS — Entry point / Orchestrator
-// Single DOMContentLoaded, clear initialization order.
-// Cross-module wiring via event bus.
-// ============================================
-
+// js/app.js - Entry point
 import { store } from './lib/store.js';
-import { bus } from './lib/event-bus.js';
-import './lib/error-handler.js'; // Self-initializing — installs global handlers
-
-// Modules
-import { initFirebase, fetchAllLikes } from './modules/firebase.js';
-import {
-  initGallery,
-  loadManifest,
-  setupGallerySelector,
-  openGallery,
-  reloadCurrentGallery,
-} from './modules/gallery.js';
+import { errorHandler } from './lib/error-handler.js';
+import { initDomCache } from './dom-elements.js';
+import { initCookieConsent } from './modules/cookies.js';
+import { initFirebase } from './modules/firebase.js';
+import { initGallery } from './modules/gallery.js';
 import { initModal } from './modules/modal.js';
-import { initCookieBanner, initCookieListeners } from './modules/cookies.js';
 import { initNavigation } from './modules/navigation.js';
-
-// ── Wire cross-module events via bus ─────────
-
-bus.on('gallery:open', ({ galleryId }) => openGallery(galleryId));
-bus.on('gallery:reload', () => reloadCurrentGallery());
-
-// ── Bootstrap ────────────────────────────────
 
 async function init() {
   try {
-    console.log('🚀 Initializing The Nonconformist…');
-
-    // 1. Cookie consent (sync — reads localStorage & shows banner if needed)
-    initCookieBanner();
-
-    // 2. Load image manifest
-    await loadManifest();
-
-    // 3. If functional cookies already accepted, init Firebase + fetch likes
+    console.log('🚀 Initializing The Nonconformist (modular)...');
+    
+    // 1. Set up global error handling first
+    errorHandler.setupGlobalHandlers();
+    
+    // 2. Initialize DOM cache (Proxy-based)
+    initDomCache();
+    
+    // 3. Load persisted cookie preferences and init cookie module
+    await initCookieConsent();
+    
+    // 4. If functional cookies allowed, init Firebase
     if (store.get('functionalCookiesEnabled')) {
-      try {
-        await initFirebase();
-        await fetchAllLikes();
-      } catch (err) {
-        console.warn('⚠️ Firebase init skipped:', err.message);
-      }
+      await initFirebase();
     }
-
-    // 4. Setup gallery selector (cover images, counts)
-    await setupGallerySelector();
-
-    // 5. Init all module listeners
-    initGallery();
+    
+    // 5. Initialize gallery (depends on Firebase data if enabled)
+    await initGallery();
+    
+    // 6. Initialize modal (lightbox)
     initModal();
-    initCookieListeners();
+    
+    // 7. Initialize navigation (History API / FSM)
     initNavigation();
-
-    // 6. Hide loading indicator
-    const loading = document.getElementById('loading-indicator');
-    if (loading) {
-      loading.classList.remove('active');
-      setTimeout(() => { loading.style.display = 'none'; }, 800);
-    }
-
-    console.log('✅ The Nonconformist initialized successfully');
+    
+    console.log('✅ All modules initialized');
   } catch (error) {
-    console.error('❌ Initialization error:', error);
-
-    // Hide loading indicator on error too
-    const loading = document.getElementById('loading-indicator');
-    if (loading) {
-      loading.classList.remove('active');
-      loading.style.display = 'none';
-    }
+    errorHandler.handle(error, { module: 'app' });
   }
 }
 
-// ── Start ────────────────────────────────────
-
+// Start when DOM ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {

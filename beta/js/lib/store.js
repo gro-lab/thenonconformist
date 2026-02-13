@@ -1,24 +1,24 @@
-// ============================================
-// STORE — Centralized Proxy-based reactive state
-// Replaces ~20 global variables with a single
-// reactive, subscribable singleton.
-// ============================================
-
-import { EventBus } from './event-bus.js';
+// js/lib/store.js
+// Proxy-based reactive state store with event bus integration
+import { bus } from './event-bus.js';
 
 class Store {
-  constructor(initialState) {
-    this.events = new EventBus();
+  constructor(initialState = {}) {
+    this.bus = bus; // Use shared event bus
     this.state = new Proxy(initialState, {
       set: (target, key, value) => {
         const oldValue = target[key];
+        if (oldValue === value) return true; // no change
+        
         target[key] = value;
-        if (oldValue !== value) {
-          this.events.emit(`state:${key}`, { key, value, oldValue });
-          this.events.emit('state:changed', { key, value, oldValue });
-        }
+        
+        // Emit specific event for this key
+        this.bus.emit(`state:${String(key)}`, { key, value, oldValue });
+        // Emit generic state changed event
+        this.bus.emit('state:changed', { key, value, oldValue });
+        
         return true;
-      },
+      }
     });
   }
 
@@ -30,79 +30,67 @@ class Store {
     this.state[key] = value; // triggers Proxy
   }
 
+  // Bulk update
+  patch(obj) {
+    Object.entries(obj).forEach(([key, value]) => {
+      this.state[key] = value;
+    });
+  }
+
+  // Subscribe to changes for a specific key
   subscribe(key, callback) {
-    return this.events.on(`state:${key}`, callback);
+    return this.bus.on(`state:${String(key)}`, callback);
+  }
+
+  // Subscribe to any state change
+  subscribeAll(callback) {
+    return this.bus.on('state:changed', callback);
+  }
+
+  // Get entire state snapshot (for debugging)
+  snapshot() {
+    return { ...this.state };
   }
 }
 
-// ── Gallery configuration ────────────────────
-
-export const GALLERIES = {
-  low: {
-    title: 'Language of Windows',
-    dir: 'LoW',
-    subtitle: 'Exploring the silent stories behind glass',
-    color: '#FF6B35',
-  },
-  sol: {
-    title: 'Snapshots of Life',
-    dir: 'SoL',
-    subtitle: 'Capturing the raw essence of everyday moments',
-    color: '#9D4EDD',
-  },
-  r: {
-    title: 'Reflections',
-    dir: 'R',
-    subtitle: 'Where reality meets its mirror image',
-    color: '#06FFA5',
-  },
-  sa: {
-    title: 'Street Art',
-    dir: 'SA',
-    subtitle: 'Urban expressions and vibrant creativity',
-    color: '#FFD23F',
-  },
-};
-
-// ── GitHub repository config ─────────────────
-
-export const GITHUB_OWNER = 'gro-lab';
-export const GITHUB_REPO = 'thenonconformist';
-export const GITHUB_BRANCH = 'main';
-
-// ── Singleton store instance ─────────────────
-
-export const store = new Store({
-  // Image data
-  imageManifest: {},
-  likesCache: {},
-  galleryImageData: {},
-
-  // Current gallery state
-  currentGallery: null,
+// Initial state based on original globals
+const initialState = {
+  // Gallery state
+  currentGallery: 'low',
+  currentPhoto: null,
+  currentPhotoIndex: -1,
   currentGalleryImages: [],
-
-  // Modal state
-  currentModalImageUrl: null,
-  currentModalImageIndex: -1,
   isModalOpen: false,
-
-  // Processing flag
-  isProcessing: false,
-
+  isGalleryOpen: false,
+  isTermsModalOpen: false,
+  
+  // Like/counts
+  likesCache: {},
+  
+  // Cookie consent
+  functionalCookiesEnabled: false,
+  cookiePreferences: null,
+  
   // Navigation
-  isPopstateClosing: false,
-  savedScrollY: 0,
-
-  // Canvas drag state
+  homepageScrollY: 0,
   isDragging: false,
-  startX: 0,
-  startY: 0,
   scrollX: 0,
   scrollY: 0,
-  currentX: 0,
-  currentY: 0,
+  scrollLimits: { minX: 0, maxX: 0, minY: 0, maxY: 0 },
+  
+  // Firebase (lazy)
+  firebaseApp: null,
+  firebaseDb: null,
+  firebaseModules: null,
+  
+  // Image manifest
+  imageManifest: {},
+  galleryImageData: {
+    low: [],
+    sol: [],
+    r: [],
+    sa: []
+  }
+};
 
-  // GDPR / Cookies
-  functionalCookiesEnabled: false,
-});
+export const store = new Store(initialState);

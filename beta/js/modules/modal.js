@@ -1,228 +1,188 @@
-// ============================================
-// MODAL MODULE — Lightbox, likes, image navigation
-// Listens for 'photo:selected' from gallery.js via event bus.
-// ============================================
-
+// js/modules/modal.js
+// Modal lightbox with navigation and like functionality
 import { store } from '../lib/store.js';
 import { bus } from '../lib/event-bus.js';
 import { dom } from '../dom-elements.js';
-import { toggleLike, getLikeCount, isImageLiked } from './firebase.js';
+import { errorHandler } from '../lib/error-handler.js';
 
-let controller;
+let currentAbortController = null;
 
-// ── Open / Close ─────────────────────────────
+// Update like button UI based on current photo
+const updateLikeButton = () => {
+  const currentPhoto = store.get('currentPhoto');
+  if (!currentPhoto) return;
 
-async function openModal({ url, index }) {
-  store.set('currentModalImageUrl', url);
-  store.set('currentModalImageIndex', index);
+  const likesCache = store.get('likesCache') || {};
+  const docId = btoa(currentPhoto).replace(/[^a-zA-Z0-9]/g, '');
+  const likes = likesCache[docId] || 0;
+  const likeCountEl = dom.likeCount;
+  const heartEl = dom.likeBtn?.querySelector('.heart');
+
+  if (likeCountEl) likeCountEl.textContent = likes;
+
+  // Check if liked in localStorage (only if functional enabled)
+  let isLiked = false;
+  if (store.get('functionalCookiesEnabled')) {
+    const likedKey = `liked_${docId}`;
+    isLiked = localStorage.getItem(likedKey) === 'true';
+  }
+
+  if (heartEl) {
+    heartEl.textContent = isLiked ? '♥' : '♡';
+    if (isLiked) {
+      dom.likeBtn?.classList.add('liked');
+    } else {
+      dom.likeBtn?.classList.remove('liked');
+    }
+  }
+};
+
+// Navigate modal to previous/next image
+const navigateModal = (direction) => {
+  const currentIndex = store.get('currentPhotoIndex');
+  const images = store.get('currentGalleryImages') || [];
+  if (images.length === 0) return;
+
+  let newIndex;
+  if (direction === 'prev') {
+    newIndex = (currentIndex - 1 + images.length) % images.length;
+  } else {
+    newIndex = (currentIndex + 1) % images.length;
+  }
+
+  const nextImage = images[newIndex];
+  store.set('currentPhoto', nextImage.url);
+  store.set('currentPhotoIndex', newIndex);
+  if (dom.modalImg) dom.modalImg.src = nextImage.url;
+
+  updateLikeButton();
+};
+
+// Open modal
+const openModal = ({ url, galleryId, index }) => {
+  // Push history state
+  history.pushState({ page: 'modal', gallery: galleryId }, '', window.location.href);
+
+  store.set('currentPhoto', url);
+  store.set('currentPhotoIndex', index);
   store.set('isModalOpen', true);
 
-  if (dom.modal) dom.modal.hidden = false;
-  if (dom.modalImg) {
-    dom.modalImg.src = url;
-    dom.modalImg.alt = `Photo ${index + 1}`;
+  if (dom.modalImg) dom.modalImg.src = url;
+  dom.modal?.removeAttribute('hidden');
+  document.body.style.overflow = 'hidden';
+
+  updateLikeButton();
+
+  // Show/hide navigation buttons based on image count
+  const images = store.get('currentGalleryImages') || [];
+  if (images.length <= 1) {
+    if (dom.modalPrev) dom.modalPrev.style.display = 'none';
+    if (dom.modalNext) dom.modalNext.style.display = 'none';
+  } else {
+    if (dom.modalPrev) dom.modalPrev.style.display = 'flex';
+    if (dom.modalNext) dom.modalNext.style.display = 'flex';
   }
+};
 
-  updateLikeUI(url);
-
-  // Push history state for back button
-  if (!store.get('isPopstateClosing')) {
-    history.pushState(
-      { type: 'photo', url, index, gallery: store.get('currentGallery') },
-      '',
-      `#photo-${index}`
-    );
-  }
-}
-
-function closeModal() {
+// Close modal
+const closeModal = () => {
   store.set('isModalOpen', false);
-  store.set('currentModalImageUrl', null);
-  store.set('currentModalImageIndex', -1);
+  store.set('currentPhoto', null);
+  store.set('currentPhotoIndex', -1);
+  dom.modal?.setAttribute('hidden', '');
+  document.body.style.overflow = 'auto';
+};
 
-  if (dom.modal) dom.modal.hidden = true;
-  if (dom.modalImg) dom.modalImg.src = '';
-}
-
-export function closeModalDirect() {
-  closeModal();
-}
-
-// ── Like UI ──────────────────────────────────
-
-async function updateLikeUI(url) {
-  if (!url) return;
-
-  const liked = isImageLiked(url);
-  const count = await getLikeCount(url);
-
-  if (dom.likeBtn) {
-    dom.likeBtn.classList.toggle('liked', liked);
-    const heart = dom.likeBtn.querySelector('.heart');
-    if (heart) heart.textContent = liked ? '♥' : '♡';
-  }
-  if (dom.likeCount) {
-    dom.likeCount.textContent = count;
-  }
-}
-
-async function handleLikeClick() {
-  const url = store.get('currentModalImageUrl');
-  if (!url || store.get('isProcessing')) return;
-
+// Toggle like
+const toggleLike = async () => {
+  const currentPhoto = store.get('currentPhoto');
+  if (!currentPhoto) return;
   if (!store.get('functionalCookiesEnabled')) {
     alert('Please accept functional cookies to use the like feature.');
     return;
   }
 
-  // Show spinner
-  if (dom.likeBtn) {
-    dom.likeBtn.classList.add('loading');
-    const spinner = document.createElement('div');
-    spinner.className = 'like-btn-spinner';
-    dom.likeBtn.appendChild(spinner);
+  // Emit event for firebase module to handle
+  bus.emit('like:toggle', { url: currentPhoto });
+
+  // Optimistic UI update? We'll let the like:updated event handle it.
+  // But to give immediate feedback, we can toggle the heart class
+  const docId = btoa(currentPhoto).replace(/[^a-zA-Z0-9]/g, '');
+  const likedKey = `liked_${docId}`;
+  const isCurrentlyLiked = localStorage.getItem(likedKey) === 'true';
+  // Toggle local storage optimistically
+  if (isCurrentlyLiked) {
+    localStorage.removeItem(likedKey);
+  } else {
+    localStorage.setItem(likedKey, 'true');
   }
+  updateLikeButton(); // update heart
+};
 
-  try {
-    const result = await toggleLike(url);
-    if (result) {
-      if (dom.likeBtn) {
-        dom.likeBtn.classList.toggle('liked', result.isLiked);
-        const heart = dom.likeBtn.querySelector('.heart');
-        if (heart) heart.textContent = result.isLiked ? '♥' : '♡';
-      }
-      if (dom.likeCount) {
-        dom.likeCount.textContent = result.count;
-      }
-    }
-  } finally {
-    // Remove spinner
-    if (dom.likeBtn) {
-      dom.likeBtn.classList.remove('loading');
-      const spinner = dom.likeBtn.querySelector('.like-btn-spinner');
-      if (spinner) spinner.remove();
-    }
-  }
-}
+// Setup event listeners
+const setupEventListeners = () => {
+  // Abort previous controller if any
+  if (currentAbortController) currentAbortController.abort();
+  currentAbortController = new AbortController();
+  const { signal } = currentAbortController;
 
-// ── Navigation (prev/next) ───────────────────
+  // Modal close button
+  dom.modalClose?.addEventListener('click', closeModal, { signal });
 
-function navigatePhoto(direction) {
-  const images = store.get('currentGalleryImages');
-  let index = store.get('currentModalImageIndex');
-  if (!images || images.length === 0) return;
-
-  index += direction;
-  if (index < 0) index = images.length - 1;
-  if (index >= images.length) index = 0;
-
-  const url = images[index];
-  store.set('currentModalImageUrl', url);
-  store.set('currentModalImageIndex', index);
-
-  if (dom.modalImg) {
-    dom.modalImg.src = url;
-    dom.modalImg.alt = `Photo ${index + 1}`;
-  }
-
-  updateLikeUI(url);
-
-  // Replace history state for photo navigation
-  history.replaceState(
-    { type: 'photo', url, index, gallery: store.get('currentGallery') },
-    '',
-    `#photo-${index}`
-  );
-}
-
-// ── Touch swipe on modal ─────────────────────
-
-let modalTouchStartX = 0;
-
-function onModalTouchStart(e) {
-  modalTouchStartX = e.touches[0].clientX;
-}
-
-function onModalTouchEnd(e) {
-  const dx = e.changedTouches[0].clientX - modalTouchStartX;
-  if (Math.abs(dx) > 50) {
-    navigatePhoto(dx > 0 ? -1 : 1);
-  }
-}
-
-// ── Keyboard ─────────────────────────────────
-
-function onKeydown(e) {
-  if (!store.get('isModalOpen')) return;
-
-  switch (e.key) {
-    case 'Escape':
-      e.preventDefault();
-      closeModal();
-      if (!store.get('isPopstateClosing')) {
-        history.back();
-      }
-      break;
-    case 'ArrowLeft':
-      e.preventDefault();
-      navigatePhoto(-1);
-      break;
-    case 'ArrowRight':
-      e.preventDefault();
-      navigatePhoto(1);
-      break;
-  }
-}
-
-// ── Init / Destroy ───────────────────────────
-
-export function initModal() {
-  controller = new AbortController();
-  const { signal } = controller;
-
-  // Subscribe to photo selection from gallery
-  bus.on('photo:selected', openModal);
-
-  // Close button
-  dom.modalClose?.addEventListener('click', () => {
-    closeModal();
-    if (!store.get('isPopstateClosing')) {
-      history.back();
-    }
-  }, { signal });
-
-  // Click outside image to close
+  // Click on modal background
   dom.modal?.addEventListener('click', (e) => {
-    if (e.target === dom.modal) {
-      closeModal();
-      if (!store.get('isPopstateClosing')) {
-        history.back();
-      }
-    }
+    if (e.target === dom.modal) closeModal();
   }, { signal });
-
-  // Navigation buttons
-  dom.modalPrev?.addEventListener('click', () => navigatePhoto(-1), { signal });
-  dom.modalNext?.addEventListener('click', () => navigatePhoto(1), { signal });
 
   // Like button
-  dom.likeBtn?.addEventListener('click', handleLikeClick, { signal });
+  dom.likeBtn?.addEventListener('click', toggleLike, { signal });
 
-  // Touch swipe on modal
-  dom.modal?.addEventListener('touchstart', onModalTouchStart, { passive: true, signal });
-  dom.modal?.addEventListener('touchend', onModalTouchEnd, { passive: true, signal });
+  // Navigation buttons
+  dom.modalPrev?.addEventListener('click', () => navigateModal('prev'), { signal });
+  dom.modalNext?.addEventListener('click', () => navigateModal('next'), { signal });
 
-  // Keyboard (modal-specific)
-  document.addEventListener('keydown', onKeydown, { signal });
+  // Keyboard navigation
+  document.addEventListener('keydown', (e) => {
+    if (!store.get('isModalOpen')) return;
+    if (e.key === 'Escape') closeModal();
+    else if (e.key === 'ArrowLeft') navigateModal('prev');
+    else if (e.key === 'ArrowRight') navigateModal('next');
+  }, { signal });
 
-  // Listen for like updates from firebase module
-  bus.on('likes:updated', ({ url }) => {
-    if (url === store.get('currentModalImageUrl')) {
-      updateLikeUI(url);
+  // Handle history back
+  window.addEventListener('popstate', (e) => {
+    if (store.get('isModalOpen')) {
+      closeModal();
+    }
+  }, { signal });
+};
+
+// Subscribe to events
+const subscribeToEvents = () => {
+  // When photo selected from gallery
+  bus.on('photo:select', openModal);
+
+  // When likes are updated (from firebase)
+  bus.on('like:updated', ({ url, newLikes }) => {
+    if (store.get('currentPhoto') === url) {
+      // Update like count in modal
+      const likeCountEl = dom.likeCount;
+      if (likeCountEl) likeCountEl.textContent = newLikes;
     }
   });
-}
+};
 
-export function destroyModal() {
-  controller?.abort();
-}
+// Public init
+export const initModal = () => {
+  console.log('🔲 Initializing modal module...');
+  setupEventListeners();
+  subscribeToEvents();
+};
+
+// Cleanup (if needed)
+export const destroyModal = () => {
+  if (currentAbortController) {
+    currentAbortController.abort();
+    currentAbortController = null;
+  }
+};

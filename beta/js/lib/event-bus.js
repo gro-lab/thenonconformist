@@ -1,49 +1,44 @@
-// ============================================
-// EVENT BUS — Pub/sub for cross-module communication
-// Modules never import each other directly;
-// they communicate through named events on this bus.
-// ============================================
+// js/lib/event-bus.js
+// Simple pub/sub event bus for decoupled communication
 
 export class EventBus {
   constructor() {
     this.listeners = {};
   }
 
-  /**
-   * Subscribe to an event. Returns an unsubscribe function.
-   * @param {string} event
-   * @param {Function} fn
-   * @returns {Function} unsubscribe
-   */
   on(event, fn) {
     (this.listeners[event] ??= []).push(fn);
+    // Return unsubscribe function
     return () => {
-      this.listeners[event] = this.listeners[event].filter((f) => f !== fn);
+      this.listeners[event] = this.listeners[event].filter(f => f !== fn);
     };
   }
 
-  /**
-   * Emit an event with optional data payload.
-   * @param {string} event
-   * @param {*} data
-   */
-  emit(event, data) {
-    this.listeners[event]?.forEach((fn) => fn(data));
+  once(event, fn) {
+    const wrapper = (data) => {
+      fn(data);
+      this.off(event, wrapper);
+    };
+    this.on(event, wrapper);
   }
 
-  /**
-   * Subscribe to an event, but only fire once.
-   * @param {string} event
-   * @param {Function} fn
-   */
-  once(event, fn) {
-    const unsub = this.on(event, (data) => {
-      unsub();
-      fn(data);
-    });
-    return unsub;
+  off(event, fn) {
+    if (!this.listeners[event]) return;
+    this.listeners[event] = this.listeners[event].filter(f => f !== fn);
+  }
+
+  emit(event, data) {
+    this.listeners[event]?.forEach(fn => fn(data));
+  }
+
+  clear(event) {
+    if (event) {
+      delete this.listeners[event];
+    } else {
+      this.listeners = {};
+    }
   }
 }
 
-// Singleton instance shared across all modules
+// Singleton instance for app-wide use
 export const bus = new EventBus();

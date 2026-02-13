@@ -1,108 +1,348 @@
-// ============================================
-// NAVIGATION MODULE — History API + Terms modal
-// Handles browser back/forward, terms modal open/close.
-// Uses event bus to close gallery/modal — no direct imports
-// from sibling modules, eliminating import-order issues.
-// ============================================
-
+// js/modules/navigation.js (spinner removed on close)
+// Navigation module: history API, back button, canvas panning, swipe, keyboard
 import { store } from '../lib/store.js';
 import { bus } from '../lib/event-bus.js';
 import { dom } from '../dom-elements.js';
+import { errorHandler } from '../lib/error-handler.js';
 
-let controller;
+let abortController = null;
+let isPopstateHandling = false; // to avoid recursion
 
-// ── History API helpers ──────────────────────
+// Push a "trap" state on the homepage so browser back cannot leave the site
+const pushHomepageTrap = () => {
+  history.replaceState({ page: 'home' }, '', window.location.href);
+  history.pushState({ page: 'home-trap' }, '', window.location.href);
+};
 
-function pushHomepageTrap() {
-  history.replaceState({ type: 'home' }, '', window.location.pathname);
-}
+// Calculate scroll limits based on grid size
+const calculateScrollLimits = () => {
+  const grid = dom.masonryGrid;
+  const canvas = dom.infiniteCanvas;
+  const viewport = dom.galleryContent;
 
-// ── Terms modal ──────────────────────────────
+  if (!grid || !canvas || !viewport) return;
 
-function openTermsModal() {
-  if (dom.termsModal) {
-    dom.termsModal.hidden = false;
-    if (!store.get('isPopstateClosing')) {
-      history.pushState({ type: 'terms' }, '', '#terms');
-    }
+  const gridRect = grid.getBoundingClientRect();
+  const canvasRect = canvas.getBoundingClientRect();
+  const viewportRect = viewport.getBoundingClientRect();
+
+  const contentWidth = gridRect.width;
+  const contentHeight = gridRect.height;
+  const viewportWidth = viewportRect.width;
+  const viewportHeight = viewportRect.height;
+
+  const canvasStyle = window.getComputedStyle(canvas);
+  const paddingLeft = parseInt(canvasStyle.paddingLeft) || 20;
+  const paddingRight = parseInt(canvasStyle.paddingRight) || 20;
+  const paddingTop = parseInt(canvasStyle.paddingTop) || 120;
+  const paddingBottom = parseInt(canvasStyle.paddingBottom) || 80;
+
+  const scrollableWidth = Math.max(0, contentWidth - viewportWidth + paddingLeft + paddingRight);
+  const scrollableHeight = Math.max(0, contentHeight - viewportHeight + paddingTop + paddingBottom);
+
+  store.set('scrollLimits', {
+    minX: -scrollableWidth,
+    maxX: scrollableWidth,
+    minY: -scrollableHeight,
+    maxY: scrollableHeight
+  });
+};
+
+// Update canvas transform based on store scroll values
+const updateCanvasTransform = () => {
+  const container = dom.canvasTransformContainer;
+  if (!container) return;
+  const { scrollX, scrollY } = store.snapshot();
+  container.style.transform = `translate(${scrollX}px, ${scrollY}px)`;
+};
+
+// ==================== Drag & Pan ====================
+let dragStartX = 0, dragStartY = 0;
+
+const startDrag = (e) => {
+  if (!store.get('isGalleryOpen')) return;
+  store.set('isDragging', true);
+  dragStartX = e.clientX - store.get('scrollX');
+  dragStartY = e.clientY - store.get('scrollY');
+  dom.infiniteCanvas.style.cursor = 'grabbing';
+  e.preventDefault();
+};
+
+const startDragTouch = (e) => {
+  if (!store.get('isGalleryOpen')) return;
+  if (e.touches.length === 1) {
+    store.set('isDragging', true);
+    dragStartX = e.touches[0].clientX - store.get('scrollX');
+    dragStartY = e.touches[0].clientY - store.get('scrollY');
   }
-}
+};
 
-function closeTermsModal() {
-  if (dom.termsModal) {
-    dom.termsModal.hidden = true;
-    if (!store.get('isPopstateClosing')) {
-      history.back();
-    }
+const onDrag = (e) => {
+  if (!store.get('isDragging') || !store.get('isGalleryOpen')) return;
+
+  let newX = e.clientX - dragStartX;
+  let newY = e.clientY - dragStartY;
+
+  const limits = store.get('scrollLimits');
+  newX = Math.max(limits.minX, Math.min(limits.maxX, newX));
+  newY = Math.max(limits.minY, Math.min(limits.maxY, newY));
+
+  store.set('scrollX', newX);
+  store.set('scrollY', newY);
+  updateCanvasTransform();
+};
+
+const onDragTouch = (e) => {
+  if (!store.get('isDragging') || !store.get('isGalleryOpen')) return;
+  if (e.touches.length === 1) {
+    let newX = e.touches[0].clientX - dragStartX;
+    let newY = e.touches[0].clientY - dragStartY;
+
+    const limits = store.get('scrollLimits');
+    newX = Math.max(limits.minX, Math.min(limits.maxX, newX));
+    newY = Math.max(limits.minY, Math.min(limits.maxY, newY));
+
+    store.set('scrollX', newX);
+    store.set('scrollY', newY);
+    updateCanvasTransform();
   }
-}
+};
 
-function closeTermsModalDirect() {
-  if (dom.termsModal) dom.termsModal.hidden = true;
-}
+const stopDrag = () => {
+  store.set('isDragging', false);
+  if (dom.infiniteCanvas) dom.infiniteCanvas.style.cursor = '';
+};
 
-// ── Popstate handler ─────────────────────────
+// ==================== Keyboard Navigation ====================
+const handleKeyDown = (e) => {
+  if (!store.get('isGalleryOpen') || store.get('isModalOpen')) return;
 
-function handlePopstate(e) {
-  // Priority order: modal → terms → gallery → homepage
+  const scrollSpeed = 30;
+  let { scrollX, scrollY } = store.snapshot();
+  const limits = store.get('scrollLimits');
 
-  // 1. Image modal open → close it
+  switch (e.key) {
+    case 'ArrowLeft': scrollX += scrollSpeed; break;
+    case 'ArrowRight': scrollX -= scrollSpeed; break;
+    case 'ArrowUp': scrollY += scrollSpeed; break;
+    case 'ArrowDown': scrollY -= scrollSpeed; break;
+    case 'Escape':
+      closeGallery();
+      return;
+    default: return;
+  }
+
+  scrollX = Math.max(limits.minX, Math.min(limits.maxX, scrollX));
+  scrollY = Math.max(limits.minY, Math.min(limits.maxY, scrollY));
+
+  store.set('scrollX', scrollX);
+  store.set('scrollY', scrollY);
+  updateCanvasTransform();
+};
+
+// ==================== Gallery Open/Close ====================
+const openGallery = (galleryId) => {
+  store.set('currentGallery', galleryId);
+  store.set('isGalleryOpen', true);
+  store.set('homepageScrollY', window.scrollY);
+
+  // Push history state
+  history.pushState({ page: 'gallery', gallery: galleryId }, '', window.location.href);
+
+  // The event to open gallery is emitted by the gallery cover click; we do not re-emit here.
+};
+
+const closeGallery = () => {
+  if (!store.get('isGalleryOpen')) return;
+  if (isPopstateHandling) {
+    performCloseGallery();
+    return;
+  }
+  history.back();
+};
+
+const performCloseGallery = () => {
+  // 🚫 Spinner removed – no loading indicator when closing
+  // if (dom.loadingIndicator) dom.loadingIndicator.classList.add('active'); // removed
+
+  // Emit event for gallery module to clean up
+  bus.emit('gallery:close');
+
+  // Double rAF for smooth transition
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      dom.galleryContent?.classList.remove('active');
+
+      setTimeout(() => {
+        dom.gallerySelector?.classList.remove('hidden');
+        document.querySelector('.site-intro')?.classList.remove('hidden');
+        document.querySelector('.terms-footer')?.classList.remove('hidden');
+        store.set('isGalleryOpen', false);
+
+        // Restore scroll
+        window.scrollTo({ top: store.get('homepageScrollY'), behavior: 'instant' });
+
+        // Ensure loading indicator is hidden (if any other code added it)
+        if (dom.loadingIndicator) dom.loadingIndicator.classList.remove('active');
+      }, 800);
+    });
+  });
+
+  // Re-push homepage trap
+  pushHomepageTrap();
+};
+
+// ==================== Terms Modal ====================
+const openTermsModal = () => {
+  history.pushState({ page: 'terms' }, '', window.location.href);
+  store.set('isTermsModalOpen', true);
+  dom.termsModal?.removeAttribute('hidden');
+  document.body.style.overflow = 'hidden';
+};
+
+const closeTermsModal = () => {
+  if (!store.get('isTermsModalOpen')) return;
+  if (isPopstateHandling) {
+    performCloseTermsModal();
+    return;
+  }
+  history.back();
+};
+
+const performCloseTermsModal = () => {
+  dom.termsModal?.setAttribute('hidden', '');
+  document.body.style.overflow = 'auto';
+  store.set('isTermsModalOpen', false);
+  pushHomepageTrap(); // re-trap
+};
+
+// ==================== History API ====================
+const handlePopState = (e) => {
+  if (isPopstateHandling) return;
+  isPopstateHandling = true;
+
+  const state = e.state || {};
+
+  // If modal is open, close it
   if (store.get('isModalOpen')) {
-    store.set('isPopstateClosing', true);
-    bus.emit('modal:close');
-    store.set('isPopstateClosing', false);
+    bus.emit('modal:close'); // let modal module handle it
+    isPopstateHandling = false;
     return;
   }
 
-  // 2. Terms modal open → close it
-  if (dom.termsModal && !dom.termsModal.hasAttribute('hidden')) {
-    store.set('isPopstateClosing', true);
-    closeTermsModalDirect();
-    store.set('isPopstateClosing', false);
+  // If terms modal is open, close it
+  if (store.get('isTermsModalOpen')) {
+    performCloseTermsModal();
+    isPopstateHandling = false;
     return;
   }
 
-  // 3. Gallery open → close it
-  if (dom.galleryContent?.classList.contains('active')) {
-    store.set('isPopstateClosing', true);
-    bus.emit('gallery:close');
-    store.set('isPopstateClosing', false);
-    pushHomepageTrap();
+  // If gallery is open, close it
+  if (store.get('isGalleryOpen')) {
+    performCloseGallery();
+    isPopstateHandling = false;
     return;
   }
 
-  // 4. On homepage → re-push trap
+  // On homepage, re-push trap
   pushHomepageTrap();
-}
+  isPopstateHandling = false;
+};
 
-// ── Init / Destroy ───────────────────────────
+// ==================== Setup ====================
+const setupCanvasNavigation = () => {
+  const canvas = dom.infiniteCanvas;
+  if (!canvas) return;
 
-export function initNavigation() {
-  controller = new AbortController();
-  const { signal } = controller;
+  canvas.addEventListener('mousedown', startDrag, { signal: abortController.signal });
+  canvas.addEventListener('touchstart', startDragTouch, { passive: false, signal: abortController.signal });
+  document.addEventListener('mousemove', onDrag, { signal: abortController.signal });
+  document.addEventListener('touchmove', onDragTouch, { passive: false, signal: abortController.signal });
+  document.addEventListener('mouseup', stopDrag, { signal: abortController.signal });
+  document.addEventListener('touchend', stopDrag, { signal: abortController.signal });
 
-  // Set initial homepage trap
+  // Wheel navigation
+  canvas.addEventListener('wheel', (e) => {
+    if (!store.get('isGalleryOpen')) return;
+    e.preventDefault();
+    let { scrollX, scrollY } = store.snapshot();
+    scrollX -= e.deltaX * 0.5;
+    scrollY -= e.deltaY * 0.5;
+    const limits = store.get('scrollLimits');
+    scrollX = Math.max(limits.minX, Math.min(limits.maxX, scrollX));
+    scrollY = Math.max(limits.minY, Math.min(limits.maxY, scrollY));
+    store.set('scrollX', scrollX);
+    store.set('scrollY', scrollY);
+    updateCanvasTransform();
+  }, { passive: false, signal: abortController.signal });
+
+  // Recalculate limits on resize
+  window.addEventListener('resize', () => {
+    if (store.get('isGalleryOpen')) {
+      calculateScrollLimits();
+    }
+  }, { signal: abortController.signal });
+
+  // When gallery content loaded, recalc limits
+  bus.on('gallery:contentLoaded', () => {
+    setTimeout(() => {
+      calculateScrollLimits();
+      updateCanvasTransform();
+    }, 100);
+    setTimeout(calculateScrollLimits, 500);
+  });
+};
+
+const setupBackButton = () => {
+  dom.backButton?.addEventListener('click', closeGallery, { signal: abortController.signal });
+};
+
+const setupTermsLink = () => {
+  dom.termsLink?.addEventListener('click', openTermsModal, { signal: abortController.signal });
+  dom.termsModalClose?.addEventListener('click', closeTermsModal, { signal: abortController.signal });
+  dom.termsModal?.addEventListener('click', (e) => {
+    if (e.target === dom.termsModal) closeTermsModal();
+  }, { signal: abortController.signal });
+};
+
+// Subscribe to events from other modules
+const subscribeToEvents = () => {
+  // When gallery requests open (from gallery module)
+  bus.on('gallery:open', (galleryId) => {
+    openGallery(galleryId);
+  });
+
+  // When modal is opened via gallery click, push history
+  bus.on('photo:select', () => {
+    // state push is done in modal module itself
+  });
+
+  // Listen for modal close event (triggered by modal module on history back)
+  bus.on('modal:close', () => {
+    // already handled via popstate
+  });
+};
+
+// Public init
+export const initNavigation = () => {
+  console.log('🧭 Initializing navigation module...');
+  abortController = new AbortController();
+
   pushHomepageTrap();
+  window.addEventListener('popstate', handlePopState, { signal: abortController.signal });
 
-  // Listen for browser back / forward
-  window.addEventListener('popstate', handlePopstate, { signal });
+  setupCanvasNavigation();
+  setupBackButton();
+  setupTermsLink();
+  subscribeToEvents();
 
-  // Terms modal: open
-  dom.termsLink?.addEventListener('click', openTermsModal, { signal });
+  // Also update transform when scroll values change
+  store.subscribe('scrollX', updateCanvasTransform);
+  store.subscribe('scrollY', updateCanvasTransform);
+};
 
-  // Terms modal: close via × button
-  dom.termsModalClose?.addEventListener('click', closeTermsModal, { signal });
-
-  // Terms modal: close via click outside
-  dom.termsModal?.addEventListener(
-    'click',
-    (e) => {
-      if (e.target === dom.termsModal) closeTermsModal();
-    },
-    { signal }
-  );
-}
-
-export function destroyNavigation() {
-  controller?.abort();
-}
+// Cleanup
+export const destroyNavigation = () => {
+  abortController?.abort();
+  abortController = null;
+};
