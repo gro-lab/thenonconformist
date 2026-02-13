@@ -60,7 +60,7 @@ const updateCanvasTransform = () => {
 let dragStartX = 0, dragStartY = 0;
 
 const startDrag = (e) => {
-  if (!store.get('isGalleryOpen') || store.get('isModalOpen')) return;
+  if (!store.get('isGalleryOpen')) return;
   store.set('isDragging', true);
   dragStartX = e.clientX - store.get('scrollX');
   dragStartY = e.clientY - store.get('scrollY');
@@ -69,7 +69,7 @@ const startDrag = (e) => {
 };
 
 const startDragTouch = (e) => {
-  if (!store.get('isGalleryOpen') || store.get('isModalOpen')) return;
+  if (!store.get('isGalleryOpen')) return;
   if (e.touches.length === 1) {
     store.set('isDragging', true);
     dragStartX = e.touches[0].clientX - store.get('scrollX');
@@ -278,7 +278,7 @@ const setupCanvasNavigation = () => {
 
   // Wheel navigation
   canvas.addEventListener('wheel', (e) => {
-    if (!store.get('isGalleryOpen') || store.get('isModalOpen')) return;
+    if (!store.get('isGalleryOpen')) return;
     e.preventDefault();
     let { scrollX, scrollY } = store.snapshot();
     scrollX -= e.deltaX * 0.5;
