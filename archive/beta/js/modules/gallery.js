@@ -1,12 +1,10 @@
 // js/modules/gallery.js
-// Gallery grid, masonry layout, lazy loading, cover images
 import { store } from '../lib/store.js';
 import { bus } from '../lib/event-bus.js';
 import { dom, clearDomCache } from '../dom-elements.js';
 import { errorHandler, withErrorHandling } from '../lib/error-handler.js';
-import { createObserver } from '../lib/create-observer.js'; // we'll need to create this helper
+import { createObserver } from '../lib/create-observer.js';
 
-// Gallery configuration
 const galleries = {
   low: {
     title: 'Language of Windows',
@@ -34,7 +32,10 @@ const galleries = {
   }
 };
 
-// Stable sort by likes
+// Module-level observer references for cleanup
+let currentMasonryObserver = null;
+let currentCoverObserver = null;
+
 const stableSortByLikes = (items) => {
   return [...items].sort((a, b) => {
     if (b.likes !== a.likes) return b.likes - a.likes;
@@ -42,7 +43,6 @@ const stableSortByLikes = (items) => {
   });
 };
 
-// Create image URLs
 const createImageUrl = (dir, imageData) => {
   const owner = 'gro-lab';
   const repo = 'thenonconformist';
@@ -59,7 +59,6 @@ const createThumbnailUrl = (dir, imageData) => {
   return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/images/thumbnails/${dir}/${filename}`;
 };
 
-// Load manifest
 const loadManifest = withErrorHandling(async () => {
   const owner = 'gro-lab';
   const repo = 'thenonconformist';
@@ -74,7 +73,6 @@ const loadManifest = withErrorHandling(async () => {
   return manifest;
 }, { module: 'gallery' });
 
-// Fallback manifest generator (same as original)
 const generateFallbackManifest = () => {
   const manifest = {};
   const defaultExtensions = {
@@ -104,7 +102,6 @@ const generateFallbackManifest = () => {
   return manifest;
 };
 
-// Load gallery data for a specific key
 const loadGalleryData = (galleryKey) => {
   const gallery = galleries[galleryKey];
   const dir = gallery.dir;
@@ -131,14 +128,12 @@ const loadGalleryData = (galleryKey) => {
     };
   });
 
-  // Update store
   const galleryImageData = store.get('galleryImageData') || {};
   galleryImageData[galleryKey] = images;
   store.set('galleryImageData', galleryImageData);
   return images;
 };
 
-// Get most liked image for cover
 const getMostLikedImageUrl = (galleryKey) => {
   const galleryImageData = store.get('galleryImageData') || {};
   const images = galleryImageData[galleryKey];
@@ -148,7 +143,6 @@ const getMostLikedImageUrl = (galleryKey) => {
   return createThumbnailUrl(gallery.dir, sorted[0].imageData);
 };
 
-// Update gallery counts in UI
 const refreshGalleryCounts = () => {
   const galleryImageData = store.get('galleryImageData') || {};
   Object.keys(galleries).forEach(key => {
@@ -161,7 +155,6 @@ const refreshGalleryCounts = () => {
   });
 };
 
-// Refresh gallery cover images
 const refreshGalleryCovers = () => {
   Object.keys(galleries).forEach(key => {
     const cover = document.querySelector(`.gallery-cover[data-gallery="${key}"]`);
@@ -176,15 +169,15 @@ const refreshGalleryCovers = () => {
   });
 };
 
-// Setup gallery selector (cover images, counts)
 const setupGallerySelector = async () => {
   console.log('🔄 Setting up gallery selector...');
 
-  // Load data for all galleries
   await Promise.all(Object.keys(galleries).map(key => loadGalleryData(key)));
 
-  // Setup cover images with lazy observer
-  const coverObserver = createObserver({
+  // Disconnect previous cover observer if any
+  if (currentCoverObserver) currentCoverObserver.disconnect();
+
+  currentCoverObserver = createObserver({
     targets: '.gallery-cover[data-gallery]',
     rootMargin: '50px',
     once: true,
@@ -209,14 +202,12 @@ const setupGallerySelector = async () => {
     const mostLikedUrl = getMostLikedImageUrl(key);
     if (cover && mostLikedUrl) {
       cover.dataset.bg = mostLikedUrl;
-      coverObserver.observe(cover);
+      currentCoverObserver.observe(cover);
     }
   });
 
-  // Update counts
   refreshGalleryCounts();
 
-  // Attach click handlers
   document.querySelectorAll('.gallery-cover').forEach(cover => {
     cover.addEventListener('click', function() {
       const galleryId = this.dataset.gallery;
@@ -227,7 +218,6 @@ const setupGallerySelector = async () => {
   console.log('✅ Gallery selector setup complete');
 };
 
-// Load gallery content into masonry grid
 const loadGalleryContent = (galleryId) => {
   const masonryGrid = dom.masonryGrid;
   const gallery = galleries[galleryId];
@@ -244,8 +234,10 @@ const loadGalleryContent = (galleryId) => {
   const sortedImages = stableSortByLikes(images);
   store.set('currentGalleryImages', sortedImages);
 
-  // Create masonry observer for lazy loading
-  const masonryObserver = createObserver({
+  // Disconnect previous masonry observer
+  if (currentMasonryObserver) currentMasonryObserver.disconnect();
+
+  currentMasonryObserver = createObserver({
     targets: '.masonry-item', // will observe after creation
     rootMargin: '0px',
     once: true,
@@ -298,14 +290,12 @@ const loadGalleryContent = (galleryId) => {
 
     masonryItem.appendChild(overlay);
     masonryGrid.appendChild(masonryItem);
-    masonryObserver.observe(masonryItem);
+    currentMasonryObserver.observe(masonryItem);
   });
 
-  // Update header
   if (dom.currentGalleryTitle) dom.currentGalleryTitle.textContent = gallery.title;
   if (dom.currentGallerySubtitle) dom.currentGallerySubtitle.textContent = gallery.subtitle;
 
-  // Reset scroll
   store.set('scrollX', 0);
   store.set('scrollY', 0);
   setTimeout(() => {
@@ -313,36 +303,28 @@ const loadGalleryContent = (galleryId) => {
   }, 100);
 };
 
-// Public init
 export const initGallery = async () => {
   console.log('🖼️ Initializing gallery module...');
 
-  // Load manifest (or fallback)
   try {
     await loadManifest();
   } catch {
     generateFallbackManifest();
   }
 
-  // Setup selector UI
   await setupGallerySelector();
 
-  // Subscribe to events
   bus.on('gallery:open', (galleryId) => {
     store.set('currentGallery', galleryId);
     store.set('isGalleryOpen', true);
-    // Save scroll position
     store.set('homepageScrollY', window.scrollY);
 
-    // Show loading indicator
     if (dom.loadingIndicator) dom.loadingIndicator.classList.add('active');
 
-    // Hide selector, show gallery
     if (dom.gallerySelector) dom.gallerySelector.classList.add('hidden');
     document.querySelector('.site-intro')?.classList.add('hidden');
     document.querySelector('.terms-footer')?.classList.add('hidden');
 
-    // Double rAF to ensure spinner shows
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         setTimeout(() => {
@@ -354,19 +336,24 @@ export const initGallery = async () => {
     });
   });
 
+  bus.on('gallery:close', () => {
+    // Clean up masonry observer
+    if (currentMasonryObserver) {
+      currentMasonryObserver.disconnect();
+      currentMasonryObserver = null;
+    }
+  });
+
   bus.on('consent:applied', () => {
-    // Refresh gallery data (likes may have changed)
     Object.keys(galleries).forEach(key => loadGalleryData(key));
     refreshGalleryCounts();
     refreshGalleryCovers();
-    // If gallery is open, refresh its content
     if (store.get('isGalleryOpen')) {
       loadGalleryContent(store.get('currentGallery'));
     }
   });
 
   bus.on('like:updated', () => {
-    // Update counts and covers
     refreshGalleryCounts();
     refreshGalleryCovers();
   });
