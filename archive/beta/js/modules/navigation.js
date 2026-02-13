@@ -3,6 +3,7 @@
 import { store } from '../lib/store.js';
 import { bus } from '../lib/event-bus.js';
 import { dom } from '../dom-elements.js';
+import { errorHandler } from '../lib/error-handler.js';
 
 let abortController = null;
 let isPopstateHandling = false; // to avoid recursion
@@ -59,7 +60,7 @@ const updateCanvasTransform = () => {
 let dragStartX = 0, dragStartY = 0;
 
 const startDrag = (e) => {
-  if (!store.get('isGalleryOpen')) return;
+  if (!store.get('isGalleryOpen') || store.get('isModalOpen')) return;
   store.set('isDragging', true);
   dragStartX = e.clientX - store.get('scrollX');
   dragStartY = e.clientY - store.get('scrollY');
@@ -68,7 +69,7 @@ const startDrag = (e) => {
 };
 
 const startDragTouch = (e) => {
-  if (!store.get('isGalleryOpen')) return;
+  if (!store.get('isGalleryOpen') || store.get('isModalOpen')) return;
   if (e.touches.length === 1) {
     store.set('isDragging', true);
     dragStartX = e.touches[0].clientX - store.get('scrollX');
@@ -149,6 +150,7 @@ const openGallery = (galleryId) => {
   store.set('currentGallery', galleryId);
   store.set('isGalleryOpen', true);
 
+  // Push history state
   history.pushState({ page: 'gallery', gallery: galleryId }, '', window.location.href);
 };
 
@@ -162,6 +164,7 @@ const closeGallery = () => {
 };
 
 const performCloseGallery = () => {
+  // Emit event for gallery module to clean up
   bus.emit('gallery:close');
 
   requestAnimationFrame(() => {
@@ -178,21 +181,17 @@ const performCloseGallery = () => {
         const savedScrollY = store.get('homepageScrollY');
         console.log('📌 Restoring homepage scrollY:', savedScrollY);
         
-        // Use multiple requestAnimationFrames to ensure DOM is ready
         requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            window.scrollTo({
-              top: savedScrollY,
-              behavior: 'instant'
-            });
-          });
+          window.scrollTo({ top: savedScrollY, behavior: 'instant' });
         });
 
+        // Ensure loading indicator is hidden (if any other code added it)
         if (dom.loadingIndicator) dom.loadingIndicator.classList.remove('active');
       }, 800);
     });
   });
 
+  // Re-push homepage trap
   pushHomepageTrap();
 };
 
@@ -217,7 +216,7 @@ const performCloseTermsModal = () => {
   dom.termsModal?.setAttribute('hidden', '');
   document.body.style.overflow = 'auto';
   store.set('isTermsModalOpen', false);
-  pushHomepageTrap();
+  pushHomepageTrap(); // re-trap
 };
 
 // ==================== History API ====================
@@ -227,19 +226,23 @@ const handlePopState = (e) => {
 
   const state = e.state || {};
 
+  // If picture modal is open, close it
   if (store.get('isModalOpen')) {
-    bus.emit('modal:close');
+    bus.emit('modal:close'); // let modal module handle it
     isPopstateHandling = false;
     return;
   }
 
+  // If terms modal is open, close it
   if (store.get('isTermsModalOpen')) {
     performCloseTermsModal();
     isPopstateHandling = false;
     return;
   }
 
+  // If cookie modal is open, close it
   if (store.get('isCookieModalOpen')) {
+    // Import dynamically to avoid circular dependency
     import('./cookies.js').then(module => {
       module.closeCookieModal?.();
     }).catch(err => {
@@ -249,12 +252,14 @@ const handlePopState = (e) => {
     return;
   }
 
+  // If gallery is open, close it
   if (store.get('isGalleryOpen')) {
     performCloseGallery();
     isPopstateHandling = false;
     return;
   }
 
+  // On homepage, re-push trap
   pushHomepageTrap();
   isPopstateHandling = false;
 };
@@ -271,8 +276,9 @@ const setupCanvasNavigation = () => {
   document.addEventListener('mouseup', stopDrag, { signal: abortController.signal });
   document.addEventListener('touchend', stopDrag, { signal: abortController.signal });
 
+  // Wheel navigation
   canvas.addEventListener('wheel', (e) => {
-    if (!store.get('isGalleryOpen')) return;
+    if (!store.get('isGalleryOpen') || store.get('isModalOpen')) return;
     e.preventDefault();
     let { scrollX, scrollY } = store.snapshot();
     scrollX -= e.deltaX * 0.5;
@@ -285,12 +291,14 @@ const setupCanvasNavigation = () => {
     updateCanvasTransform();
   }, { passive: false, signal: abortController.signal });
 
+  // Recalculate limits on resize
   window.addEventListener('resize', () => {
     if (store.get('isGalleryOpen')) {
       calculateScrollLimits();
     }
   }, { signal: abortController.signal });
 
+  // When gallery content loaded, recalc limits
   bus.on('gallery:contentLoaded', () => {
     setTimeout(() => {
       calculateScrollLimits();
@@ -312,15 +320,29 @@ const setupTermsLink = () => {
   }, { signal: abortController.signal });
 };
 
+// Subscribe to events from other modules
 const subscribeToEvents = () => {
+  // When gallery requests open (from gallery module)
   bus.on('gallery:open', (galleryId) => {
     openGallery(galleryId);
   });
+
+  // When modal is opened via gallery click, push history
+  bus.on('photo:select', () => {
+    // state push is done in modal module itself
+  });
+
+  // Listen for modal close event (triggered by modal module on history back)
+  bus.on('modal:close', () => {
+    // already handled via popstate
+  });
 };
 
+// Public init
 export const initNavigation = () => {
   console.log('🧭 Initializing navigation module...');
   
+  // Disable automatic browser scroll restoration
   if ('scrollRestoration' in history) {
     history.scrollRestoration = 'manual';
   }
@@ -335,10 +357,12 @@ export const initNavigation = () => {
   setupTermsLink();
   subscribeToEvents();
 
+  // Also update transform when scroll values change
   store.subscribe('scrollX', updateCanvasTransform);
   store.subscribe('scrollY', updateCanvasTransform);
 };
 
+// Cleanup
 export const destroyNavigation = () => {
   abortController?.abort();
   abortController = null;
