@@ -4,9 +4,9 @@ import { errorHandler } from './lib/error-handler.js';
 import { initDomCache } from './dom-elements.js';
 import { initCookieConsent } from './modules/cookies.js';
 import { initFirebase } from './modules/firebase.js';
+import { initNavigation } from './modules/navigation.js';   // ⬅️ moved up
 import { initGallery } from './modules/gallery.js';
 import { initModal } from './modules/modal.js';
-import { initNavigation } from './modules/navigation.js';
 
 async function init() {
   try {
@@ -26,14 +26,14 @@ async function init() {
       await initFirebase();
     }
     
-    // 5. Initialize gallery (depends on Firebase data if enabled)
+    // 5. Initialize navigation (History API / FSM) – must be before gallery
+    initNavigation();
+    
+    // 6. Initialize gallery (depends on Firebase data if enabled)
     await initGallery();
     
-    // 6. Initialize modal (lightbox)
+    // 7. Initialize modal (lightbox)
     initModal();
-    
-    // 7. Initialize navigation (History API / FSM)
-    initNavigation();
     
     console.log('✅ All modules initialized');
   } catch (error) {

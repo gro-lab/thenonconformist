@@ -147,12 +147,12 @@ export const updateLike = withErrorHandling(async (url, increment_value) => {
   }
 }, { module: 'firebase' });
 
-// Listen for like toggle events from modal
-bus.on('like:toggle', async ({ url, increment }) => {
+// Listen for like toggle events from modal – now includes galleryId
+bus.on('like:toggle', async ({ url, increment, galleryId }) => {
   if (!store.get('functionalCookiesEnabled')) return;
   const newLikes = await updateLike(url, increment);
   if (newLikes !== null) {
-    bus.emit('like:updated', { url, newLikes });
+    bus.emit('like:updated', { url, newLikes, galleryId });
   }
 });
 

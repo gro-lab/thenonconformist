@@ -1,24 +1,23 @@
 // ============================================
-// CREATE OBSERVER — Reusable IntersectionObserver factory
-// Collapses duplicate observer creation into one
-// configurable factory function.
+// OBSERVER FACTORY — Reusable IntersectionObserver creator
+// Collapses two near-identical observer functions into one
 // ============================================
 
 /**
- * Create an IntersectionObserver with a clean config-driven API.
+ * Creates a configured IntersectionObserver with a clean API.
  *
- * @param {Object} config
- * @param {string|NodeList|Element|null} config.targets - Selector string, NodeList, or single Element
- * @param {Function} config.onIntersect - Called when target enters viewport
- * @param {Function} [config.onExit] - Called when target leaves viewport
- * @param {Element|null} [config.root] - Intersection root
- * @param {string} [config.rootMargin] - Root margin
- * @param {number|number[]} [config.threshold] - Intersection threshold(s)
- * @param {boolean} [config.once] - If true, unobserve after first intersection
+ * @param {Object}  config
+ * @param {string|NodeList|Element|Element[]} [config.targets]  - Selector or elements to observe
+ * @param {Function} config.onIntersect - Called when element enters viewport
+ * @param {Function} [config.onExit]    - Called when element leaves viewport
+ * @param {Element}  [config.root]      - Scroll container (default: viewport)
+ * @param {string}   [config.rootMargin]
+ * @param {number|number[]} [config.threshold]
+ * @param {boolean}  [config.once]      - Unobserve after first intersection
  * @returns {{ observer, observe, unobserve, disconnect }}
  */
 export function createObserver({
-  targets = null,
+  targets,
   onIntersect,
   onExit,
   root = null,

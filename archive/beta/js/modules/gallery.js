@@ -104,7 +104,7 @@ const generateFallbackManifest = () => {
   return manifest;
 };
 
-// Load gallery data for a specific key
+// Load gallery data for a specific key – updates store.galleryImageData
 const loadGalleryData = (galleryKey) => {
   const gallery = galleries[galleryKey];
   const dir = gallery.dir;
@@ -228,7 +228,8 @@ const setupGallerySelector = async () => {
 };
 
 // Load gallery content into masonry grid
-const loadGalleryContent = (galleryId) => {
+const loadGalleryContent = (galleryId, options = {}) => {
+  const { preserveScroll = false, showLoading = true } = options;
   const masonryGrid = dom.masonryGrid;
   const gallery = galleries[galleryId];
   const galleryImageData = store.get('galleryImageData') || {};
@@ -237,6 +238,10 @@ const loadGalleryContent = (galleryId) => {
   if (!images || images.length === 0) {
     console.error(`No images found for gallery: ${galleryId}`);
     return;
+  }
+
+  if (showLoading && dom.loadingIndicator) {
+    dom.loadingIndicator.classList.add('active');
   }
 
   masonryGrid.innerHTML = '';
@@ -276,7 +281,8 @@ const loadGalleryContent = (galleryId) => {
 
     masonryItem.className = `masonry-item ${orientation}`;
     masonryItem.style.animationDelay = `${index * 0.05}s`;
-    masonryItem.dataset.bg = image.url;
+    // Set thumbnail as background image
+    masonryItem.dataset.bg = createThumbnailUrl(gallery.dir, image.imageData);
     masonryItem.dataset.imageId = index;
 
     const overlay = document.createElement('div');
@@ -305,12 +311,28 @@ const loadGalleryContent = (galleryId) => {
   if (dom.currentGalleryTitle) dom.currentGalleryTitle.textContent = gallery.title;
   if (dom.currentGallerySubtitle) dom.currentGallerySubtitle.textContent = gallery.subtitle;
 
-  // Reset scroll
-  store.set('scrollX', 0);
-  store.set('scrollY', 0);
+  if (!preserveScroll) {
+    // Reset scroll only if not preserving
+    store.set('scrollX', 0);
+    store.set('scrollY', 0);
+  }
+
+  if (showLoading && dom.loadingIndicator) {
+    setTimeout(() => {
+      dom.loadingIndicator.classList.remove('active');
+    }, 100);
+  }
+
   setTimeout(() => {
     bus.emit('gallery:contentLoaded', galleryId);
   }, 100);
+};
+
+// Public function to re‑fetch gallery data and refresh UI
+const updateGalleryData = (galleryId) => {
+  loadGalleryData(galleryId);
+  refreshGalleryCounts();
+  refreshGalleryCovers();
 };
 
 // Public init
@@ -331,8 +353,6 @@ export const initGallery = async () => {
   bus.on('gallery:open', (galleryId) => {
     store.set('currentGallery', galleryId);
     store.set('isGalleryOpen', true);
-    // Save scroll position
-    store.set('homepageScrollY', window.scrollY);
 
     // Show loading indicator
     if (dom.loadingIndicator) dom.loadingIndicator.classList.add('active');
@@ -346,7 +366,7 @@ export const initGallery = async () => {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         setTimeout(() => {
-          loadGalleryContent(galleryId);
+          loadGalleryContent(galleryId, { preserveScroll: false, showLoading: true });
           if (dom.loadingIndicator) dom.loadingIndicator.classList.remove('active');
           if (dom.galleryContent) dom.galleryContent.classList.add('active');
         }, 800);
@@ -361,13 +381,16 @@ export const initGallery = async () => {
     refreshGalleryCovers();
     // If gallery is open, refresh its content
     if (store.get('isGalleryOpen')) {
-      loadGalleryContent(store.get('currentGallery'));
+      loadGalleryContent(store.get('currentGallery'), { preserveScroll: true, showLoading: false });
     }
   });
 
-  bus.on('like:updated', () => {
-    // Update counts and covers
-    refreshGalleryCounts();
-    refreshGalleryCovers();
+  // Listen for like updates – now includes galleryId
+  bus.on('like:updated', ({ galleryId }) => {
+    updateGalleryData(galleryId);
+    // If this gallery is currently open, re‑render with scroll preserved
+    if (store.get('isGalleryOpen') && store.get('currentGallery') === galleryId) {
+      loadGalleryContent(galleryId, { preserveScroll: true, showLoading: false });
+    }
   });
 };
