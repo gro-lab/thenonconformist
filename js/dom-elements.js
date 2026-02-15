@@ -9,6 +9,7 @@ const selectors = {
   termsModal: '#terms-modal',
   cookieBanner: '#cookie-banner',
   cookieModal: '#cookie-settings-modal',
+  cookieModalClose: '#cookie-modal-close',
   cookieFloatBtn: '#cookie-float-btn',
   loadingIndicator: '#loading-indicator',
   masonryGrid: '#masonry-grid',

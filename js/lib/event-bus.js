@@ -19,7 +19,7 @@ export class EventBus {
       fn(data);
       this.off(event, wrapper);
     };
-    this.on(event, wrapper);
+    return this.on(event, wrapper);
   }
 
   off(event, fn) {

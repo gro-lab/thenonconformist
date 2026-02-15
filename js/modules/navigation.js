@@ -4,6 +4,7 @@ import { store } from '../lib/store.js';
 import { bus } from '../lib/event-bus.js';
 import { dom } from '../dom-elements.js';
 import { errorHandler } from '../lib/error-handler.js';
+import { debounce, TRANSITION_MS } from '../lib/utils.js';
 
 let abortController = null;
 let isPopstateHandling = false; // to avoid recursion
@@ -47,6 +48,8 @@ const calculateScrollLimits = () => {
     maxY: scrollableHeight
   });
 };
+
+const debouncedCalculateScrollLimits = debounce(calculateScrollLimits, 150);
 
 // Update canvas transform based on store scroll values
 const updateCanvasTransform = () => {
@@ -187,7 +190,7 @@ const performCloseGallery = () => {
 
         // Ensure loading indicator is hidden (if any other code added it)
         if (dom.loadingIndicator) dom.loadingIndicator.classList.remove('active');
-      }, 800);
+      }, TRANSITION_MS);
     });
   });
 
@@ -242,7 +245,6 @@ const handlePopState = (e) => {
 
   // If cookie modal is open, close it
   if (store.get('isCookieModalOpen')) {
-    // Import dynamically to avoid circular dependency
     import('./cookies.js').then(module => {
       module.closeCookieModal?.();
     }).catch(err => {
@@ -291,10 +293,10 @@ const setupCanvasNavigation = () => {
     updateCanvasTransform();
   }, { passive: false, signal: abortController.signal });
 
-  // Recalculate limits on resize
+  // Recalculate limits on resize (debounced)
   window.addEventListener('resize', () => {
     if (store.get('isGalleryOpen')) {
-      calculateScrollLimits();
+      debouncedCalculateScrollLimits();
     }
   }, { signal: abortController.signal });
 
@@ -325,16 +327,6 @@ const subscribeToEvents = () => {
   // When gallery requests open (from gallery module)
   bus.on('gallery:open', (galleryId) => {
     openGallery(galleryId);
-  });
-
-  // When modal is opened via gallery click, push history
-  bus.on('photo:select', () => {
-    // state push is done in modal module itself
-  });
-
-  // Listen for modal close event (triggered by modal module on history back)
-  bus.on('modal:close', () => {
-    // already handled via popstate
   });
 };
 

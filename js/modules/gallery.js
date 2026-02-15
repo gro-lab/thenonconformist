@@ -4,7 +4,8 @@ import { store } from '../lib/store.js';
 import { bus } from '../lib/event-bus.js';
 import { dom, clearDomCache } from '../dom-elements.js';
 import { errorHandler, withErrorHandling } from '../lib/error-handler.js';
-import { createObserver } from '../lib/create-observer.js'; // we'll need to create this helper
+import { createObserver } from '../lib/create-observer.js';
+import { getDocIdFromUrl, TRANSITION_MS } from '../lib/utils.js';
 
 // Gallery configuration
 const galleries = {
@@ -33,6 +34,10 @@ const galleries = {
     color: '#FFD23F'
   }
 };
+
+let abortController = null;
+let currentMasonryObserver = null;
+const busUnsubs = [];
 
 // Stable sort by likes
 const stableSortByLikes = (items) => {
@@ -104,7 +109,7 @@ const generateFallbackManifest = () => {
   return manifest;
 };
 
-// Load gallery data for a specific key – updates store.galleryImageData
+// Load gallery data for a specific key — updates store.galleryImageData
 const loadGalleryData = (galleryKey) => {
   const gallery = galleries[galleryKey];
   const dir = gallery.dir;
@@ -116,7 +121,7 @@ const loadGalleryData = (galleryKey) => {
 
   const images = imageList.map((imageData, originalIndex) => {
     const url = createImageUrl(dir, imageData);
-    const docId = btoa(url).replace(/[^a-zA-Z0-9]/g, '');
+    const docId = getDocIdFromUrl(url);
     const likes = likesCache[docId] !== undefined ? likesCache[docId] : 0;
 
     return {
@@ -216,12 +221,13 @@ const setupGallerySelector = async () => {
   // Update counts
   refreshGalleryCounts();
 
-  // Attach click handlers
+  // Attach click handlers with AbortController
+  const { signal } = abortController;
   document.querySelectorAll('.gallery-cover').forEach(cover => {
     cover.addEventListener('click', function() {
       const galleryId = this.dataset.gallery;
       bus.emit('gallery:open', galleryId);
-    });
+    }, { signal });
   });
 
   console.log('✅ Gallery selector setup complete');
@@ -244,6 +250,12 @@ const loadGalleryContent = (galleryId, options = {}) => {
     dom.loadingIndicator.classList.add('active');
   }
 
+  // Disconnect previous masonry observer before replacing DOM
+  if (currentMasonryObserver) {
+    currentMasonryObserver.disconnect();
+    currentMasonryObserver = null;
+  }
+
   masonryGrid.innerHTML = '';
 
   const sortedImages = stableSortByLikes(images);
@@ -251,7 +263,6 @@ const loadGalleryContent = (galleryId, options = {}) => {
 
   // Create masonry observer for lazy loading
   const masonryObserver = createObserver({
-    targets: '.masonry-item', // will observe after creation
     rootMargin: '0px',
     once: true,
     onIntersect: (entry) => {
@@ -272,6 +283,7 @@ const loadGalleryContent = (galleryId, options = {}) => {
       }
     }
   });
+  currentMasonryObserver = masonryObserver;
 
   sortedImages.forEach((image, index) => {
     const masonryItem = document.createElement('div');
@@ -339,6 +351,8 @@ const updateGalleryData = (galleryId) => {
 export const initGallery = async () => {
   console.log('🖼️ Initializing gallery module...');
 
+  abortController = new AbortController();
+
   // Load manifest (or fallback)
   try {
     await loadManifest();
@@ -349,48 +363,61 @@ export const initGallery = async () => {
   // Setup selector UI
   await setupGallerySelector();
 
-  // Subscribe to events
-  bus.on('gallery:open', (galleryId) => {
-    store.set('currentGallery', galleryId);
-    store.set('isGalleryOpen', true);
+  // Subscribe to events (store unsubscribers for cleanup)
+  busUnsubs.push(
+    bus.on('gallery:open', (galleryId) => {
+      // State is owned by navigation module — gallery only handles rendering
+      if (dom.loadingIndicator) dom.loadingIndicator.classList.add('active');
+      if (dom.gallerySelector) dom.gallerySelector.classList.add('hidden');
+      document.querySelector('.site-intro')?.classList.add('hidden');
+      document.querySelector('.terms-footer')?.classList.add('hidden');
 
-    // Show loading indicator
-    if (dom.loadingIndicator) dom.loadingIndicator.classList.add('active');
-
-    // Hide selector, show gallery
-    if (dom.gallerySelector) dom.gallerySelector.classList.add('hidden');
-    document.querySelector('.site-intro')?.classList.add('hidden');
-    document.querySelector('.terms-footer')?.classList.add('hidden');
-
-    // Double rAF to ensure spinner shows
-    requestAnimationFrame(() => {
+      // Double rAF to ensure spinner shows
       requestAnimationFrame(() => {
-        setTimeout(() => {
-          loadGalleryContent(galleryId, { preserveScroll: false, showLoading: true });
-          if (dom.loadingIndicator) dom.loadingIndicator.classList.remove('active');
-          if (dom.galleryContent) dom.galleryContent.classList.add('active');
-        }, 800);
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            loadGalleryContent(galleryId, { preserveScroll: false, showLoading: true });
+            if (dom.loadingIndicator) dom.loadingIndicator.classList.remove('active');
+            if (dom.galleryContent) dom.galleryContent.classList.add('active');
+          }, TRANSITION_MS);
+        });
       });
-    });
-  });
+    })
+  );
 
-  bus.on('consent:applied', () => {
-    // Refresh gallery data (likes may have changed)
-    Object.keys(galleries).forEach(key => loadGalleryData(key));
-    refreshGalleryCounts();
-    refreshGalleryCovers();
-    // If gallery is open, refresh its content
-    if (store.get('isGalleryOpen')) {
-      loadGalleryContent(store.get('currentGallery'), { preserveScroll: true, showLoading: false });
-    }
-  });
+  busUnsubs.push(
+    bus.on('consent:applied', () => {
+      // Refresh gallery data (likes may have changed)
+      Object.keys(galleries).forEach(key => loadGalleryData(key));
+      refreshGalleryCounts();
+      refreshGalleryCovers();
+      // If gallery is open, refresh its content
+      if (store.get('isGalleryOpen')) {
+        loadGalleryContent(store.get('currentGallery'), { preserveScroll: true, showLoading: false });
+      }
+    })
+  );
 
-  // Listen for like updates – now includes galleryId
-  bus.on('like:updated', ({ galleryId }) => {
-    updateGalleryData(galleryId);
-    // If this gallery is currently open, re‑render with scroll preserved
-    if (store.get('isGalleryOpen') && store.get('currentGallery') === galleryId) {
-      loadGalleryContent(galleryId, { preserveScroll: true, showLoading: false });
-    }
-  });
+  // Listen for like updates — now includes galleryId
+  busUnsubs.push(
+    bus.on('like:updated', ({ galleryId }) => {
+      updateGalleryData(galleryId);
+      // If this gallery is currently open, re‑render with scroll preserved
+      if (store.get('isGalleryOpen') && store.get('currentGallery') === galleryId) {
+        loadGalleryContent(galleryId, { preserveScroll: true, showLoading: false });
+      }
+    })
+  );
+};
+
+// Cleanup
+export const destroyGallery = () => {
+  abortController?.abort();
+  abortController = null;
+  if (currentMasonryObserver) {
+    currentMasonryObserver.disconnect();
+    currentMasonryObserver = null;
+  }
+  busUnsubs.forEach(unsub => unsub());
+  busUnsubs.length = 0;
 };

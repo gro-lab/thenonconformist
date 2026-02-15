@@ -4,7 +4,8 @@ import { store } from '../lib/store.js';
 import { bus } from '../lib/event-bus.js';
 import { dom } from '../dom-elements.js';
 import { errorHandler, withErrorHandling } from '../lib/error-handler.js';
-import { teardownFirebase, initFirebase } from './firebase.js'; // will be imported later
+
+let abortController = null;
 
 // Default preferences
 const DEFAULT_PREFS = {
@@ -49,23 +50,11 @@ function loadSavedPreferences() {
   return null;
 }
 
-// Apply preferences (enable/disable features)
-async function applyPreferences(prefs) {
+// Apply preferences (set store values only — firebase reacts via bus)
+function applyPreferences(prefs) {
   if (!prefs) return;
-  
   store.set('cookiePreferences', prefs);
   store.set('functionalCookiesEnabled', prefs.functional);
-  
-  if (prefs.functional) {
-    // Initialize Firebase if not already
-    await initFirebase();
-  } else {
-    // Tear down Firebase if it was running
-    teardownFirebase();
-  }
-  
-  // Notify other modules
-  bus.emit('consent:updated', prefs);
 }
 
 // Save preferences to localStorage and apply
@@ -73,46 +62,37 @@ const savePreferences = withErrorHandling(async (prefs) => {
   if (!prefs) return;
   
   localStorage.setItem('cookiePreferences', JSON.stringify(prefs));
-  await applyPreferences(prefs);
+  applyPreferences(prefs);
   
   // Hide relevant UI
   if (dom.cookieBanner) dom.cookieBanner.hidden = true;
-  if (dom.cookieModal) dom.cookieModal.hidden = true;
+  closeCookieModal();
   
-  // Reload to re-fetch likes etc. if needed (optional, but original did)
-  // We'll do a soft reset by re-initializing gallery data
-  bus.emit('consent:applied', prefs);
+  // Notify firebase (which will init/teardown, then emit consent:applied)
+  bus.emit('consent:updated', prefs);
 }, { module: 'cookies' });
 
-// Initialize event listeners (delegation)
-function setupEventListeners() {
-  const signal = store.get('abortController')?.signal;
-  
-  // Cookie banner and modal UI both handled via delegation
-  dom.cookieUi?.addEventListener('click', handleConsentClick, { signal });
-  dom.cookieModalUi?.addEventListener('click', handleConsentClick, { signal });
-  
-  // Floating button opens modal
-  dom.cookieFloatBtn?.addEventListener('click', () => {
-    // Sync checkbox with current state
-    if (dom.functionalCheckbox) {
-      dom.functionalCheckbox.checked = store.get('functionalCookiesEnabled');
-    }
-    if (dom.cookieModal) dom.cookieModal.hidden = false;
-  }, { signal });
-  
-  // Modal close button
-  dom.cookieModalClose?.addEventListener('click', () => {
-    if (dom.cookieModal) dom.cookieModal.hidden = true;
-  }, { signal });
-}
+// Close cookie settings modal
+export const closeCookieModal = () => {
+  if (dom.cookieModal) dom.cookieModal.hidden = true;
+  store.set('isCookieModalOpen', false);
+};
+
+// Open cookie settings modal
+const openCookieModal = () => {
+  if (dom.functionalCheckbox) {
+    dom.functionalCheckbox.checked = store.get('functionalCookiesEnabled');
+  }
+  if (dom.cookieModal) dom.cookieModal.hidden = false;
+  store.set('isCookieModalOpen', true);
+  history.pushState({ page: 'cookie-settings' }, '', window.location.href);
+};
 
 function handleConsentClick(e) {
   const btn = e.target.closest('[data-consent]');
   if (!btn) return;
   
   const action = btn.dataset.consent;
-  const source = btn.dataset.source || 'unknown';
   
   const strategy = strategies[action];
   if (!strategy) return;
@@ -122,13 +102,31 @@ function handleConsentClick(e) {
   if (prefs) {
     savePreferences(prefs);
   } else if (action === 'settings') {
-    // Open settings modal
-    if (dom.functionalCheckbox) {
-      dom.functionalCheckbox.checked = store.get('functionalCookiesEnabled');
-    }
+    // Hide banner, open settings modal
     if (dom.cookieBanner) dom.cookieBanner.hidden = true;
-    if (dom.cookieModal) dom.cookieModal.hidden = false;
+    openCookieModal();
   }
+}
+
+// Initialize event listeners (delegation)
+function setupEventListeners() {
+  if (abortController) abortController.abort();
+  abortController = new AbortController();
+  const { signal } = abortController;
+  
+  // Cookie banner and modal UI both handled via delegation
+  dom.cookieUi?.addEventListener('click', handleConsentClick, { signal });
+  dom.cookieModalUi?.addEventListener('click', handleConsentClick, { signal });
+  
+  // Floating button opens modal
+  dom.cookieFloatBtn?.addEventListener('click', () => {
+    openCookieModal();
+  }, { signal });
+  
+  // Modal close button
+  dom.cookieModalClose?.addEventListener('click', () => {
+    closeCookieModal();
+  }, { signal });
 }
 
 // Public init function
@@ -138,7 +136,7 @@ export async function initCookieConsent() {
   const saved = loadSavedPreferences();
   
   if (saved) {
-    await applyPreferences(saved);
+    applyPreferences(saved);
     // Banner remains hidden (already hidden by CSS default)
   } else {
     // Show banner if no preferences saved
@@ -152,3 +150,9 @@ export async function initCookieConsent() {
     hasFunctionalConsent: () => store.get('functionalCookiesEnabled')
   };
 }
+
+// Cleanup
+export const destroyCookieConsent = () => {
+  abortController?.abort();
+  abortController = null;
+};

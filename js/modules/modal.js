@@ -4,6 +4,7 @@ import { store } from '../lib/store.js';
 import { bus } from '../lib/event-bus.js';
 import { dom } from '../dom-elements.js';
 import { errorHandler } from '../lib/error-handler.js';
+import { getDocIdFromUrl } from '../lib/utils.js';
 
 let currentAbortController = null;
 
@@ -13,7 +14,7 @@ const updateLikeButton = () => {
   if (!currentPhoto) return;
 
   const likesCache = store.get('likesCache') || {};
-  const docId = btoa(currentPhoto).replace(/[^a-zA-Z0-9]/g, '');
+  const docId = getDocIdFromUrl(currentPhoto);
   const likes = likesCache[docId] || 0;
   const likeCountEl = dom.likeCount;
   const heartEl = dom.likeBtn?.querySelector('.heart');
@@ -102,7 +103,7 @@ const toggleLike = async () => {
     return;
   }
 
-  const docId = btoa(currentPhoto).replace(/[^a-zA-Z0-9]/g, '');
+  const docId = getDocIdFromUrl(currentPhoto);
   const likedKey = `liked_${docId}`;
   const isCurrentlyLiked = localStorage.getItem(likedKey) === 'true';
   const increment = isCurrentlyLiked ? -1 : 1;
@@ -127,10 +128,10 @@ const setupEventListeners = () => {
   currentAbortController = new AbortController();
   const { signal } = currentAbortController;
 
-  // Modal close button – use history.back() to let popstate handle closing
+  // Modal close button — use history.back() to let popstate handle closing
   dom.modalClose?.addEventListener('click', () => history.back(), { signal });
 
-  // Click on modal background – also use history.back()
+  // Click on modal background — also use history.back()
   dom.modal?.addEventListener('click', (e) => {
     if (e.target === dom.modal) history.back();
   }, { signal });
@@ -142,7 +143,7 @@ const setupEventListeners = () => {
   dom.modalPrev?.addEventListener('click', () => navigateModal('prev'), { signal });
   dom.modalNext?.addEventListener('click', () => navigateModal('next'), { signal });
 
-  // Keyboard navigation – Escape calls history.back()
+  // Keyboard navigation — Escape calls history.back()
   document.addEventListener('keydown', (e) => {
     if (!store.get('isModalOpen')) return;
     if (e.key === 'Escape') history.back();
@@ -150,7 +151,7 @@ const setupEventListeners = () => {
     else if (e.key === 'ArrowRight') navigateModal('next');
   }, { signal });
 
-  // Handle history back – popstate is handled in navigation module,
+  // Handle history back — popstate is handled in navigation module,
   // which emits 'modal:close'. We subscribe to that below.
 };
 
@@ -160,9 +161,8 @@ const subscribeToEvents = () => {
   bus.on('photo:select', openModal);
 
   // When likes are updated (from firebase)
-  bus.on('like:updated', ({ url, newLikes }) => {
-    // Update cache (firebase already did, but ensure store is updated)
-    // Then refresh button UI
+  bus.on('like:updated', ({ url }) => {
+    // Refresh button UI if this is the currently viewed photo
     if (store.get('currentPhoto') === url) {
       updateLikeButton();
     }
@@ -176,7 +176,7 @@ const subscribeToEvents = () => {
 
 // Public init
 export const initModal = () => {
-  console.log('🔲 Initializing modal module...');
+  console.log('📲 Initializing modal module...');
   setupEventListeners();
   subscribeToEvents();
 };

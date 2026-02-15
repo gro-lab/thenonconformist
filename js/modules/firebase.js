@@ -3,6 +3,7 @@
 import { store } from '../lib/store.js';
 import { errorHandler, withErrorHandling } from '../lib/error-handler.js';
 import { bus } from '../lib/event-bus.js';
+import { getDocIdFromUrl } from '../lib/utils.js';
 
 let firebaseModules = null;
 let app = null;
@@ -86,11 +87,6 @@ export const teardownFirebase = () => {
   }
 };
 
-// Helper: generate document ID from URL (base64-like but safe)
-const getDocIdFromUrl = (url) => {
-  return btoa(url).replace(/[^a-zA-Z0-9]/g, '');
-};
-
 export const fetchAllLikes = withErrorHandling(async () => {
   if (!store.get('functionalCookiesEnabled') || !db || !firebaseModules) {
     console.log('⚠️ Functional cookies not enabled or Firebase not initialized, skipping likes fetch');
@@ -127,10 +123,8 @@ export const updateLike = withErrorHandling(async (url, increment_value) => {
     });
     const updatedSnap = await firebase.getDoc(docRef);
     const newLikes = updatedSnap.data().likes;
-    // Update cache
-    const currentCache = store.get('likesCache') || {};
-    currentCache[docId] = newLikes;
-    store.set('likesCache', currentCache);
+    // Spread into new object so the Proxy detects the change
+    store.set('likesCache', { ...store.get('likesCache'), [docId]: newLikes });
     return newLikes;
   } else {
     const initialLikes = Math.max(0, increment_value);
@@ -140,14 +134,12 @@ export const updateLike = withErrorHandling(async (url, increment_value) => {
       createdAt: firebase.serverTimestamp(),
       lastUpdated: firebase.serverTimestamp()
     });
-    const currentCache = store.get('likesCache') || {};
-    currentCache[docId] = initialLikes;
-    store.set('likesCache', currentCache);
+    store.set('likesCache', { ...store.get('likesCache'), [docId]: initialLikes });
     return initialLikes;
   }
 }, { module: 'firebase' });
 
-// Listen for like toggle events from modal – now includes galleryId
+// Listen for like toggle events from modal — now includes galleryId
 bus.on('like:toggle', async ({ url, increment, galleryId }) => {
   if (!store.get('functionalCookiesEnabled')) return;
   const newLikes = await updateLike(url, increment);
@@ -156,11 +148,13 @@ bus.on('like:toggle', async ({ url, increment, galleryId }) => {
   }
 });
 
-// Subscribe to consent changes to (re)init or teardown
-bus.on('consent:updated', (prefs) => {
+// Subscribe to consent changes to (re)init or teardown, then signal completion
+bus.on('consent:updated', async (prefs) => {
   if (prefs.functional) {
-    initFirebase();
+    await initFirebase();
   } else {
     teardownFirebase();
   }
+  // Signal that firebase work is done — gallery listens for this
+  bus.emit('consent:applied', prefs);
 });

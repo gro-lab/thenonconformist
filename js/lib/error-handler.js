@@ -63,6 +63,7 @@ class ErrorHandler {
         z-index: 1000;
         box-shadow: 0 2px 10px rgba(0,0,0,0.3);
         transition: opacity 0.3s;
+        pointer-events: none;
       `;
       document.body.appendChild(container);
     }
@@ -72,9 +73,11 @@ class ErrorHandler {
 
     container.textContent = message;
     container.style.opacity = '1';
+    container.style.pointerEvents = 'auto';
 
     this.toastTimeout = setTimeout(() => {
       container.style.opacity = '0';
+      container.style.pointerEvents = 'none';
     }, duration);
   }
 }
