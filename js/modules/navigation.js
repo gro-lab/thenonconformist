@@ -342,7 +342,7 @@ const subscribeToEvents = () => {
 
 // Public init
 export const initNavigation = () => {
-  console.log('ðŸ§­ Initializing navigation module...');
+  console.log('🧭 Initializing navigation module...');
   
   // Disable automatic browser scroll restoration
   if ('scrollRestoration' in history) {
