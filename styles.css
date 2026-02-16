@@ -255,7 +255,7 @@ body {
     height: 100vh;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.8s ease;
+    /* transition: opacity 0.8s ease; */
     z-index: 45;
     overflow: hidden;
     background: #0a0a14;
