@@ -805,7 +805,7 @@ body {
     font-size: inherit;
     font-family: inherit;
     padding: 0;
-    text-decoration: underline;
+    /* text-decoration: underline; */
     text-underline-offset: 2px;
 }
 
