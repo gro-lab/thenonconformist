@@ -147,7 +147,7 @@ const handleKeyDown = (e) => {
 const openGallery = (galleryId) => {
   // Capture current scroll position BEFORE any DOM changes
   const currentScrollY = window.scrollY;
-  console.log('📌 Storing homepage scrollY:', currentScrollY);
+  console.log('ðŸ“Œ Storing homepage scrollY:', currentScrollY);
   store.set('homepageScrollY', currentScrollY);
   
   store.set('currentGallery', galleryId);
@@ -166,35 +166,42 @@ const closeGallery = () => {
   history.back();
 };
 
-const performCloseGallery = () => {
-  bus.emit('gallery:close');
+const performCloseGallery = () => {	
+	
+	  bus.emit('gallery:close');
+	
+	  // Instantly hide gallery (no fade-out)
+	  if (dom.galleryContent) {
+	    dom.galleryContent.style.transition = 'none';
+	    dom.galleryContent.classList.remove('active');
+	  }
+	
+	  // Show homepage elements immediately
+	  dom.gallerySelector?.classList.remove('hidden');
+	  document.querySelector('.site-intro')?.classList.remove('hidden');
+	  document.querySelector('.terms-footer')?.classList.remove('hidden');
+	  store.set('isGalleryOpen', false);
+	
+	
+	  const savedScrollY = store.get('homepageScrollY');
+	  console.log('📌 Restoring homepage scrollY:', savedScrollY);
+	
+	
+	
+	
+	
+	  requestAnimationFrame(() => {
+	    window.scrollTo({ top: savedScrollY, behavior: 'instant' });
+	    // Restore transition for the next gallery open (fade-in still works)
+	    if (dom.galleryContent) {
+	      dom.galleryContent.style.transition = '';
+	    }
+	  });
+	
+	  if (dom.loadingIndicator) dom.loadingIndicator.classList.remove('active');
+	  pushHomepageTrap();
+	};
 
-  // Instantly hide gallery (no fade-out)
-  if (dom.galleryContent) {
-    dom.galleryContent.style.transition = 'none';
-    dom.galleryContent.classList.remove('active');
-  }
-
-  // Show homepage elements immediately
-  dom.gallerySelector?.classList.remove('hidden');
-  document.querySelector('.site-intro')?.classList.remove('hidden');
-  document.querySelector('.terms-footer')?.classList.remove('hidden');
-  store.set('isGalleryOpen', false);
-
-  const savedScrollY = store.get('homepageScrollY');
-  console.log('📌 Restoring homepage scrollY:', savedScrollY);
-
-  requestAnimationFrame(() => {
-    window.scrollTo({ top: savedScrollY, behavior: 'instant' });
-    // Restore transition for the next gallery open (fade-in still works)
-    if (dom.galleryContent) {
-      dom.galleryContent.style.transition = '';
-    }
-  });
-
-  if (dom.loadingIndicator) dom.loadingIndicator.classList.remove('active');
-  pushHomepageTrap();
-};
 
 // ==================== Terms Modal ====================
 const openTermsModal = () => {
@@ -326,11 +333,16 @@ const subscribeToEvents = () => {
   bus.on('gallery:open', (galleryId) => {
     openGallery(galleryId);
   });
+
+  // When terms modal requested (e.g. from cookie banner privacy link)
+  bus.on('terms:open', () => {
+    openTermsModal();
+  });
 };
 
 // Public init
 export const initNavigation = () => {
-  console.log('🧭 Initializing navigation module...');
+  console.log('ðŸ§­ Initializing navigation module...');
   
   // Disable automatic browser scroll restoration
   if ('scrollRestoration' in history) {
