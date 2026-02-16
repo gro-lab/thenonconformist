@@ -147,7 +147,7 @@ const handleKeyDown = (e) => {
 const openGallery = (galleryId) => {
   // Capture current scroll position BEFORE any DOM changes
   const currentScrollY = window.scrollY;
-  console.log('ðŸ“Œ Storing homepage scrollY:', currentScrollY);
+  console.log('📌 Storing homepage scrollY:', currentScrollY);
   store.set('homepageScrollY', currentScrollY);
   
   store.set('currentGallery', galleryId);
