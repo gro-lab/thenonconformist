@@ -390,7 +390,8 @@
     <div id="cookie-banner" class="cookie-banner" hidden>
         <div class="cookie-content">
             <h3>We value your privacy</h3>
-            <p>We use essential technologies and optional functional storage to enable features such as <span style="color: #f28c28">image likes</span>.</p>
+            <p>We use essential technologies and optional functional storage to enable features such as <span style="color: #f28c28">image likes</span>. If you accept functional storage, your browser will connect to Firebase (Google) to store and retrieve like counts. This involves processing your IP address by Google servers. No personal accounts or tracking are involved. For full details, see our <a href="#" id="banner-privacy-link" style="color: #f28c28; text-decoration: underline;">Privacy Policy</a>.</p>
+            <p style="font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-bottom: 0;">Your consent is valid for 180 days and can be withdrawn at any time via the 🍪 button.</p>
             <div class="cookie-actions" id="cookie-ui">
                 <button data-consent="settings" data-source="banner" class="cookie-btn cookie-btn-secondary">Settings</button>
                 <button data-consent="rejectAll" data-source="banner" class="cookie-btn cookie-btn-secondary">Reject All</button>
@@ -412,7 +413,7 @@
                 <div class="cookie-category">
                     <div class="cookie-category-header">
                         <div class="cookie-category-info">
-                            <h3>Essential Cookies</h3>
+                            <h3>Essential Technologies</h3>
                             <span class="cookie-badge required">Always Active</span>
                         </div>
                         <label class="cookie-toggle disabled">
@@ -421,14 +422,14 @@
                         </label>
                     </div>
                     <p class="cookie-category-description">
-                        These cookies are necessary for the website to function.
+                        Required for the website to function. Includes storing your consent preferences in your browser's local storage. No data is sent to external servers. No cookies are set.
                     </p>
                 </div>
-
+            
                 <div class="cookie-category">
                     <div class="cookie-category-header">
                         <div class="cookie-category-info">
-                            <h3>Functional Cookies</h3>
+                            <h3>Functional Storage</h3>
                             <span class="cookie-badge optional">Optional</span>
                         </div>
                         <label class="cookie-toggle">
@@ -437,7 +438,7 @@
                         </label>
                     </div>
                     <p class="cookie-category-description">
-                        Remembers which images you've liked.
+                        Enables the image like feature. When active, your browser connects to <strong>Firebase Firestore</strong> (Google LLC, USA) to store and retrieve aggregated like counts. Google processes your <strong>IP address</strong> and basic connection metadata under their <a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener" style="color: #f28c28;">data processing terms</a>. Like preferences are stored locally on your device. No user accounts, behavioral profiling, or cross-site tracking is involved. Data transfers to the US are covered by Standard Contractual Clauses (SCCs) and the EU-US Data Privacy Framework.
                     </p>
                 </div>
             </div>
