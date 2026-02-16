@@ -71,7 +71,6 @@ const initialState = {
   // Cookie consent
   functionalCookiesEnabled: false,
   cookiePreferences: null,
-  consentNeedsRenewal: false,
   
   // Navigation
   homepageScrollY: 0,
