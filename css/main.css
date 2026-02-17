@@ -1,1 +1,30 @@
+/* ============================================
+   THE NONCONFORMIST — CSS Architecture
+   
+   Layer order governs specificity:
+   reset < tokens < base < layout < components < utilities
+   A utility class always beats a component rule
+   regardless of selector weight.
+   ============================================ */
 
+@layer reset, tokens, base, layout, components, utilities;
+
+@import url('tokens.css') layer(tokens);
+@import url('base.css') layer(base);
+@import url('layout.css') layer(layout);
+@import url('components/header.css') layer(components);
+@import url('components/gallery.css') layer(components);
+@import url('components/modal.css') layer(components);
+@import url('components/cookie-banner.css') layer(components);
+@import url('utilities.css') layer(utilities);
+
+/* ── Reset (unlayered resets go first) ───── */
+@layer reset {
+    *,
+    *::before,
+    *::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+}
