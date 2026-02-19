@@ -8,9 +8,23 @@ import { initNavigation } from './modules/navigation.js';   // ⬅️ moved up
 import { initGallery } from './modules/gallery.js';
 import { initModal } from './modules/modal.js';
 
+// Register Service Worker for cache-first image loading (no consent needed — technical necessity)
+function registerServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('✅ Service Worker registered:', reg.scope))
+        .catch(err => console.warn('⚠️ Service Worker registration failed:', err));
+    });
+  }
+}
+
 async function init() {
   try {
     console.log('🚀 Initializing The Nonconformist (modular)...');
+    
+    // 0. Register Service Worker early (cache-first for images)
+    registerServiceWorker();
     
     // 1. Set up global error handling first
     errorHandler.setupGlobalHandlers();
@@ -26,7 +40,7 @@ async function init() {
       await initFirebase();
     }
     
-    // 5. Initialize navigation (History API / FSM) – must be before gallery
+    // 5. Initialize navigation (History API / FSM) — must be before gallery
     initNavigation();
     
     // 6. Initialize gallery (depends on Firebase data if enabled)
