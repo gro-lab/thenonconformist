@@ -166,37 +166,42 @@ const closeGallery = () => {
   history.back();
 };
 
-const performCloseGallery = () => {
-  // Emit event for gallery module to clean up
-  bus.emit('gallery:close');
+const performCloseGallery = () => {	
+	
+	  bus.emit('gallery:close');
+	
+	  // Instantly hide gallery (no fade-out)
+	  if (dom.galleryContent) {
+	    dom.galleryContent.style.transition = 'none';
+	    dom.galleryContent.classList.remove('active');
+	  }
+	
+	  // Show homepage elements immediately
+	  dom.gallerySelector?.classList.remove('hidden');
+	  document.querySelector('.site-intro')?.classList.remove('hidden');
+	  document.querySelector('.terms-footer')?.classList.remove('hidden');
+	  store.set('isGalleryOpen', false);
+	
+	
+	  const savedScrollY = store.get('homepageScrollY');
+	  console.log('📌 Restoring homepage scrollY:', savedScrollY);
+	
+	
+	
+	
+	
+	  requestAnimationFrame(() => {
+	    window.scrollTo({ top: savedScrollY, behavior: 'instant' });
+	    // Restore transition for the next gallery open (fade-in still works)
+	    if (dom.galleryContent) {
+	      dom.galleryContent.style.transition = '';
+	    }
+	  });
+	
+	  if (dom.loadingIndicator) dom.loadingIndicator.classList.remove('active');
+	  pushHomepageTrap();
+	};
 
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      dom.galleryContent?.classList.remove('active');
-
-      setTimeout(() => {
-        dom.gallerySelector?.classList.remove('hidden');
-        document.querySelector('.site-intro')?.classList.remove('hidden');
-        document.querySelector('.terms-footer')?.classList.remove('hidden');
-        store.set('isGalleryOpen', false);
-
-        // Restore scroll position after DOM is updated
-        const savedScrollY = store.get('homepageScrollY');
-        console.log('📌 Restoring homepage scrollY:', savedScrollY);
-        
-        requestAnimationFrame(() => {
-          window.scrollTo({ top: savedScrollY, behavior: 'instant' });
-        });
-
-        // Ensure loading indicator is hidden (if any other code added it)
-        if (dom.loadingIndicator) dom.loadingIndicator.classList.remove('active');
-      }, TRANSITION_MS);
-    });
-  });
-
-  // Re-push homepage trap
-  pushHomepageTrap();
-};
 
 // ==================== Terms Modal ====================
 const openTermsModal = () => {
@@ -327,6 +332,11 @@ const subscribeToEvents = () => {
   // When gallery requests open (from gallery module)
   bus.on('gallery:open', (galleryId) => {
     openGallery(galleryId);
+  });
+
+  // When terms modal requested (e.g. from cookie banner privacy link)
+  bus.on('terms:open', () => {
+    openTermsModal();
   });
 };
 
