@@ -1,10 +1,11 @@
 // js/app.js - Entry point
 import { store } from './lib/store.js';
+import { bus } from './lib/event-bus.js';
 import { errorHandler } from './lib/error-handler.js';
 import { initDomCache } from './dom-elements.js';
 import { initCookieConsent } from './modules/cookies.js';
-import { initFirebase } from './modules/firebase.js';
-import { initNavigation } from './modules/navigation.js';   // ⬅️ moved up
+// firebase.js is now loaded dynamically — only when consent is given
+import { initNavigation } from './modules/navigation.js';
 import { initGallery } from './modules/gallery.js';
 import { initModal } from './modules/modal.js';
 
@@ -35,9 +36,29 @@ async function init() {
     // 3. Load persisted cookie preferences and init cookie module
     await initCookieConsent();
     
-    // 4. If functional cookies allowed, init Firebase
+    // 4. If functional cookies allowed, dynamically load and init Firebase
+    //    This avoids pulling in ~139KB of Firebase SDK when consent is not given,
+    //    and removes firebase.js from the critical request chain entirely.
     if (store.get('functionalCookiesEnabled')) {
+      const { initFirebase } = await import('./modules/firebase.js');
       await initFirebase();
+    }
+    
+    // 4b. Handle late consent — if user accepts cookies after page load,
+    //     dynamically load firebase.js so its bus listeners get registered.
+    //     Once loaded, firebase.js's own consent:updated handler takes over.
+    let firebaseLoaded = store.get('functionalCookiesEnabled');
+    if (!firebaseLoaded) {
+      const unsub = bus.on('consent:updated', async (prefs) => {
+        if (prefs.functional && !firebaseLoaded) {
+          firebaseLoaded = true;
+          unsub(); // only need to bootstrap once
+          // Dynamic import registers firebase.js's own bus listeners,
+          // then we forward this consent event so it runs initFirebase()
+          await import('./modules/firebase.js');
+          bus.emit('consent:updated', prefs);
+        }
+      });
     }
     
     // 5. Initialize navigation (History API / FSM) — must be before gallery

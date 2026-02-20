@@ -24,6 +24,7 @@ const loadFirebaseSDK = async () => {
     firebaseModules = {
       initializeApp: appModule.initializeApp,
       getFirestore: firestoreModule.getFirestore,
+      initializeFirestore: firestoreModule.initializeFirestore,
       collection: firestoreModule.collection,
       doc: firestoreModule.doc,
       getDoc: firestoreModule.getDoc,
@@ -31,7 +32,11 @@ const loadFirebaseSDK = async () => {
       updateDoc: firestoreModule.updateDoc,
       increment: firestoreModule.increment,
       getDocs: firestoreModule.getDocs,
-      serverTimestamp: firestoreModule.serverTimestamp
+      serverTimestamp: firestoreModule.serverTimestamp,
+      // bfcache support — close/reopen Firestore's persistent connection
+      disableNetwork: firestoreModule.disableNetwork,
+      enableNetwork: firestoreModule.enableNetwork,
+      terminate: firestoreModule.terminate
     };
 
     console.log('✅ Firebase SDK loaded successfully');
@@ -51,6 +56,41 @@ const firebaseConfig = {
   appId: "1:552037212425:web:b0ddaed6ebbc34442f73d8"
 };
 
+// ==================== bfcache lifecycle ====================
+// Firestore opens a WebSocket that prevents the browser from storing
+// the page in the back/forward cache. disableNetwork alone doesn't
+// close WebSockets, so we fully terminate the Firestore instance on
+// pagehide and reinitialise it when the page is restored from bfcache.
+let bfcacheHandlersRegistered = false;
+
+const setupBfcacheHandlers = () => {
+  if (bfcacheHandlersRegistered) return;
+  bfcacheHandlersRegistered = true;
+
+  window.addEventListener('pagehide', () => {
+    if (db && firebaseModules?.terminate) {
+      firebaseModules.terminate(db)
+        .then(() => console.log('⏸️ Firestore terminated (pagehide)'))
+        .catch(() => {}); // swallow — page may already be frozen
+      // Null out db so we know to reinit on restore
+      db = null;
+      store.set('firebaseDb', null);
+    }
+  });
+
+  window.addEventListener('pageshow', async (e) => {
+    // persisted === true means page was restored from bfcache
+    if (e.persisted && !db && app && firebaseModules) {
+      console.log('▶️ Page restored from bfcache — reinitialising Firestore...');
+      db = firebaseModules.getFirestore(app);
+      store.set('firebaseDb', db);
+      // Refresh likes since they may have changed while page was cached
+      await fetchAllLikes();
+      console.log('✅ Firestore reconnected after bfcache restore');
+    }
+  });
+};
+
 export const initFirebase = withErrorHandling(async () => {
   // If already initialized or functional cookies disabled, return
   if (app) return;
@@ -66,6 +106,9 @@ export const initFirebase = withErrorHandling(async () => {
   store.set('firebaseApp', app);
   store.set('firebaseDb', db);
   store.set('firebaseModules', firebaseModules);
+  
+  // Wire up bfcache handlers now that db exists
+  setupBfcacheHandlers();
   
   console.log('✅ Firebase initialized');
   
