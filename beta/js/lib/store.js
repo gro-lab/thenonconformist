@@ -79,7 +79,6 @@ const initialState = {
   scrollX: 0,
   scrollY: 0,
   scrollLimits: { minX: 0, maxX: 0, minY: 0, maxY: 0 },
-  galleryScrollPositions: {}, // per-gallery {scrollX, scrollY} — persists across open/close
   
   // Firebase (lazy)
   firebaseApp: null,

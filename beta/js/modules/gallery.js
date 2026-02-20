@@ -1,6 +1,5 @@
 // js/modules/gallery.js
 // Gallery grid, masonry layout, lazy loading, cover images
-// + DOM preservation cache, thumbnail prefetching
 import { store } from '../lib/store.js';
 import { bus } from '../lib/event-bus.js';
 import { dom, clearDomCache } from '../dom-elements.js';
@@ -39,65 +38,6 @@ const galleries = {
 let abortController = null;
 let currentMasonryObserver = null;
 const busUnsubs = [];
-
-// ==================== DOM Preservation Cache ====================
-// Holds detached DOM fragments per gallery so re-opening skips rebuild + re-lazy-load
-const galleryDomCache = new Map();
-
-/**
- * Save the current masonry grid children into a DocumentFragment keyed by galleryId.
- * Nodes are *moved* (not cloned) so the grid is emptied as a side-effect.
- */
-const cacheGalleryDom = (galleryId) => {
-  const masonryGrid = dom.masonryGrid;
-  if (!masonryGrid || masonryGrid.children.length === 0) return;
-
-  const count = masonryGrid.children.length;
-  const fragment = document.createDocumentFragment();
-  while (masonryGrid.firstChild) {
-    fragment.appendChild(masonryGrid.firstChild);
-  }
-  galleryDomCache.set(galleryId, fragment);
-  console.log(`💾 Cached gallery DOM: ${galleryId} (${count} items)`);
-};
-
-// ==================== Image Prefetching ====================
-// After a gallery finishes loading, prefetch thumbnails and full-size images
-// for the first N images in that gallery using <link rel="prefetch"> during idle time.
-const prefetchedGalleries = new Set();
-
-const prefetchGalleryImages = (galleryId) => {
-  if (prefetchedGalleries.has(galleryId)) return; // already queued
-  prefetchedGalleries.add(galleryId);
-
-  const galleryImageData = store.get('galleryImageData') || {};
-  const images = galleryImageData[galleryId] || [];
-  const gallery = galleries[galleryId];
-  if (!gallery || images.length === 0) return;
-
-  const schedule = typeof requestIdleCallback === 'function' ? requestIdleCallback : setTimeout;
-  const MAX_PREFETCH = 10;
-  const toPrefetch = images.slice(0, MAX_PREFETCH);
-
-  schedule(() => {
-    toPrefetch.forEach(img => {
-      // Prefetch thumbnail
-      const thumbLink = document.createElement('link');
-      thumbLink.rel = 'prefetch';
-      thumbLink.as = 'image';
-      thumbLink.href = createThumbnailUrl(gallery.dir, img.imageData);
-      document.head.appendChild(thumbLink);
-
-      // Prefetch full-size image
-      const fullLink = document.createElement('link');
-      fullLink.rel = 'prefetch';
-      fullLink.as = 'image';
-      fullLink.href = createImageUrl(gallery.dir, img.imageData);
-      document.head.appendChild(fullLink);
-    });
-    console.log(`🔮 Prefetched ${toPrefetch.length} thumbnails + full images for ${galleryId}`);
-  });
-};
 
 // Stable sort by likes
 const stableSortByLikes = (items) => {
@@ -295,7 +235,7 @@ const setupGallerySelector = async () => {
 
 // Load gallery content into masonry grid
 const loadGalleryContent = (galleryId, options = {}) => {
-  const { preserveScroll = false, showLoading = true, useCache = false } = options;
+  const { preserveScroll = false, showLoading = true } = options;
   const masonryGrid = dom.masonryGrid;
   const gallery = galleries[galleryId];
   const galleryImageData = store.get('galleryImageData') || {};
@@ -316,34 +256,6 @@ const loadGalleryContent = (galleryId, options = {}) => {
     currentMasonryObserver = null;
   }
 
-  // ── DOM Cache Restore Path ──────────────────────────────────────────
-  // If caller opted in (useCache) and we have a cached fragment, skip the
-  // entire build + lazy-load pipeline — just re-attach the nodes.
-  if (useCache && galleryDomCache.has(galleryId)) {
-    console.log(`♻️ Restoring cached gallery: ${galleryId}`);
-    masonryGrid.innerHTML = '';
-    const cached = galleryDomCache.get(galleryId);
-    masonryGrid.appendChild(cached);  // moves nodes from fragment → grid
-    galleryDomCache.delete(galleryId); // fragment is now empty
-
-    // Keep currentGalleryImages in sync (needed for modal navigation)
-    const sortedImages = stableSortByLikes(images);
-    store.set('currentGalleryImages', sortedImages);
-
-    // Update header
-    if (dom.currentGalleryTitle) dom.currentGalleryTitle.textContent = gallery.title;
-    if (dom.currentGallerySubtitle) dom.currentGallerySubtitle.textContent = gallery.subtitle;
-
-    // Scroll is already set by navigation (from galleryScrollPositions).
-    // Do NOT reset it here — just signal content is ready.
-    if (showLoading && dom.loadingIndicator) {
-      setTimeout(() => dom.loadingIndicator.classList.remove('active'), 100);
-    }
-    setTimeout(() => bus.emit('gallery:contentLoaded', galleryId), 100);
-    return;
-  }
-
-  // ── Fresh Build Path (original logic) ───────────────────────────────
   masonryGrid.innerHTML = '';
 
   const sortedImages = stableSortByLikes(images);
@@ -460,18 +372,11 @@ export const initGallery = async () => {
       document.querySelector('.site-intro')?.classList.add('hidden');
       document.querySelector('.terms-footer')?.classList.add('hidden');
 
-      // Check if we can restore from DOM cache (skip heavy rebuild)
-      const hasCachedDom = galleryDomCache.has(galleryId);
-
       // Double rAF to ensure spinner shows
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           setTimeout(() => {
-            loadGalleryContent(galleryId, {
-              preserveScroll: hasCachedDom, // preserve scroll when restoring cache
-              showLoading: true,
-              useCache: true               // allow cache restore
-            });
+            loadGalleryContent(galleryId, { preserveScroll: false, showLoading: true });
             if (dom.loadingIndicator) dom.loadingIndicator.classList.remove('active');
             if (dom.galleryContent) dom.galleryContent.classList.add('active');
           }, TRANSITION_MS);
@@ -480,27 +385,8 @@ export const initGallery = async () => {
     })
   );
 
-  // ── Cache DOM on gallery close ────────────────────────────────────
-  // Navigation emits 'gallery:close' with the galleryId just before hiding.
-  busUnsubs.push(
-    bus.on('gallery:close', (galleryId) => {
-      if (galleryId) {
-        cacheGalleryDom(galleryId);
-      }
-    })
-  );
-
-  // ── Prefetch images for the current gallery after content loads ─────
-  busUnsubs.push(
-    bus.on('gallery:contentLoaded', (currentGalleryId) => {
-      prefetchGalleryImages(currentGalleryId);
-    })
-  );
-
   busUnsubs.push(
     bus.on('consent:applied', () => {
-      // Invalidate all cached DOM — likes data changed
-      galleryDomCache.clear();
       // Refresh gallery data (likes may have changed)
       Object.keys(galleries).forEach(key => loadGalleryData(key));
       refreshGalleryCounts();
@@ -515,15 +401,6 @@ export const initGallery = async () => {
   // Listen for like updates — now includes galleryId
   busUnsubs.push(
     bus.on('like:updated', ({ galleryId }) => {
-      // Invalidate cached DOM for this gallery — sort order may have changed
-      galleryDomCache.delete(galleryId);
-      // Also clear saved scroll position since sort order changed
-      const positions = store.get('galleryScrollPositions') || {};
-      if (positions[galleryId]) {
-        delete positions[galleryId];
-        store.set('galleryScrollPositions', { ...positions });
-      }
-
       updateGalleryData(galleryId);
       // If this gallery is currently open, re‑render with scroll preserved
       if (store.get('isGalleryOpen') && store.get('currentGallery') === galleryId) {
@@ -541,8 +418,6 @@ export const destroyGallery = () => {
     currentMasonryObserver.disconnect();
     currentMasonryObserver = null;
   }
-  galleryDomCache.clear();
-  prefetchedGalleries.clear();
   busUnsubs.forEach(unsub => unsub());
   busUnsubs.length = 0;
 };

@@ -59,40 +59,6 @@ const updateCanvasTransform = () => {
   container.style.transform = `translate(${scrollX}px, ${scrollY}px)`;
 };
 
-// ==================== Per-Gallery Scroll Memory ====================
-/**
- * Save the current canvas scroll position for the active gallery.
- * Called before closing or switching away from a gallery.
- */
-const saveGalleryScrollPosition = () => {
-  const galleryId = store.get('currentGallery');
-  if (!galleryId) return;
-
-  const positions = store.get('galleryScrollPositions') || {};
-  positions[galleryId] = {
-    scrollX: store.get('scrollX'),
-    scrollY: store.get('scrollY')
-  };
-  store.set('galleryScrollPositions', { ...positions });
-  console.log(`📐 Saved scroll for ${galleryId}:`, positions[galleryId]);
-};
-
-/**
- * Restore previously saved scroll position for a gallery.
- * If none saved, resets to origin (0, 0).
- */
-const restoreGalleryScrollPosition = (galleryId) => {
-  const positions = store.get('galleryScrollPositions') || {};
-  if (positions[galleryId]) {
-    store.set('scrollX', positions[galleryId].scrollX);
-    store.set('scrollY', positions[galleryId].scrollY);
-    console.log(`📐 Restored scroll for ${galleryId}:`, positions[galleryId]);
-  } else {
-    store.set('scrollX', 0);
-    store.set('scrollY', 0);
-  }
-};
-
 // ==================== Drag & Pan ====================
 let dragStartX = 0, dragStartY = 0;
 
@@ -187,9 +153,6 @@ const openGallery = (galleryId) => {
   store.set('currentGallery', galleryId);
   store.set('isGalleryOpen', true);
 
-  // Restore saved canvas scroll position for this gallery (or reset to 0)
-  restoreGalleryScrollPosition(galleryId);
-
   // Push history state
   history.pushState({ page: 'gallery', gallery: galleryId }, '', window.location.href);
 };
@@ -203,40 +166,41 @@ const closeGallery = () => {
   history.back();
 };
 
-const performCloseGallery = () => {
-  // Save canvas scroll position for the current gallery before tearing down
-  saveGalleryScrollPosition();
-
-  // Emit close with galleryId so gallery module can cache the DOM
-  const galleryId = store.get('currentGallery');
-  bus.emit('gallery:close', galleryId);
-
-  // Instantly hide gallery (no fade-out)
-  if (dom.galleryContent) {
-    dom.galleryContent.style.transition = 'none';
-    dom.galleryContent.classList.remove('active');
-  }
-
-  // Show homepage elements immediately
-  dom.gallerySelector?.classList.remove('hidden');
-  document.querySelector('.site-intro')?.classList.remove('hidden');
-  document.querySelector('.terms-footer')?.classList.remove('hidden');
-  store.set('isGalleryOpen', false);
-
-  const savedScrollY = store.get('homepageScrollY');
-  console.log('📌 Restoring homepage scrollY:', savedScrollY);
-
-  requestAnimationFrame(() => {
-    window.scrollTo({ top: savedScrollY, behavior: 'instant' });
-    // Restore transition for the next gallery open (fade-in still works)
-    if (dom.galleryContent) {
-      dom.galleryContent.style.transition = '';
-    }
-  });
-
-  if (dom.loadingIndicator) dom.loadingIndicator.classList.remove('active');
-  pushHomepageTrap();
-};
+const performCloseGallery = () => {	
+	
+	  bus.emit('gallery:close');
+	
+	  // Instantly hide gallery (no fade-out)
+	  if (dom.galleryContent) {
+	    dom.galleryContent.style.transition = 'none';
+	    dom.galleryContent.classList.remove('active');
+	  }
+	
+	  // Show homepage elements immediately
+	  dom.gallerySelector?.classList.remove('hidden');
+	  document.querySelector('.site-intro')?.classList.remove('hidden');
+	  document.querySelector('.terms-footer')?.classList.remove('hidden');
+	  store.set('isGalleryOpen', false);
+	
+	
+	  const savedScrollY = store.get('homepageScrollY');
+	  console.log('📌 Restoring homepage scrollY:', savedScrollY);
+	
+	
+	
+	
+	
+	  requestAnimationFrame(() => {
+	    window.scrollTo({ top: savedScrollY, behavior: 'instant' });
+	    // Restore transition for the next gallery open (fade-in still works)
+	    if (dom.galleryContent) {
+	      dom.galleryContent.style.transition = '';
+	    }
+	  });
+	
+	  if (dom.loadingIndicator) dom.loadingIndicator.classList.remove('active');
+	  pushHomepageTrap();
+	};
 
 
 // ==================== Terms Modal ====================
