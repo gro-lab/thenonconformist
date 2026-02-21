@@ -71,6 +71,7 @@ const initialState = {
   // Cookie consent
   functionalCookiesEnabled: false,
   cookiePreferences: null,
+  consentExpired: false, // tracks whether consent needs renewal
   
   // Navigation
   homepageScrollY: 0,

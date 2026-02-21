@@ -797,6 +797,17 @@ body {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
+.cookie-inline-link {
+    background: none;
+    border: none;
+    color: var(--accent-orange);
+    cursor: pointer;
+    font-size: inherit;
+    font-family: inherit;
+    padding: 0;
+    text-underline-offset: 2px;
+}
+
 /* Tablet and below - hide back button */
 @media (max-width: 1024px) {
     #back-button { display: none; }
@@ -907,9 +918,4 @@ body {
 
 .hidden {
     display: none !important;
-}
-
-
-#cookie-settings-modal .modal-close {
-    display: none;
 }
