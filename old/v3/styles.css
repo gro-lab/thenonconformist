@@ -893,6 +893,9 @@ body {
     .gallery-cover {
         min-height: 450px;
     }
+    .cookie-category {
+        padding: 1rem;
+    }
 }
 
 /* Error Toast */
