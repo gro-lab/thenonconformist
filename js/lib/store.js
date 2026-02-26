@@ -73,6 +73,9 @@ const initialState = {
   cookiePreferences: null,
   consentExpired: false, // tracks whether consent needs renewal
   
+  // Audio
+  isAudioEnabled: true,
+  
   // Navigation
   homepageScrollY: 0,
   isDragging: false,

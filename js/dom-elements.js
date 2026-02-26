@@ -30,6 +30,7 @@ const selectors = {
   cookieUi: '#cookie-ui',
   cookieModalUi: '#cookie-modal-ui',
   functionalCheckbox: '#functional-cookies',
+  audioToggle: '#audio-toggle',
   lowCount: '#low-count',
   solCount: '#sol-count',
   rCount: '#r-count',
