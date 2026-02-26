@@ -1,4 +1,4 @@
-// js/lib/store.js (updated with isCookieModalOpen)
+// js/lib/store.js (updated with zoom & pan state)
 // Proxy-based reactive state store with event bus integration
 import { bus } from './event-bus.js';
 
@@ -92,7 +92,13 @@ const initialState = {
     sol: [],
     r: [],
     sa: []
-  }
+  },
+
+  // Modal zoom & pan state
+  modalZoom: 1,       // 1.0 = fit-to-screen, >1 = zoomed in
+  modalPanX: 0,       // horizontal pan offset from center
+  modalPanY: 0,       // vertical pan offset from center
+  isModalDragging: false  // true when user is actively panning
 };
 
 export const store = new Store(initialState);
