@@ -469,126 +469,10 @@ body {
     z-index: 310;
 }
 
-/* ============================================ */
-/* ZOOM & PAN — CSS ADDITIONS                   */
-/* Append these rules to the end of styles.css  */
-/* Also update .modal-img rule as noted below   */
-/* ============================================ */
-
-/*
- * IMPORTANT: Replace the existing .modal-img rule:
- *
- *   .modal-img {
- *       max-width: 90vw;
- *       max-height: 90vh;
- *       object-fit: contain;
- *   }
- *
- * With this updated version:
- */
-
-/*
 .modal-img {
-    max-width: 100%;
-    max-height: 100%;
+    max-width: 90vw;
+    max-height: 90vh;
     object-fit: contain;
-    transform-origin: center center;
-    will-change: transform;
-    user-select: none;
-    -webkit-user-select: none;
-    -webkit-user-drag: none;
-}
-*/
-
-/* --- Modal Image Container --- */
-.modal-img-container {
-    position: relative;
-    overflow: hidden;
-    width: 90vw;
-    height: 90vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: zoom-in;
-    /* Prevent default browser pinch-zoom on the modal */
-    touch-action: none;
-}
-
-/* --- Zoom Controls --- */
-.modal-zoom-controls {
-    position: absolute;
-    top: 30px;
-    right: 100px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    z-index: 310;
-}
-
-.modal-zoom-btn {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: white;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    font-size: 1.25rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.2s ease, opacity 0.2s ease;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-}
-
-.modal-zoom-btn:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.2);
-}
-
-.modal-zoom-btn:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-}
-
-/* --- Zoom Percentage Indicator --- */
-.zoom-indicator {
-    font-size: 0.8rem;
-    color: rgba(255, 255, 255, 0.8);
-    background: rgba(0, 0, 0, 0.5);
-    padding: 4px 10px;
-    border-radius: 999px;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    pointer-events: none;
-    white-space: nowrap;
-}
-
-.zoom-indicator.visible {
-    opacity: 1;
-}
-
-/* --- Mobile adjustments for zoom controls --- */
-@media (max-width: 768px) {
-    .modal-zoom-controls {
-        top: 20px;
-        right: 80px;
-        gap: 6px;
-    }
-
-    .modal-zoom-btn {
-        width: 36px;
-        height: 36px;
-        font-size: 1.1rem;
-    }
-
-    .zoom-indicator {
-        font-size: 0.75rem;
-        padding: 3px 8px;
-    }
 }
 
 .modal-navigation {
@@ -1038,3 +922,5 @@ body {
 .hidden {
     display: none !important;
 }
+
+

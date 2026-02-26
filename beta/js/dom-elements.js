@@ -20,7 +20,6 @@ const selectors = {
   currentGalleryTitle: '#current-gallery-title',
   currentGallerySubtitle: '#current-gallery-subtitle',
   modalImg: '#modal-img',
-  modalImgContainer: '#modal-img-container',
   likeBtn: '#like-btn',
   likeCount: '#like-count',
   modalPrev: '#modal-prev',
@@ -35,10 +34,6 @@ const selectors = {
   solCount: '#sol-count',
   rCount: '#r-count',
   saCount: '#sa-count',
-  // Zoom controls
-  zoomInBtn: '#zoom-in-btn',
-  zoomOutBtn: '#zoom-out-btn',
-  zoomIndicator: '#zoom-indicator',
 };
 
 const cache = new Map();
