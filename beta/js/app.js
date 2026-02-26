@@ -7,6 +7,7 @@ import { initFirebase } from './modules/firebase.js';
 import { initNavigation } from './modules/navigation.js';   // ⬅️ moved up
 import { initGallery } from './modules/gallery.js';
 import { initModal } from './modules/modal.js';
+import { initAudio } from './modules/audio.js';
 
 async function init() {
   try {
@@ -34,6 +35,9 @@ async function init() {
     
     // 7. Initialize modal (lightbox)
     initModal();
+    
+    // 8. Initialize audio synesthesia (ambient soundscapes)
+    initAudio();
     
     console.log('✅ All modules initialized');
   } catch (error) {
