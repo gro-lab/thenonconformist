@@ -1011,3 +1011,73 @@ body {
 #cookie-float-btn {
   bottom: 60px; /* Push cookie button up when audio button is present */
 }
+/* ============================================ */
+/* PRESENCE INDICATOR — Active Viewers          */
+/* ============================================ */
+
+.presence-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(0, 0, 0, 0.4);
+  padding: 4px 10px;
+  border-radius: 999px;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  margin-top: 8px;
+}
+
+.presence-indicator[hidden] {
+  display: none;
+}
+
+.presence-dot {
+  width: 6px;
+  height: 6px;
+  background: #4ade80;
+  border-radius: 50%;
+  animation: pulse-dot 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.2); }
+}
+
+.presence-count {
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+/* Modal-level presence indicator — positioned above like button */
+.presence-indicator-modal {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 310;
+  margin-top: 0;
+}
+
+/* Mobile adjustments for presence */
+@media (max-width: 768px) {
+  .presence-indicator {
+    font-size: 0.65rem;
+    padding: 3px 8px;
+    gap: 4px;
+  }
+
+  .presence-dot {
+    width: 4px;
+    height: 4px;
+  }
+
+  .presence-indicator-modal {
+    bottom: 85px;
+  }
+}
