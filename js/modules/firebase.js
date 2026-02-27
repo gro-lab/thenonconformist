@@ -48,7 +48,9 @@ const firebaseConfig = {
   projectId: "thenonconformistdotxyz",
   storageBucket: "thenonconformistdotxyz.firebasestorage.app",
   messagingSenderId: "552037212425",
-  appId: "1:552037212425:web:b0ddaed6ebbc34442f73d8"
+  appId: "1:552037212425:web:b0ddaed6ebbc34442f73d8",
+  // databaseURL is required for Realtime Database
+  databaseURL: "https://thenonconformistdotxyz-default-rtdb.europe-west1.firebasedatabase.app"
 };
 
 export const initFirebase = withErrorHandling(async () => {
