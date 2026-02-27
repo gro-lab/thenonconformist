@@ -181,17 +181,14 @@
             </div>
         </div>
     </div>
-
     <!-- Terms Link -->
     <div class="terms-footer">
         <button id="terms-link" class="terms-link">Terms & Conditions / Privacy Policy</button>
     </div>
-
     <!-- Loading Indicator -->
     <div id="loading-indicator" class="loading-indicator">
         <div class="loading-spinner"></div>
     </div>
-
     <!-- Gallery Content View -->
     <div id="gallery-content" class="gallery-content">
         <button id="back-button" class="back-button">
@@ -205,6 +202,11 @@
             <div id="gallery-header" class="gallery-header">
                 <h2 id="current-gallery-title"></h2>
                 <p id="current-gallery-subtitle"></p>
+                <!-- Presence: Gallery-level active viewers indicator -->
+                <div id="presence-gallery" class="presence-indicator" hidden>
+                    <span class="presence-dot"></span>
+                    <span class="presence-count">0 viewing</span>
+                </div>
             </div>
             <div id="canvas-transform-container" class="canvas-transform-container">
                 <div id="masonry-grid" class="masonry-grid"></div>
@@ -214,7 +216,6 @@
             <p>Tap to view • Swipe to explore • Keyboard to navigate</p>
         </div> -->
     </div>
-
     <!-- Modal -->
     <div id="modal" class="modal" hidden>
         <button class="modal-close" id="modal-close">×</button>
@@ -223,12 +224,16 @@
             <button class="modal-nav-btn modal-next" id="modal-next">►</button>
         </div>
         <img id="modal-img" alt="Full size image" class="modal-img">
+        <!-- Presence: Image-level active viewers indicator -->
+        <div id="presence-image" class="presence-indicator presence-indicator-modal" hidden>
+            <span class="presence-dot"></span>
+            <span class="presence-count">0 viewing this</span>
+        </div>
         <button id="like-btn" class="like-btn">
             <span class="heart">♡</span>
             <span id="like-count">0</span>
         </button>
     </div>
-
     <!-- Terms Modal -->
     <div id="terms-modal" class="modal terms-modal" hidden>
         <button class="modal-close" id="terms-modal-close">×</button>
@@ -243,10 +248,8 @@
                     <li><strong>Email:</strong> <a href="mailto:then-onconformist@outlook.com">then-onconformist@outlook.com</a></li>
                 </ul>
                 <p>Under Regulation (EU) 2016/679 (GDPR), the above person acts as the data controller responsible for the processing of personal data through this website.</p>
-
                 <h3>2. About The Nonconformist</h3>
                 <p>The Nonconformist is a non-commercial artistic project and online photography portfolio. The website does not sell products, does not require user accounts, and does not provide paid services.</p>
-
                 <h3>3. What personal data is collected</h3>
                 <p>This website processes a minimal amount of data, strictly necessary for its functionality.</p>
                 
@@ -261,7 +264,6 @@
                   individuals. The website does not combine this data with other information to
                   identify users.
                 </p>
-
                 <h4>3.2. Firebase (Google) processing</h4>
                 <p>If you enable optional functionality, the website uses Firebase Firestore, a service provided by Google, to:</p>
                 <ul>
@@ -279,6 +281,22 @@
                 <p><strong>Important:</strong> Firebase processes technical metadata (IP address, connection data, browser information) in accordance with Google's privacy policies. While likes are not directly attributed to your personal identity, they are linked to your device to maintain vote integrity. This constitutes pseudonymous data under GDPR.</p>
                 <p><strong>✅ No Firebase connections occur until you accept functional cookies.</strong></p>
 
+                <h4>3.3. Realtime Viewing Activity</h4>
+                <p>If you enable optional functionality, the website may display an anonymous count of users currently viewing the same gallery or image. This "active viewers" feature uses Firebase Realtime Database, a service provided by Google, to:</p>
+                <ul>
+                    <li>track ephemeral presence data (current gallery and image being viewed)</li>
+                    <li>without storing user IDs, IP addresses, or any personal identifiers</li>
+                    <li>without behavioral profiling or cross-session tracking</li>
+                </ul>
+                <p>Stored data includes only:</p>
+                <ul>
+                    <li>an auto-generated, temporary session identifier (random, non-identifying)</li>
+                    <li>the gallery and image currently being viewed</li>
+                    <li>a technical timestamp</li>
+                </ul>
+                <p>This data is <strong>fully ephemeral</strong>: it is automatically deleted when you close the browser tab, navigate away from the gallery, or withdraw consent. A safety cleanup also removes any stale entries within 60 seconds. No historical viewing data is retained.</p>
+                <p><strong>✅ This feature is strictly opt-in (requires functional cookies) and stores no persistent personal data.</strong></p>
+
                 <h3>4. What we do NOT collect</h3>
                 <p>❌ This website does not collect:</p>
                 <ul>
@@ -292,7 +310,6 @@
                     <li>newsletter subscriptions</li>
                 </ul>
                 <p>✅ Third-party services (Firebase) are loaded ONLY after you accept functional cookies.</p>
-
                 <h3>5. Legal basis for processing</h3>
                 <p>
                   Depending on the specific processing activity, personal data is processed
@@ -311,7 +328,6 @@
                 <p>
                   Each processing activity is limited to its stated purpose.
                 </p>
-
                 <h3>6. Cookies and similar technologies</h3>
                 <p>This website does not use advertising or tracking cookies.</p>
                 <p>Only:</p>
@@ -324,16 +340,14 @@
                   The website may perform minimal technical network requests (such as DNS resolution)
                   required to load images hosted on external platforms.
                 </p>
-
                 <h3>7. International data transfers</h3>
                 <p>Firebase is a service provided by Google LLC (United States). Google relies on Standard Contractual Clauses (SCCs) approved by the European Commission for international data transfers.</p>
-
                 <h3>8. Data retention</h3>
                 <ul>
                     <li>Local preferences remain stored until you clear them from your browser</li>
                     <li>Like-related data is stored indefinitely or until the project is discontinued</li>
+                    <li>Realtime viewing activity is ephemeral and deleted automatically on disconnect (within seconds)</li>
                 </ul>
-
                 <h3>9. Your rights</h3>
                 <p>Under the GDPR, you have the right to:</p>
                 <ul>
@@ -342,13 +356,10 @@
                     <li>withdraw consent</li>
                     <li>object to processing</li>
                 </ul>
-
                 <h3>10. Changes to this policy</h3>
                 <p>This Privacy Policy may be updated from time to time. The current version will always be available on this website.</p>
-
                 <h3>11. Contact</h3>
                 <p>For any questions regarding this Privacy Policy or to exercise your rights, contact us at: <a href="mailto:then-onconformist@outlook.com">then-onconformist@outlook.com</a></p>
-
                 <h3>12. Photography and Artistic Expression</h3>
                 <p>Images displayed on this website may include public spaces and individuals captured in street photography contexts. These images are published under:</p>
                 <ul>
@@ -362,7 +373,6 @@
                     <li>Your reason for removal request</li>
                 </ul>
                 <p>We will balance your rights against our artistic freedom and respond within 30 days in accordance with GDPR Article 17 (right to erasure).</p>
-
                 <h3>13. Email Communications</h3>
                 <p>If you contact us via email:</p>
                 <ul>
@@ -371,13 +381,11 @@
                     <li><strong>Retention:</strong> Emails are stored for up to 2 years or until the purpose is fulfilled</li>
                     <li><strong>Your rights:</strong> You may request deletion of your email correspondence at any time</li>
                 </ul>
-
                 <h3>14. Supervisory Authority</h3>
                 <p>You have the right to lodge a complaint with the Romanian data protection authority:</p>
                 <p><strong>Autoritatea Națională de Supraveghere a Prelucrării Datelor cu Caracter Personal (ANSPDCP)</strong><br>
                 Address: B-dul G-ral. Gheorghe Magheru 28-30, Sector 1, București, România<br>
                 Website: <a href="https://www.dataprotection.ro" target="_blank" rel="noopener">www.dataprotection.ro</a></p>
-
                 <h3>✔️ GDPR approach</h3>
                 <p>This website follows the principles of:</p>
                 <ul>
@@ -389,7 +397,6 @@
             </div>
         </div>
     </div> 
-
     <!-- Cookie Banner -->
     <div id="cookie-banner" class="cookie-banner" hidden>
         <div class="cookie-content">
@@ -402,7 +409,6 @@
             </div>
         </div>
     </div>
-
     <!-- Cookie Settings Modal -->
        <div id="cookie-settings-modal" class="modal cookie-modal" hidden>
         <button class="modal-close" id="cookie-modal-close">×</button>
@@ -411,7 +417,6 @@
             <p class="cookie-intro">
               Choose which types of browser storage this site may use. Your consent is recorded with a timestamp and version identifier, and expires automatically after 180 days.
             </p>
-
             <div class="cookie-categories">
                 <div class="cookie-category">
                     <div class="cookie-category-header">
@@ -428,7 +433,6 @@
                         Required for the website to function. Stores your cookie consent preferences (choice, timestamp, and version) in your browser's local storage. No data is sent to external servers. No personal data is collected.
                     </p>
                 </div>
-
                 <div class="cookie-category">
                     <div class="cookie-category-header">
                         <div class="cookie-category-info">
@@ -441,7 +445,7 @@
                         </label>
                     </div>
                     <p class="cookie-category-description">
-                        Enables the image "like" feature. When active, the site connects to Firebase Firestore (Google LLC, United States) to store and retrieve aggregated like counts. This involves processing your IP address and browser metadata by Google under Standard Contractual Clauses (SCCs). Liked images are tracked locally in your browser to prevent duplicate votes. No user accounts or persistent identifiers are created.
+                        Enables the image "like" feature and real-time viewing activity. When active, the site connects to Firebase (Google LLC, United States) to store and retrieve aggregated like counts and anonymous viewer counts. This involves processing your IP address and browser metadata by Google under Standard Contractual Clauses (SCCs). Liked images are tracked locally in your browser to prevent duplicate votes. No user accounts or persistent identifiers are created.
                     </p>
                 </div>
             </div>
@@ -453,13 +457,10 @@
             </div>
         </div>
     </div>
-
-
     <!-- Cookie Settings Floating Button -->
     <button id="cookie-float-btn" class="cookie-float-btn" aria-label="Cookie Settings">
         🍪
     </button>
-
     <!-- ============================================ -->
     <!-- JAVASCRIPT - ES6 MODULE ENTRY POINT -->
     <!-- ============================================ -->
