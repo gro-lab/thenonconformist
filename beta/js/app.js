@@ -8,6 +8,7 @@ import { initNavigation } from './modules/navigation.js';   // ⬅️ moved up
 import { initGallery } from './modules/gallery.js';
 import { initModal } from './modules/modal.js';
 import { initAudio } from './modules/audio.js';
+import { initPresenceModule } from './modules/presence.js';
 
 async function init() {
   try {
@@ -38,6 +39,9 @@ async function init() {
     
     // 8. Initialize audio synesthesia (ambient soundscapes)
     initAudio();
+    
+    // 9. Initialize presence (active viewers) — event-driven, lazy-connects
+    initPresenceModule();
     
     console.log('✅ All modules initialized');
   } catch (error) {
