@@ -35,6 +35,10 @@ const selectors = {
   solCount: '#sol-count',
   rCount: '#r-count',
   saCount: '#sa-count',
+  
+  // Presence indicators
+  presenceGallery: '#presence-gallery',
+  presenceImage: '#presence-image',
 };
 
 const cache = new Map();
