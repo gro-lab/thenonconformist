@@ -95,6 +95,13 @@ const initialState = {
     sol: [],
     r: [],
     sa: []
+  },
+  
+  // Presence (active viewers)
+  presence: {
+    galleryCount: 0,
+    imageCount: 0,
+    isConnected: false
   }
 };
 
