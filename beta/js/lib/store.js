@@ -1,4 +1,4 @@
-// js/lib/store.js (updated with isCookieModalOpen)
+// js/lib/store.js (updated with galleryImageCache)
 // Proxy-based reactive state store with event bus integration
 import { bus } from './event-bus.js';
 
@@ -96,6 +96,11 @@ const initialState = {
     r: [],
     sa: []
   },
+
+  // Thumbnail blob-URL cache (LRUImageCache instance, set by gallery module on init)
+  // Holds up to 50 entries; avoids redundant network fetches on re-renders.
+  // Access via: store.get('galleryImageCache')
+  galleryImageCache: null,
   
   // Presence (active viewers)
   presence: {
