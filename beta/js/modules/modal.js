@@ -1,6 +1,7 @@
 // js/modules/modal.js
-// Modal lightbox with navigation and like functionality
-// — full-size images served from the shared ImageCache; neighbours prefetched.
+// Modal lightbox with navigation, like functionality, and image caching.
+// Full-size images are served through the shared imageCache singleton so a
+// photo opened a second time (or prefetched by navigateModal) costs zero bytes.
 import { store } from '../lib/store.js';
 import { bus } from '../lib/event-bus.js';
 import { dom } from '../dom-elements.js';
@@ -9,61 +10,6 @@ import { getDocIdFromUrl } from '../lib/utils.js';
 import { imageCache } from '../lib/image-cache.js';
 
 let currentAbortController = null;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CACHE HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Sets the modal <img> src from cache, with a loading class while the blob
- * is being fetched on a cache miss.
- * @param {string} url  Full-size image URL.
- */
-const applyImageFromCache = (url) => {
-  if (!dom.modalImg) return;
-
-  // Synchronous hit — apply instantly, no flicker
-  if (imageCache.has(url)) {
-    dom.modalImg.src = imageCache.get(url);
-    dom.modalImg.classList.remove('modal-img--loading');
-    return;
-  }
-
-  // Cache miss — show loading state, fetch in background
-  dom.modalImg.src = '';
-  dom.modalImg.classList.add('modal-img--loading');
-
-  imageCache.load(url).then(resolvedUrl => {
-    // Only apply if this is still the current photo (user may have navigated)
-    if (store.get('currentPhoto') === url) {
-      dom.modalImg.src = resolvedUrl;
-      dom.modalImg.classList.remove('modal-img--loading');
-    }
-  });
-};
-
-/**
- * Silently prefetches the full-size URLs of adjacent images into the cache
- * so that prev/next navigation feels instant.
- * @param {number} currentIndex
- */
-const prefetchNeighbours = (currentIndex) => {
-  const images = store.get('currentGalleryImages') || [];
-  if (images.length <= 1) return;
-
-  const indices = [
-    (currentIndex + 1) % images.length,                   // next
-    (currentIndex - 1 + images.length) % images.length    // prev
-  ];
-
-  indices.forEach(i => {
-    const url = images[i]?.url;
-    if (url && !imageCache.has(url)) {
-      // Fire-and-forget — result goes into the shared cache automatically
-      imageCache.load(url).catch(() => { /* ignore prefetch failures */ });
-    }
-  });
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LIKE BUTTON
@@ -90,6 +36,63 @@ const updateLikeButton = () => {
     heartEl.textContent = isLiked ? '♥' : '♡';
     dom.likeBtn?.classList.toggle('liked', isLiked);
   }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IMAGE LOADING (cache-first)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Applies a full-size image to the modal <img> element using the shared
+ * imageCache. On a synchronous hit the src is set with no network round-trip.
+ * On a miss it shows a loading state, fetches/caches the blob, then sets src —
+ * but only if the user hasn't already navigated away while the fetch was in flight.
+ *
+ * @param {string} url  Full-size image URL to display.
+ */
+const applyImageFromCache = (url) => {
+  const img = dom.modalImg;
+  if (!img) return;
+
+  // ── Synchronous hit — zero flicker ───────────────────────────────────────
+  if (imageCache.has(url)) {
+    img.src = imageCache.get(url);
+    img.classList.remove('modal-img--loading');
+    return;
+  }
+
+  // ── Cache miss — show loading state and fetch ─────────────────────────────
+  img.classList.add('modal-img--loading');
+
+  imageCache.load(url).then(resolvedUrl => {
+    // Guard: user may have navigated to a different image while fetching
+    if (store.get('currentPhoto') !== url) return;
+    img.src = resolvedUrl;
+    img.classList.remove('modal-img--loading');
+  });
+};
+
+/**
+ * Silently pre-warms the cache for the images adjacent to `index` so that
+ * pressing ◄ / ► feels instant. Fires in the background; errors are ignored.
+ *
+ * @param {number} index  Current image index in currentGalleryImages.
+ */
+const prefetchNeighbours = (index) => {
+  const images = store.get('currentGalleryImages') || [];
+  if (images.length <= 1) return;
+
+  const prevIndex = (index - 1 + images.length) % images.length;
+  const nextIndex = (index + 1) % images.length;
+
+  // imageCache.load() deduplicates concurrent requests internally
+  [prevIndex, nextIndex].forEach(i => {
+    const url = images[i]?.url;
+    if (url && !imageCache.has(url)) {
+      console.debug(`🔮 [ImageCache] Prefetching neighbour: ${url.split('/').pop()}`);
+      imageCache.load(url); // fire-and-forget
+    }
+  });
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -125,31 +128,34 @@ const openModal = ({ url, galleryId, index }) => {
   store.set('currentPhotoIndex', index);
   store.set('isModalOpen', true);
 
+  // Load full-size image through cache
   applyImageFromCache(url);
+
   dom.modal?.removeAttribute('hidden');
   document.body.style.overflow = 'hidden';
 
   updateLikeButton();
 
-  // Prefetch neighbours immediately so left/right feel instant
-  prefetchNeighbours(index);
-
   const images = store.get('currentGalleryImages') || [];
-  const show = images.length > 1 ? 'flex' : 'none';
-  if (dom.modalPrev) dom.modalPrev.style.display = show;
-  if (dom.modalNext) dom.modalNext.style.display = show;
+  const hasMany = images.length > 1;
+  if (dom.modalPrev) dom.modalPrev.style.display = hasMany ? 'flex' : 'none';
+  if (dom.modalNext) dom.modalNext.style.display = hasMany ? 'flex' : 'none';
+
+  // Pre-warm the adjacent images immediately after opening
+  prefetchNeighbours(index);
 };
 
 const closeModal = () => {
   store.set('isModalOpen', false);
   store.set('currentPhoto', null);
   store.set('currentPhotoIndex', -1);
+  dom.modal?.setAttribute('hidden', '');
+  document.body.style.overflow = 'auto';
+  // Clear src so the previous image doesn't flash when the modal reopens
   if (dom.modalImg) {
     dom.modalImg.src = '';
     dom.modalImg.classList.remove('modal-img--loading');
   }
-  dom.modal?.setAttribute('hidden', '');
-  document.body.style.overflow = 'auto';
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -194,6 +200,7 @@ const setupEventListeners = () => {
   dom.modal?.addEventListener('click', (e) => {
     if (e.target === dom.modal) history.back();
   }, { signal });
+
   dom.likeBtn?.addEventListener('click', toggleLike, { signal });
   dom.modalPrev?.addEventListener('click', () => navigateModal('prev'), { signal });
   dom.modalNext?.addEventListener('click', () => navigateModal('next'), { signal });
@@ -210,14 +217,18 @@ const subscribeToEvents = () => {
   bus.on('photo:select', openModal);
 
   bus.on('like:updated', ({ url }) => {
-    if (store.get('currentPhoto') === url) updateLikeButton();
+    if (store.get('currentPhoto') === url) {
+      updateLikeButton();
+    }
   });
 
-  bus.on('modal:close', () => closeModal());
+  bus.on('modal:close', () => {
+    closeModal();
+  });
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PUBLIC
+// PUBLIC API
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const initModal = () => {
