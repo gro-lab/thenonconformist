@@ -808,11 +808,6 @@ body {
     text-underline-offset: 2px;
 }
 
-/* Tablet and below - hide back button */
-@media (max-width: 1024px) {
-    #back-button { display: none; }
-}
-
 /* Mobile */
 @media (max-width: 768px) {
     .site-intro {
