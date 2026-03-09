@@ -200,7 +200,7 @@ const loadThumbnailCached = async (url) => {
 
   // ── Cache hit ────────────────────────────────────────────────────────────
   if (cache && cache.has(url)) {
-    console.debug(`⚡ [ImageCache] HIT (${cache.size}/${cache.maxSize}): ${url.split('/').pop()}`);
+    console.debug(`⚡ [ImageCache] HIT (${cache.size} cached): ${url.split('/').pop()}`);
     return cache.get(url);
   }
 
@@ -213,7 +213,7 @@ const loadThumbnailCached = async (url) => {
 
     if (cache) {
       cache.set(url, blobUrl);
-      console.debug(`💾 [ImageCache] STORED (${cache.size}/${cache.maxSize}): ${url.split('/').pop()}`);
+      console.debug(`💾 [ImageCache] STORED (${cache.size} cached): ${url.split('/').pop()}`);
     }
 
     return blobUrl;
@@ -423,7 +423,7 @@ export const initGallery = async () => {
   // imageCache is a module-level singleton imported from image-cache.js.
   // Storing it in the store makes it accessible to other modules if needed.
   store.set('galleryImageCache', imageCache);
-  console.log(`🗄️ [ImageCache] Initialized — capacity: ${imageCache.maxSize} thumbnails`);
+  console.log('🗄️ [ImageCache] Initialized — unbounded, caches all loaded thumbnails');
 
   // Load manifest (or fallback)
   try {
