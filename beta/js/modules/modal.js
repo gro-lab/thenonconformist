@@ -1,14 +1,74 @@
 // js/modules/modal.js
 // Modal lightbox with navigation and like functionality
+// — full-size images served from the shared ImageCache; neighbours prefetched.
 import { store } from '../lib/store.js';
 import { bus } from '../lib/event-bus.js';
 import { dom } from '../dom-elements.js';
 import { errorHandler } from '../lib/error-handler.js';
 import { getDocIdFromUrl } from '../lib/utils.js';
+import { imageCache } from '../lib/image-cache.js';
 
 let currentAbortController = null;
 
-// Update like button UI based on current photo
+// ─────────────────────────────────────────────────────────────────────────────
+// CACHE HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Sets the modal <img> src from cache, with a loading class while the blob
+ * is being fetched on a cache miss.
+ * @param {string} url  Full-size image URL.
+ */
+const applyImageFromCache = (url) => {
+  if (!dom.modalImg) return;
+
+  // Synchronous hit — apply instantly, no flicker
+  if (imageCache.has(url)) {
+    dom.modalImg.src = imageCache.get(url);
+    dom.modalImg.classList.remove('modal-img--loading');
+    return;
+  }
+
+  // Cache miss — show loading state, fetch in background
+  dom.modalImg.src = '';
+  dom.modalImg.classList.add('modal-img--loading');
+
+  imageCache.load(url).then(resolvedUrl => {
+    // Only apply if this is still the current photo (user may have navigated)
+    if (store.get('currentPhoto') === url) {
+      dom.modalImg.src = resolvedUrl;
+      dom.modalImg.classList.remove('modal-img--loading');
+    }
+  });
+};
+
+/**
+ * Silently prefetches the full-size URLs of adjacent images into the cache
+ * so that prev/next navigation feels instant.
+ * @param {number} currentIndex
+ */
+const prefetchNeighbours = (currentIndex) => {
+  const images = store.get('currentGalleryImages') || [];
+  if (images.length <= 1) return;
+
+  const indices = [
+    (currentIndex + 1) % images.length,                   // next
+    (currentIndex - 1 + images.length) % images.length    // prev
+  ];
+
+  indices.forEach(i => {
+    const url = images[i]?.url;
+    if (url && !imageCache.has(url)) {
+      // Fire-and-forget — result goes into the shared cache automatically
+      imageCache.load(url).catch(() => { /* ignore prefetch failures */ });
+    }
+  });
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LIKE BUTTON
+// ─────────────────────────────────────────────────────────────────────────────
+
 const updateLikeButton = () => {
   const currentPhoto = store.get('currentPhoto');
   if (!currentPhoto) return;
@@ -21,80 +81,81 @@ const updateLikeButton = () => {
 
   if (likeCountEl) likeCountEl.textContent = likes;
 
-  // Check if liked in localStorage (only if functional enabled)
   let isLiked = false;
   if (store.get('functionalCookiesEnabled')) {
-    const likedKey = `liked_${docId}`;
-    isLiked = localStorage.getItem(likedKey) === 'true';
+    isLiked = localStorage.getItem(`liked_${docId}`) === 'true';
   }
 
   if (heartEl) {
     heartEl.textContent = isLiked ? '♥' : '♡';
-    if (isLiked) {
-      dom.likeBtn?.classList.add('liked');
-    } else {
-      dom.likeBtn?.classList.remove('liked');
-    }
+    dom.likeBtn?.classList.toggle('liked', isLiked);
   }
 };
 
-// Navigate modal to previous/next image
+// ─────────────────────────────────────────────────────────────────────────────
+// NAVIGATION
+// ─────────────────────────────────────────────────────────────────────────────
+
 const navigateModal = (direction) => {
   const currentIndex = store.get('currentPhotoIndex');
   const images = store.get('currentGalleryImages') || [];
   if (images.length === 0) return;
 
-  let newIndex;
-  if (direction === 'prev') {
-    newIndex = (currentIndex - 1 + images.length) % images.length;
-  } else {
-    newIndex = (currentIndex + 1) % images.length;
-  }
+  const newIndex = direction === 'prev'
+    ? (currentIndex - 1 + images.length) % images.length
+    : (currentIndex + 1) % images.length;
 
   const nextImage = images[newIndex];
   store.set('currentPhoto', nextImage.url);
   store.set('currentPhotoIndex', newIndex);
-  if (dom.modalImg) dom.modalImg.src = nextImage.url;
 
+  applyImageFromCache(nextImage.url);
   updateLikeButton();
+  prefetchNeighbours(newIndex);
 };
 
-// Open modal
+// ─────────────────────────────────────────────────────────────────────────────
+// OPEN / CLOSE
+// ─────────────────────────────────────────────────────────────────────────────
+
 const openModal = ({ url, galleryId, index }) => {
-  // Push history state so that back closes the modal
   history.pushState({ page: 'modal', gallery: galleryId }, '', window.location.href);
 
   store.set('currentPhoto', url);
   store.set('currentPhotoIndex', index);
   store.set('isModalOpen', true);
 
-  if (dom.modalImg) dom.modalImg.src = url;
+  applyImageFromCache(url);
   dom.modal?.removeAttribute('hidden');
   document.body.style.overflow = 'hidden';
 
   updateLikeButton();
 
-  // Show/hide navigation buttons based on image count
+  // Prefetch neighbours immediately so left/right feel instant
+  prefetchNeighbours(index);
+
   const images = store.get('currentGalleryImages') || [];
-  if (images.length <= 1) {
-    if (dom.modalPrev) dom.modalPrev.style.display = 'none';
-    if (dom.modalNext) dom.modalNext.style.display = 'none';
-  } else {
-    if (dom.modalPrev) dom.modalPrev.style.display = 'flex';
-    if (dom.modalNext) dom.modalNext.style.display = 'flex';
-  }
+  const show = images.length > 1 ? 'flex' : 'none';
+  if (dom.modalPrev) dom.modalPrev.style.display = show;
+  if (dom.modalNext) dom.modalNext.style.display = show;
 };
 
-// Close modal (called only from popstate handler or internally when resetting)
 const closeModal = () => {
   store.set('isModalOpen', false);
   store.set('currentPhoto', null);
   store.set('currentPhotoIndex', -1);
+  if (dom.modalImg) {
+    dom.modalImg.src = '';
+    dom.modalImg.classList.remove('modal-img--loading');
+  }
   dom.modal?.setAttribute('hidden', '');
   document.body.style.overflow = 'auto';
 };
 
-// Toggle like
+// ─────────────────────────────────────────────────────────────────────────────
+// LIKE TOGGLE
+// ─────────────────────────────────────────────────────────────────────────────
+
 const toggleLike = async () => {
   const currentPhoto = store.get('currentPhoto');
   if (!currentPhoto) return;
@@ -109,7 +170,6 @@ const toggleLike = async () => {
   const increment = isCurrentlyLiked ? -1 : 1;
   const galleryId = store.get('currentGallery');
 
-  // Emit event for firebase module to handle, including galleryId
   bus.emit('like:toggle', { url: currentPhoto, increment, galleryId });
 
   // Optimistic UI update
@@ -118,70 +178,54 @@ const toggleLike = async () => {
   } else {
     localStorage.setItem(likedKey, 'true');
   }
-  updateLikeButton(); // update heart immediately
+  updateLikeButton();
 };
 
-// Setup event listeners
+// ─────────────────────────────────────────────────────────────────────────────
+// EVENT WIRING
+// ─────────────────────────────────────────────────────────────────────────────
+
 const setupEventListeners = () => {
-  // Abort previous controller if any
   if (currentAbortController) currentAbortController.abort();
   currentAbortController = new AbortController();
   const { signal } = currentAbortController;
 
-  // Modal close button — use history.back() to let popstate handle closing
   dom.modalClose?.addEventListener('click', () => history.back(), { signal });
-
-  // Click on modal background — also use history.back()
   dom.modal?.addEventListener('click', (e) => {
     if (e.target === dom.modal) history.back();
   }, { signal });
-
-  // Like button
   dom.likeBtn?.addEventListener('click', toggleLike, { signal });
-
-  // Navigation buttons
   dom.modalPrev?.addEventListener('click', () => navigateModal('prev'), { signal });
   dom.modalNext?.addEventListener('click', () => navigateModal('next'), { signal });
 
-  // Keyboard navigation — Escape calls history.back()
   document.addEventListener('keydown', (e) => {
     if (!store.get('isModalOpen')) return;
     if (e.key === 'Escape') history.back();
     else if (e.key === 'ArrowLeft') navigateModal('prev');
     else if (e.key === 'ArrowRight') navigateModal('next');
   }, { signal });
-
-  // Handle history back — popstate is handled in navigation module,
-  // which emits 'modal:close'. We subscribe to that below.
 };
 
-// Subscribe to events
 const subscribeToEvents = () => {
-  // When photo selected from gallery
   bus.on('photo:select', openModal);
 
-  // When likes are updated (from firebase)
   bus.on('like:updated', ({ url }) => {
-    // Refresh button UI if this is the currently viewed photo
-    if (store.get('currentPhoto') === url) {
-      updateLikeButton();
-    }
+    if (store.get('currentPhoto') === url) updateLikeButton();
   });
 
-  // Listen for modal close event from navigation (popstate)
-  bus.on('modal:close', () => {
-    closeModal();
-  });
+  bus.on('modal:close', () => closeModal());
 };
 
-// Public init
+// ─────────────────────────────────────────────────────────────────────────────
+// PUBLIC
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const initModal = () => {
   console.log('📲 Initializing modal module...');
   setupEventListeners();
   subscribeToEvents();
 };
 
-// Cleanup (if needed)
 export const destroyModal = () => {
   if (currentAbortController) {
     currentAbortController.abort();
