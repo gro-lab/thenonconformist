@@ -1,6 +1,6 @@
 // js/modules/gallery.js
 // Gallery grid, masonry layout, lazy loading, cover images
-// — with LRU in-memory thumbnail cache (store.galleryImageCache)
+// — with shared ImageCache for thumbnails (store.galleryImageCache)
 import { store } from '../lib/store.js';
 import { bus } from '../lib/event-bus.js';
 import { dom, clearDomCache } from '../dom-elements.js';
@@ -84,26 +84,16 @@ const loadManifest = withErrorHandling(async () => {
 // Fallback manifest generator (same as original)
 const generateFallbackManifest = () => {
   const manifest = {};
-  const defaultExtensions = {
-    LoW: 'JPEG',
-    SoL: 'JPEG',
-    R: 'JPEG',
-    SA: 'JPEG'
-  };
+  const defaultExtensions = { LoW: 'JPEG', SoL: 'JPEG', R: 'JPEG', SA: 'JPEG' };
   Object.keys(galleries).forEach(key => {
     const dir = galleries[key].dir;
     const ext = defaultExtensions[dir] || 'JPEG';
     manifest[dir] = [];
     for (let i = 1; i <= 50; i++) {
       manifest[dir].push({
-        index: i,
-        ext: ext,
-        originalName: `${dir}-${i}.${ext}`,
-        width: 1920,
-        height: 1080,
-        aspectRatio: '16:9',
-        orientation: 'horizontal',
-        aspectDecimal: 16/9
+        index: i, ext, originalName: `${dir}-${i}.${ext}`,
+        width: 1920, height: 1080, aspectRatio: '16:9',
+        orientation: 'horizontal', aspectDecimal: 16/9
       });
     }
   });
@@ -161,68 +151,21 @@ const refreshGalleryCounts = () => {
   Object.keys(galleries).forEach(key => {
     const countElement = document.getElementById(`${key}-count`);
     if (countElement && galleryImageData[key]) {
-      const count = galleryImageData[key].length;
-      countElement.textContent = `${count} Works`;
+      countElement.textContent = `${galleryImageData[key].length} Works`;
     }
   });
 };
 
-// Refresh cover images on the selector cards
+// Refresh cover images on the selector cards (uses cache fast-path if available)
 const refreshGalleryCovers = () => {
   Object.keys(galleries).forEach(key => {
     const cover = document.querySelector(`.gallery-cover[data-gallery="${key}"]`);
     const mostLikedUrl = getMostLikedImageUrl(key);
-    if (cover && mostLikedUrl) {
-      // Check cache for cover image too
-      const cache = store.get('galleryImageCache');
-      if (cache && cache.has(mostLikedUrl)) {
-        cover.style.backgroundImage = `url(${cache.get(mostLikedUrl)})`;
-        cover.classList.add('lazy-loaded');
-      }
-      // If not cached, the lazy observer set in setupGallerySelector will handle it
+    if (cover && mostLikedUrl && imageCache.has(mostLikedUrl)) {
+      cover.style.backgroundImage = `url(${imageCache.get(mostLikedUrl)})`;
+      cover.classList.add('lazy-loaded');
     }
   });
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CACHE HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Loads a thumbnail URL, serving from the LRU blob cache when available.
- * On a cache miss, fetches the image, stores the blob URL, then resolves.
- *
- * @param {string} url  Thumbnail URL to load.
- * @returns {Promise<string>}  A blob: URL (cached) or the original URL (fallback).
- */
-const loadThumbnailCached = async (url) => {
-  const cache = store.get('galleryImageCache');
-
-  // ── Cache hit ────────────────────────────────────────────────────────────
-  if (cache && cache.has(url)) {
-    console.debug(`⚡ [ImageCache] HIT (${cache.size} cached): ${url.split('/').pop()}`);
-    return cache.get(url);
-  }
-
-  // ── Cache miss: fetch → blob → store ─────────────────────────────────────
-  try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const blob = await response.blob();
-    const blobUrl = URL.createObjectURL(blob);
-
-    if (cache) {
-      cache.set(url, blobUrl);
-      console.debug(`💾 [ImageCache] STORED (${cache.size} cached): ${url.split('/').pop()}`);
-    }
-
-    return blobUrl;
-  } catch (err) {
-    // Network / CORS failure — fall back to the original URL so the browser
-    // can still attempt a direct load (its own HTTP cache may satisfy it).
-    console.warn(`⚠️ [ImageCache] fetch failed for ${url.split('/').pop()}, falling back:`, err.message);
-    return url;
-  }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -230,7 +173,6 @@ const loadThumbnailCached = async (url) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const setupGallerySelector = async () => {
-  // Load all gallery data
   await Promise.all(Object.keys(galleries).map(key => loadGalleryData(key)));
 
   // Setup cover images with lazy observer
@@ -241,17 +183,15 @@ const setupGallerySelector = async () => {
     onIntersect: (entry) => {
       const cover = entry.target;
       const bgUrl = cover.dataset.bg;
-      if (bgUrl) {
-        loadThumbnailCached(bgUrl).then(resolvedUrl => {
-          cover.style.backgroundImage = `url(${resolvedUrl})`;
-          cover.classList.add('lazy-loaded');
-          delete cover.dataset.bg;
-        });
-      }
+      if (!bgUrl) return;
+      imageCache.load(bgUrl).then(resolvedUrl => {
+        cover.style.backgroundImage = `url(${resolvedUrl})`;
+        cover.classList.add('lazy-loaded');
+        delete cover.dataset.bg;
+      });
     }
   });
 
-  // Set data-bg for each cover
   Object.keys(galleries).forEach(key => {
     const cover = document.querySelector(`.gallery-cover[data-gallery="${key}"]`);
     const mostLikedUrl = getMostLikedImageUrl(key);
@@ -261,15 +201,12 @@ const setupGallerySelector = async () => {
     }
   });
 
-  // Update counts
   refreshGalleryCounts();
 
-  // Attach click handlers with AbortController
   const { signal } = abortController;
   document.querySelectorAll('.gallery-cover').forEach(cover => {
     cover.addEventListener('click', function() {
-      const galleryId = this.dataset.gallery;
-      bus.emit('gallery:open', galleryId);
+      bus.emit('gallery:open', this.dataset.gallery);
     }, { signal });
   });
 
@@ -296,7 +233,6 @@ const loadGalleryContent = (galleryId, options = {}) => {
     dom.loadingIndicator.classList.add('active');
   }
 
-  // Disconnect previous masonry observer before replacing DOM
   if (currentMasonryObserver) {
     currentMasonryObserver.disconnect();
     currentMasonryObserver = null;
@@ -307,7 +243,7 @@ const loadGalleryContent = (galleryId, options = {}) => {
   const sortedImages = stableSortByLikes(images);
   store.set('currentGalleryImages', sortedImages);
 
-  // ── Masonry Intersection Observer with cache ──────────────────────────────
+  // Masonry observer — uses imageCache.load() for cache-first loading
   const masonryObserver = createObserver({
     rootMargin: '0px',
     once: true,
@@ -315,14 +251,11 @@ const loadGalleryContent = (galleryId, options = {}) => {
       const item = entry.target;
       const bgUrl = item.dataset.bg;
       if (!bgUrl) return;
-
-      // Attempt cache-first load; applies result regardless of hit/miss
-      loadThumbnailCached(bgUrl).then(resolvedUrl => {
+      imageCache.load(bgUrl).then(resolvedUrl => {
         item.style.backgroundImage = `url(${resolvedUrl})`;
         item.classList.add('lazy-loaded');
         delete item.dataset.bg;
       }).catch(() => {
-        // Final fallback — set original URL directly and mark as error
         item.style.backgroundImage = `url(${bgUrl})`;
         item.classList.add('lazy-error');
         delete item.dataset.bg;
@@ -340,18 +273,13 @@ const loadGalleryContent = (galleryId, options = {}) => {
     masonryItem.className = `masonry-item ${orientation}`;
     masonryItem.style.animationDelay = `${index * 0.05}s`;
 
-    // ── Instant render for cached thumbnails ─────────────────────────────
-    // If the blob URL is already in the LRU cache, apply it synchronously so
-    // items that were visible before a re-sort appear immediately with no flash.
     const thumbUrl = createThumbnailUrl(gallery.dir, image.imageData);
-    const cache = store.get('galleryImageCache');
-    if (cache && cache.has(thumbUrl)) {
-      const cachedBlob = cache.get(thumbUrl);
-      masonryItem.style.backgroundImage = `url(${cachedBlob})`;
+
+    // Synchronous cache hit — apply immediately, skip observer
+    if (imageCache.has(thumbUrl)) {
+      masonryItem.style.backgroundImage = `url(${imageCache.get(thumbUrl)})`;
       masonryItem.classList.add('lazy-loaded');
-      // No dataset.bg — observer will skip this item
     } else {
-      // Store thumb URL for the observer to pick up
       masonryItem.dataset.bg = thumbUrl;
     }
 
@@ -377,13 +305,11 @@ const loadGalleryContent = (galleryId, options = {}) => {
     masonryItem.appendChild(overlay);
     masonryGrid.appendChild(masonryItem);
 
-    // Only observe items that still need loading
     if (masonryItem.dataset.bg) {
       masonryObserver.observe(masonryItem);
     }
   });
 
-  // Update header
   if (dom.currentGalleryTitle) dom.currentGalleryTitle.textContent = gallery.title;
   if (dom.currentGallerySubtitle) dom.currentGallerySubtitle.textContent = gallery.subtitle;
 
@@ -393,14 +319,10 @@ const loadGalleryContent = (galleryId, options = {}) => {
   }
 
   if (showLoading && dom.loadingIndicator) {
-    setTimeout(() => {
-      dom.loadingIndicator.classList.remove('active');
-    }, 100);
+    setTimeout(() => { dom.loadingIndicator.classList.remove('active'); }, 100);
   }
 
-  setTimeout(() => {
-    bus.emit('gallery:contentLoaded', galleryId);
-  }, 100);
+  setTimeout(() => { bus.emit('gallery:contentLoaded', galleryId); }, 100);
 };
 
 // Public function to re-fetch gallery data and refresh UI
@@ -419,33 +341,25 @@ export const initGallery = async () => {
 
   abortController = new AbortController();
 
-  // ── Wire up the LRU image cache into the store ────────────────────────────
-  // imageCache is a module-level singleton imported from image-cache.js.
-  // Storing it in the store makes it accessible to other modules if needed.
+  // Register the cache singleton in the store so other modules can reference it
   store.set('galleryImageCache', imageCache);
-  console.log('🗄️ [ImageCache] Initialized — unbounded, caches all loaded thumbnails');
+  console.log('🗄️ [ImageCache] Initialized — caches thumbnails + full-size images');
 
-  // Load manifest (or fallback)
   try {
     await loadManifest();
   } catch {
     generateFallbackManifest();
   }
 
-  // Setup selector UI
   await setupGallerySelector();
 
-  // Subscribe to events (store unsubscribers for cleanup)
   busUnsubs.push(
     bus.on('gallery:open', (galleryId) => {
-      // State is owned by navigation module — gallery only handles rendering
       if (dom.loadingIndicator) dom.loadingIndicator.classList.add('active');
-
       if (dom.gallerySelector) dom.gallerySelector.classList.add('hidden');
       document.querySelector('.site-intro')?.classList.add('hidden');
       document.querySelector('.terms-footer')?.classList.add('hidden');
 
-      // Double rAF to ensure spinner shows
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           setTimeout(() => {
@@ -460,34 +374,25 @@ export const initGallery = async () => {
 
   busUnsubs.push(
     bus.on('consent:applied', () => {
-      // Refresh gallery data (likes may have changed)
       Object.keys(galleries).forEach(key => loadGalleryData(key));
       refreshGalleryCounts();
       refreshGalleryCovers();
-      // If gallery is open, refresh its content
       if (store.get('isGalleryOpen')) {
         loadGalleryContent(store.get('currentGallery'), { preserveScroll: true, showLoading: false });
       }
     })
   );
 
-  // ── Like updates: invalidate that image's cached thumbnail ────────────────
-  // When a like fires, the masonry re-renders with a new sort order.
-  // We invalidate just the affected image's entry so it gets a fresh fetch
-  // on the next render cycle, ensuring consistency.
+  // Like update: invalidate both thumbnail and full-size URLs for the affected image
   busUnsubs.push(
     bus.on('like:updated', ({ url, galleryId }) => {
-      // Invalidate the thumbnail for this image in the cache
-      const gallery = galleries[galleryId];
-      if (gallery) {
-        // Derive thumbnail URL from the full image URL by replacing the path segment
-        const thumbnailUrl = url.replace('/images/', '/images/thumbnails/');
-        imageCache.invalidate(thumbnailUrl);
-        console.debug(`♻️ [ImageCache] Like update → invalidated thumbnail for gallery ${galleryId}`);
-      }
+      // Invalidate full-size URL
+      imageCache.invalidate(url);
+      // Derive and invalidate thumbnail URL
+      const thumbnailUrl = url.replace('/images/', '/images/thumbnails/');
+      imageCache.invalidate(thumbnailUrl);
 
       updateGalleryData(galleryId);
-      // If this gallery is currently open, re-render with scroll preserved
       if (store.get('isGalleryOpen') && store.get('currentGallery') === galleryId) {
         loadGalleryContent(galleryId, { preserveScroll: true, showLoading: false });
       }
@@ -509,10 +414,6 @@ export const destroyGallery = () => {
   busUnsubs.forEach(unsub => unsub());
   busUnsubs.length = 0;
 
-  // Clear the blob cache and release all object URLs on module teardown
-  const cache = store.get('galleryImageCache');
-  if (cache) {
-    cache.clear();
-    store.set('galleryImageCache', null);
-  }
+  imageCache.clear();
+  store.set('galleryImageCache', null);
 };
