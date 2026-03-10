@@ -1,7 +1,5 @@
 // js/modules/modal.js
-// Modal lightbox with navigation, like functionality, and image caching.
-// Full-size images are served through the shared imageCache singleton so a
-// photo opened a second time (or prefetched by navigateModal) costs zero bytes.
+// Modal lightbox with navigation and like functionality
 import { store } from '../lib/store.js';
 import { bus } from '../lib/event-bus.js';
 import { dom } from '../dom-elements.js';
@@ -11,10 +9,7 @@ import { imageCache } from '../lib/image-cache.js';
 
 let currentAbortController = null;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// LIKE BUTTON
-// ─────────────────────────────────────────────────────────────────────────────
-
+// Update like button UI based on current photo
 const updateLikeButton = () => {
   const currentPhoto = store.get('currentPhoto');
   if (!currentPhoto) return;
@@ -27,141 +22,125 @@ const updateLikeButton = () => {
 
   if (likeCountEl) likeCountEl.textContent = likes;
 
+  // Check if liked in localStorage (only if functional enabled)
   let isLiked = false;
   if (store.get('functionalCookiesEnabled')) {
-    isLiked = localStorage.getItem(`liked_${docId}`) === 'true';
+    const likedKey = `liked_${docId}`;
+    isLiked = localStorage.getItem(likedKey) === 'true';
   }
 
   if (heartEl) {
     heartEl.textContent = isLiked ? '♥' : '♡';
-    dom.likeBtn?.classList.toggle('liked', isLiked);
+    if (isLiked) {
+      dom.likeBtn?.classList.add('liked');
+    } else {
+      dom.likeBtn?.classList.remove('liked');
+    }
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// IMAGE LOADING (cache-first)
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Applies a full-size image to the modal <img> element using the shared
- * imageCache. On a synchronous hit the src is set with no network round-trip.
- * On a miss it shows a loading state, fetches/caches the blob, then sets src —
- * but only if the user hasn't already navigated away while the fetch was in flight.
- *
- * @param {string} url  Full-size image URL to display.
- */
+// Apply image from cache — synchronous hit means zero flicker on revisit;
+// miss shows a loading class while the blob arrives, then swaps in.
 const applyImageFromCache = (url) => {
-  const img = dom.modalImg;
-  if (!img) return;
+  if (!dom.modalImg) return;
 
-  // ── Synchronous hit — zero flicker ───────────────────────────────────────
   if (imageCache.has(url)) {
-    img.src = imageCache.get(url);
-    img.classList.remove('modal-img--loading');
-    return;
+    // Instant — already in memory
+    dom.modalImg.src = imageCache.get(url);
+    dom.modalImg.classList.remove('modal-img--loading');
+  } else {
+    // Show loading state while fetching
+    dom.modalImg.classList.add('modal-img--loading');
+    imageCache.load(url)
+      .then(blobUrl => {
+        // Guard against the user having navigated away before fetch completed
+        if (store.get('currentPhoto') === url && dom.modalImg) {
+          dom.modalImg.src = blobUrl;
+          dom.modalImg.classList.remove('modal-img--loading');
+        }
+      })
+      .catch(() => {
+        // Fall back gracefully to the direct URL
+        if (store.get('currentPhoto') === url && dom.modalImg) {
+          dom.modalImg.src = url;
+          dom.modalImg.classList.remove('modal-img--loading');
+        }
+      });
   }
-
-  // ── Cache miss — show loading state and fetch ─────────────────────────────
-  img.classList.add('modal-img--loading');
-
-  imageCache.load(url).then(resolvedUrl => {
-    // Guard: user may have navigated to a different image while fetching
-    if (store.get('currentPhoto') !== url) return;
-    img.src = resolvedUrl;
-    img.classList.remove('modal-img--loading');
-  });
 };
 
-/**
- * Silently pre-warms the cache for the images adjacent to `index` so that
- * pressing ◄ / ► feels instant. Fires in the background; errors are ignored.
- *
- * @param {number} index  Current image index in currentGalleryImages.
- */
+// Silently pre-fetch the previous and next full-size images so arrow-key
+// navigation is an instant cache hit.
 const prefetchNeighbours = (index) => {
   const images = store.get('currentGalleryImages') || [];
   if (images.length <= 1) return;
-
-  const prevIndex = (index - 1 + images.length) % images.length;
-  const nextIndex = (index + 1) % images.length;
-
-  // imageCache.load() deduplicates concurrent requests internally
-  [prevIndex, nextIndex].forEach(i => {
-    const url = images[i]?.url;
-    if (url && !imageCache.has(url)) {
-      console.debug(`🔮 [ImageCache] Prefetching neighbour: ${url.split('/').pop()}`);
-      imageCache.load(url); // fire-and-forget
-    }
-  });
+  const prevIdx = (index - 1 + images.length) % images.length;
+  const nextIdx = (index + 1) % images.length;
+  imageCache.load(images[prevIdx].url).catch(() => {});
+  imageCache.load(images[nextIdx].url).catch(() => {});
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// NAVIGATION
-// ─────────────────────────────────────────────────────────────────────────────
-
+// Navigate modal to previous/next image
 const navigateModal = (direction) => {
   const currentIndex = store.get('currentPhotoIndex');
   const images = store.get('currentGalleryImages') || [];
   if (images.length === 0) return;
 
-  const newIndex = direction === 'prev'
-    ? (currentIndex - 1 + images.length) % images.length
-    : (currentIndex + 1) % images.length;
+  let newIndex;
+  if (direction === 'prev') {
+    newIndex = (currentIndex - 1 + images.length) % images.length;
+  } else {
+    newIndex = (currentIndex + 1) % images.length;
+  }
 
   const nextImage = images[newIndex];
   store.set('currentPhoto', nextImage.url);
   store.set('currentPhotoIndex', newIndex);
 
   applyImageFromCache(nextImage.url);
-  updateLikeButton();
   prefetchNeighbours(newIndex);
+
+  updateLikeButton();
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// OPEN / CLOSE
-// ─────────────────────────────────────────────────────────────────────────────
-
+// Open modal
 const openModal = ({ url, galleryId, index }) => {
+  // Push history state so that back closes the modal
   history.pushState({ page: 'modal', gallery: galleryId }, '', window.location.href);
 
   store.set('currentPhoto', url);
   store.set('currentPhotoIndex', index);
   store.set('isModalOpen', true);
 
-  // Load full-size image through cache
   applyImageFromCache(url);
+  prefetchNeighbours(index);
 
   dom.modal?.removeAttribute('hidden');
   document.body.style.overflow = 'hidden';
 
   updateLikeButton();
 
+  // Show/hide navigation buttons based on image count
   const images = store.get('currentGalleryImages') || [];
-  const hasMany = images.length > 1;
-  if (dom.modalPrev) dom.modalPrev.style.display = hasMany ? 'flex' : 'none';
-  if (dom.modalNext) dom.modalNext.style.display = hasMany ? 'flex' : 'none';
-
-  // Pre-warm the adjacent images immediately after opening
-  prefetchNeighbours(index);
+  if (images.length <= 1) {
+    if (dom.modalPrev) dom.modalPrev.style.display = 'none';
+    if (dom.modalNext) dom.modalNext.style.display = 'none';
+  } else {
+    if (dom.modalPrev) dom.modalPrev.style.display = 'flex';
+    if (dom.modalNext) dom.modalNext.style.display = 'flex';
+  }
 };
 
+// Close modal (called only from popstate handler or internally when resetting)
 const closeModal = () => {
   store.set('isModalOpen', false);
   store.set('currentPhoto', null);
   store.set('currentPhotoIndex', -1);
   dom.modal?.setAttribute('hidden', '');
   document.body.style.overflow = 'auto';
-  // Clear src so the previous image doesn't flash when the modal reopens
-  if (dom.modalImg) {
-    dom.modalImg.src = '';
-    dom.modalImg.classList.remove('modal-img--loading');
-  }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// LIKE TOGGLE
-// ─────────────────────────────────────────────────────────────────────────────
-
+// Toggle like
 const toggleLike = async () => {
   const currentPhoto = store.get('currentPhoto');
   if (!currentPhoto) return;
@@ -176,6 +155,7 @@ const toggleLike = async () => {
   const increment = isCurrentlyLiked ? -1 : 1;
   const galleryId = store.get('currentGallery');
 
+  // Emit event for firebase module to handle, including galleryId
   bus.emit('like:toggle', { url: currentPhoto, increment, galleryId });
 
   // Optimistic UI update
@@ -184,59 +164,70 @@ const toggleLike = async () => {
   } else {
     localStorage.setItem(likedKey, 'true');
   }
-  updateLikeButton();
+  updateLikeButton(); // update heart immediately
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// EVENT WIRING
-// ─────────────────────────────────────────────────────────────────────────────
-
+// Setup event listeners
 const setupEventListeners = () => {
+  // Abort previous controller if any
   if (currentAbortController) currentAbortController.abort();
   currentAbortController = new AbortController();
   const { signal } = currentAbortController;
 
+  // Modal close button — use history.back() to let popstate handle closing
   dom.modalClose?.addEventListener('click', () => history.back(), { signal });
+
+  // Click on modal background — also use history.back()
   dom.modal?.addEventListener('click', (e) => {
     if (e.target === dom.modal) history.back();
   }, { signal });
 
+  // Like button
   dom.likeBtn?.addEventListener('click', toggleLike, { signal });
+
+  // Navigation buttons
   dom.modalPrev?.addEventListener('click', () => navigateModal('prev'), { signal });
   dom.modalNext?.addEventListener('click', () => navigateModal('next'), { signal });
 
+  // Keyboard navigation — Escape calls history.back()
   document.addEventListener('keydown', (e) => {
     if (!store.get('isModalOpen')) return;
     if (e.key === 'Escape') history.back();
     else if (e.key === 'ArrowLeft') navigateModal('prev');
     else if (e.key === 'ArrowRight') navigateModal('next');
   }, { signal });
+
+  // Handle history back — popstate is handled in navigation module,
+  // which emits 'modal:close'. We subscribe to that below.
 };
 
+// Subscribe to events
 const subscribeToEvents = () => {
+  // When photo selected from gallery
   bus.on('photo:select', openModal);
 
+  // When likes are updated (from firebase)
   bus.on('like:updated', ({ url }) => {
+    // Refresh button UI if this is the currently viewed photo
     if (store.get('currentPhoto') === url) {
       updateLikeButton();
     }
   });
 
+  // Listen for modal close event from navigation (popstate)
   bus.on('modal:close', () => {
     closeModal();
   });
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PUBLIC API
-// ─────────────────────────────────────────────────────────────────────────────
-
+// Public init
 export const initModal = () => {
   console.log('📲 Initializing modal module...');
   setupEventListeners();
   subscribeToEvents();
 };
 
+// Cleanup (if needed)
 export const destroyModal = () => {
   if (currentAbortController) {
     currentAbortController.abort();
