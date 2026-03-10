@@ -39,33 +39,20 @@ const updateLikeButton = () => {
   }
 };
 
-// Apply image from cache — synchronous hit means zero flicker on revisit;
-// miss shows a loading class while the blob arrives, then swaps in.
+// Apply image to modal — synchronous cache hit shows blob instantly;
+// cache miss falls back to the raw URL immediately (no stale image shown)
+// and primes the cache in the background for next time.
 const applyImageFromCache = (url) => {
   if (!dom.modalImg) return;
 
   if (imageCache.has(url)) {
-    // Instant — already in memory
+    // Already in memory — instant, no network round-trip
     dom.modalImg.src = imageCache.get(url);
-    dom.modalImg.classList.remove('modal-img--loading');
   } else {
-    // Show loading state while fetching
-    dom.modalImg.classList.add('modal-img--loading');
-    imageCache.load(url)
-      .then(blobUrl => {
-        // Guard against the user having navigated away before fetch completed
-        if (store.get('currentPhoto') === url && dom.modalImg) {
-          dom.modalImg.src = blobUrl;
-          dom.modalImg.classList.remove('modal-img--loading');
-        }
-      })
-      .catch(() => {
-        // Fall back gracefully to the direct URL
-        if (store.get('currentPhoto') === url && dom.modalImg) {
-          dom.modalImg.src = url;
-          dom.modalImg.classList.remove('modal-img--loading');
-        }
-      });
+    // Show immediately via direct URL (same as before caching was added)
+    dom.modalImg.src = url;
+    // Prime the cache silently so the next visit is a synchronous hit
+    imageCache.load(url).catch(() => {});
   }
 };
 
