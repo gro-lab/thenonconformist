@@ -811,7 +811,7 @@ body {
 /* Tablet and below - hide back button */
 @media (max-width: 1024px) {
     #back-button { display: none; }
-    .modal-nav-btn {display: none; }
+    .modal-nav-btn {display: none !important; }
 }
 
 /* Mobile */
