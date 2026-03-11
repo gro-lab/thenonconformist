@@ -6,6 +6,7 @@ import { dom, clearDomCache } from '../dom-elements.js';
 import { errorHandler, withErrorHandling } from '../lib/error-handler.js';
 import { createObserver } from '../lib/create-observer.js';
 import { getDocIdFromUrl, TRANSITION_MS } from '../lib/utils.js';
+import { imageCache } from '../lib/image-cache.js';
 
 // Gallery configuration
 const galleries = {
@@ -268,18 +269,24 @@ const loadGalleryContent = (galleryId, options = {}) => {
     onIntersect: (entry) => {
       const item = entry.target;
       const bgUrl = item.dataset.bg;
-      if (bgUrl) {
-        const img = new Image();
-        img.onload = () => {
-          item.style.backgroundImage = `url(${bgUrl})`;
-          item.classList.add('lazy-loaded');
-          delete item.dataset.bg;
-        };
-        img.onerror = () => {
-          item.classList.add('lazy-error');
-          delete item.dataset.bg;
-        };
-        img.src = bgUrl;
+      if (!bgUrl) return;
+
+      // Use imageCache — synchronous hit avoids any flicker on revisit
+      if (imageCache.has(bgUrl)) {
+        item.style.backgroundImage = `url(${imageCache.get(bgUrl)})`;
+        item.classList.add('lazy-loaded');
+        delete item.dataset.bg;
+      } else {
+        imageCache.load(bgUrl)
+          .then(blobUrl => {
+            item.style.backgroundImage = `url(${blobUrl})`;
+            item.classList.add('lazy-loaded');
+            delete item.dataset.bg;
+          })
+          .catch(() => {
+            item.classList.add('lazy-error');
+            delete item.dataset.bg;
+          });
       }
     }
   });
@@ -340,7 +347,7 @@ const loadGalleryContent = (galleryId, options = {}) => {
   }, 100);
 };
 
-// Public function to re‑fetch gallery data and refresh UI
+// Public function to re-fetch gallery data and refresh UI
 const updateGalleryData = (galleryId) => {
   loadGalleryData(galleryId);
   refreshGalleryCounts();
@@ -368,6 +375,7 @@ export const initGallery = async () => {
     bus.on('gallery:open', (galleryId) => {
       // State is owned by navigation module — gallery only handles rendering
       if (dom.loadingIndicator) dom.loadingIndicator.classList.add('active');
+
       if (dom.gallerySelector) dom.gallerySelector.classList.add('hidden');
       document.querySelector('.site-intro')?.classList.add('hidden');
       document.querySelector('.terms-footer')?.classList.add('hidden');
@@ -398,11 +406,21 @@ export const initGallery = async () => {
     })
   );
 
-  // Listen for like updates — now includes galleryId
+  // Listen for like updates — includes url and galleryId from firebase.js
   busUnsubs.push(
-    bus.on('like:updated', ({ galleryId }) => {
+    bus.on('like:updated', ({ galleryId, url }) => {
+      // Invalidate both the full-size and thumbnail blob URLs for this image
+      // so the next load re-fetches a fresh copy (though the image bytes
+      // haven't changed — this just keeps the cache consistent with the
+      // sort re-render that follows).
+      if (url) {
+        imageCache.invalidate(url);
+        // Thumbnail lives under /images/thumbnails/ vs /images/
+        const thumbUrl = url.replace('/images/', '/images/thumbnails/');
+        imageCache.invalidate(thumbUrl);
+      }
       updateGalleryData(galleryId);
-      // If this gallery is currently open, re‑render with scroll preserved
+      // If this gallery is currently open, re-render with scroll preserved
       if (store.get('isGalleryOpen') && store.get('currentGallery') === galleryId) {
         loadGalleryContent(galleryId, { preserveScroll: true, showLoading: false });
       }

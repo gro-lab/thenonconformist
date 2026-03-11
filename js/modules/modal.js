@@ -5,8 +5,14 @@ import { bus } from '../lib/event-bus.js';
 import { dom } from '../dom-elements.js';
 import { errorHandler } from '../lib/error-handler.js';
 import { getDocIdFromUrl } from '../lib/utils.js';
+import { imageCache } from '../lib/image-cache.js';
 
 let currentAbortController = null;
+
+// ==================== Swipe State ====================
+let swipeTouchStartX = 0;
+let swipeTouchStartY = 0;
+const SWIPE_THRESHOLD = 50; // px — minimum horizontal distance to trigger navigation
 
 // Update like button UI based on current photo
 const updateLikeButton = () => {
@@ -38,6 +44,34 @@ const updateLikeButton = () => {
   }
 };
 
+// Apply image to modal — synchronous cache hit shows blob instantly;
+// cache miss falls back to the raw URL immediately (no stale image shown)
+// and primes the cache in the background for next time.
+const applyImageFromCache = (url) => {
+  if (!dom.modalImg) return;
+
+  if (imageCache.has(url)) {
+    // Already in memory — instant, no network round-trip
+    dom.modalImg.src = imageCache.get(url);
+  } else {
+    // Show immediately via direct URL (same as before caching was added)
+    dom.modalImg.src = url;
+    // Prime the cache silently so the next visit is a synchronous hit
+    imageCache.load(url).catch(() => {});
+  }
+};
+
+// Silently pre-fetch the previous and next full-size images so arrow-key
+// navigation is an instant cache hit.
+const prefetchNeighbours = (index) => {
+  const images = store.get('currentGalleryImages') || [];
+  if (images.length <= 1) return;
+  const prevIdx = (index - 1 + images.length) % images.length;
+  const nextIdx = (index + 1) % images.length;
+  imageCache.load(images[prevIdx].url).catch(() => {});
+  imageCache.load(images[nextIdx].url).catch(() => {});
+};
+
 // Navigate modal to previous/next image
 const navigateModal = (direction) => {
   const currentIndex = store.get('currentPhotoIndex');
@@ -54,7 +88,9 @@ const navigateModal = (direction) => {
   const nextImage = images[newIndex];
   store.set('currentPhoto', nextImage.url);
   store.set('currentPhotoIndex', newIndex);
-  if (dom.modalImg) dom.modalImg.src = nextImage.url;
+
+  applyImageFromCache(nextImage.url);
+  prefetchNeighbours(newIndex);
 
   updateLikeButton();
 };
@@ -68,7 +104,9 @@ const openModal = ({ url, galleryId, index }) => {
   store.set('currentPhotoIndex', index);
   store.set('isModalOpen', true);
 
-  if (dom.modalImg) dom.modalImg.src = url;
+  applyImageFromCache(url);
+  prefetchNeighbours(index);
+
   dom.modal?.removeAttribute('hidden');
   document.body.style.overflow = 'hidden';
 
@@ -121,6 +159,30 @@ const toggleLike = async () => {
   updateLikeButton(); // update heart immediately
 };
 
+// ==================== Swipe Handlers ====================
+const onTouchStart = (e) => {
+  // Only track single-finger touches; ignore multi-touch (pinch-zoom etc.)
+  if (e.touches.length !== 1) return;
+  swipeTouchStartX = e.touches[0].clientX;
+  swipeTouchStartY = e.touches[0].clientY;
+};
+
+const onTouchEnd = (e) => {
+  if (e.changedTouches.length !== 1) return;
+
+  const deltaX = e.changedTouches[0].clientX - swipeTouchStartX;
+  const deltaY = e.changedTouches[0].clientY - swipeTouchStartY;
+
+  // Require the gesture to be more horizontal than vertical (natural swipe feel)
+  if (Math.abs(deltaX) < SWIPE_THRESHOLD || Math.abs(deltaX) < Math.abs(deltaY)) return;
+
+  if (deltaX < 0) {
+    navigateModal('next'); // swipe left  → next image
+  } else {
+    navigateModal('prev'); // swipe right → previous image
+  }
+};
+
 // Setup event listeners
 const setupEventListeners = () => {
   // Abort previous controller if any
@@ -150,6 +212,11 @@ const setupEventListeners = () => {
     else if (e.key === 'ArrowLeft') navigateModal('prev');
     else if (e.key === 'ArrowRight') navigateModal('next');
   }, { signal });
+
+  // Swipe gestures — attached to the modal overlay so the whole surface is
+  // a hit target, not just the image element itself.
+  dom.modal?.addEventListener('touchstart', onTouchStart, { passive: true, signal });
+  dom.modal?.addEventListener('touchend', onTouchEnd, { passive: true, signal });
 
   // Handle history back — popstate is handled in navigation module,
   // which emits 'modal:close'. We subscribe to that below.
