@@ -9,6 +9,11 @@ import { imageCache } from '../lib/image-cache.js';
 
 let currentAbortController = null;
 
+// ==================== Swipe State ====================
+let swipeTouchStartX = 0;
+let swipeTouchStartY = 0;
+const SWIPE_THRESHOLD = 50; // px — minimum horizontal distance to trigger navigation
+
 // Update like button UI based on current photo
 const updateLikeButton = () => {
   const currentPhoto = store.get('currentPhoto');
@@ -154,6 +159,30 @@ const toggleLike = async () => {
   updateLikeButton(); // update heart immediately
 };
 
+// ==================== Swipe Handlers ====================
+const onTouchStart = (e) => {
+  // Only track single-finger touches; ignore multi-touch (pinch-zoom etc.)
+  if (e.touches.length !== 1) return;
+  swipeTouchStartX = e.touches[0].clientX;
+  swipeTouchStartY = e.touches[0].clientY;
+};
+
+const onTouchEnd = (e) => {
+  if (e.changedTouches.length !== 1) return;
+
+  const deltaX = e.changedTouches[0].clientX - swipeTouchStartX;
+  const deltaY = e.changedTouches[0].clientY - swipeTouchStartY;
+
+  // Require the gesture to be more horizontal than vertical (natural swipe feel)
+  if (Math.abs(deltaX) < SWIPE_THRESHOLD || Math.abs(deltaX) < Math.abs(deltaY)) return;
+
+  if (deltaX < 0) {
+    navigateModal('next'); // swipe left  → next image
+  } else {
+    navigateModal('prev'); // swipe right → previous image
+  }
+};
+
 // Setup event listeners
 const setupEventListeners = () => {
   // Abort previous controller if any
@@ -183,6 +212,11 @@ const setupEventListeners = () => {
     else if (e.key === 'ArrowLeft') navigateModal('prev');
     else if (e.key === 'ArrowRight') navigateModal('next');
   }, { signal });
+
+  // Swipe gestures — attached to the modal overlay so the whole surface is
+  // a hit target, not just the image element itself.
+  dom.modal?.addEventListener('touchstart', onTouchStart, { passive: true, signal });
+  dom.modal?.addEventListener('touchend', onTouchEnd, { passive: true, signal });
 
   // Handle history back — popstate is handled in navigation module,
   // which emits 'modal:close'. We subscribe to that below.
