@@ -1,0 +1,81 @@
+/* ============================================
+   BASE STYLES
+   ============================================
+   CSS reset, base element styles, and global
+   typography definitions.
+   ============================================ */
+
+/* ----------------------------------------
+   CSS RESET
+   ---------------------------------------- */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ----------------------------------------
+   HTML & BODY
+   ---------------------------------------- */
+html {
+  scroll-behavior: smooth;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+body {
+  font-family: var(--font-primary);
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-tight);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+  touch-action: manipulation;
+}
+
+/* ----------------------------------------
+   TEXT SELECTION
+   ---------------------------------------- */
+::selection {
+  background-color: var(--color-accent-orange);
+  color: var(--color-text-primary);
+}
+
+/* ----------------------------------------
+   ANIMATIONS - Keyframes
+   ---------------------------------------- */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fadeInItem {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+}
+
+@keyframes audio-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}

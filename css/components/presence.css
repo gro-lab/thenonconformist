@@ -1,0 +1,81 @@
+/* ============================================
+   PRESENCE INDICATOR COMPONENT
+   ============================================
+   Active viewers indicator with animated
+   pulse dot and responsive positioning.
+   ============================================ */
+
+/* ----------------------------------------
+   PRESENCE INDICATOR BASE
+   ---------------------------------------- */
+.presence-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-dim);
+  background: var(--color-bg-dark);
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  backdrop-filter: var(--backdrop-blur-sm);
+  -webkit-backdrop-filter: var(--backdrop-blur-sm);
+  pointer-events: none;
+  transition: var(--transition-opacity);
+  margin-top: var(--space-2);
+}
+
+.presence-indicator[hidden] {
+  display: none;
+}
+
+/* ----------------------------------------
+   PRESENCE DOT
+   ---------------------------------------- */
+.presence-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--color-accent-green);
+  border-radius: var(--radius-full);
+  animation: pulse-dot 2s var(--ease-in-out) infinite;
+  flex-shrink: 0;
+}
+
+/* ----------------------------------------
+   PRESENCE COUNT
+   ---------------------------------------- */
+.presence-count {
+  white-space: nowrap;
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+/* ----------------------------------------
+   MODAL PRESENCE INDICATOR
+   ---------------------------------------- */
+.presence-indicator-modal {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-modal-nav);
+  margin-top: 0;
+}
+
+/* ----------------------------------------
+   MOBILE ADJUSTMENTS
+   ---------------------------------------- */
+@media (max-width: 768px) {
+  .presence-indicator {
+    font-size: var(--font-size-xs);
+    padding: 3px 8px;
+    gap: 4px;
+  }
+
+  .presence-dot {
+    width: 4px;
+    height: 4px;
+  }
+
+  .presence-indicator-modal {
+    bottom: 85px;
+  }
+}

@@ -1,0 +1,122 @@
+/* ============================================
+   RESPONSIVE STYLES
+   ============================================
+   All media queries organized by breakpoint
+   for tablet, mobile, and small screens.
+   ============================================ */
+
+/* ----------------------------------------
+   TABLET AND BELOW (max-width: 1024px)
+   ---------------------------------------- */
+@media (max-width: 1024px) {
+  /* Hide back button on tablet */
+  #back-button {
+    display: none;
+  }
+
+  /* Hide modal navigation buttons */
+  .modal-nav-btn {
+    display: none !important;
+  }
+}
+
+/* ----------------------------------------
+   MOBILE (max-width: 768px)
+   ---------------------------------------- */
+@media (max-width: 768px) {
+  /* Site Intro */
+  .site-intro {
+    padding: var(--space-9) var(--space-5) var(--space-7);
+  }
+
+  .site-title {
+    font-size: var(--font-size-7xl);
+  }
+
+  .site-description {
+    font-size: var(--font-size-xl);
+  }
+
+  /* Gallery Selector */
+  .gallery-selector {
+    grid-template-columns: 1fr;
+    padding: var(--space-5) var(--space-5) var(--space-5);
+    gap: var(--space-5);
+  }
+
+  .gallery-cover {
+    min-height: 500px;
+  }
+
+  .gallery-title {
+    font-size: var(--font-size-5xl);
+  }
+
+  .gallery-description-text {
+    font-size: var(--font-size-md);
+  }
+
+  /* Terms Footer */
+  .terms-footer {
+    padding: var(--space-7) var(--space-5) var(--space-9);
+  }
+
+  /* Back Button */
+  .back-button {
+    top: var(--space-4);
+    left: var(--space-4);
+    padding: 10px 18px;
+    font-size: var(--font-size-md);
+    z-index: 250;
+  }
+
+  /* Gallery Header */
+  .gallery-header {
+    top: 0;
+    right: var(--space-4);
+  }
+
+  .gallery-header h2 {
+    font-size: var(--font-size-7xl);
+  }
+
+  /* Navigation Hint */
+  .navigation-hint {
+    display: none;
+  }
+
+  /* Masonry Grid */
+  .masonry-grid {
+    gap: var(--space-gallery-gap);
+    padding: 0;
+  }
+
+  .masonry-item.horizontal {
+    grid-column: span 2;
+  }
+
+  /* Infinite Canvas */
+  .infinite-canvas {
+    padding: 100px 5px 60px;
+  }
+}
+
+/* ----------------------------------------
+   SMALL MOBILE (max-width: 480px)
+   ---------------------------------------- */
+@media (max-width: 480px) {
+  /* Masonry Grid */
+  .masonry-grid {
+    grid-template-columns: var(--grid-columns-mobile);
+  }
+
+  /* Gallery Cover */
+  .gallery-cover {
+    min-height: 450px;
+  }
+
+  /* Cookie Category */
+  .cookie-category {
+    padding: var(--space-5);
+  }
+}
