@@ -1,0 +1,49 @@
+/* ============================================
+   BASE STYLES - base.css
+   Reset and base element styles
+   ============================================ */
+
+/* Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Document */
+html {
+    scroll-behavior: smooth;
+    overscroll-behavior: none;
+    touch-action: manipulation;
+}
+
+body {
+    font-family: var(--font-family-sans);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: var(--line-height-normal);
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
+    touch-action: manipulation;
+}
+
+/* Selection */
+::selection {
+    background-color: var(--color-primary);
+    color: var(--text-primary);
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    html {
+        scroll-behavior: auto;
+    }
+}

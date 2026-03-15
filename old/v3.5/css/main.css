@@ -1,0 +1,64 @@
+/* ============================================
+   MAIN CSS ENTRY FILE
+   ============================================
+   This is the main entry point for all CSS.
+   Import order matters - base styles first,
+   then components, then utilities, and
+   finally responsive overrides.
+   ============================================ */
+
+/* ----------------------------------------
+   1. CSS CUSTOM PROPERTIES (VARIABLES)
+   Must be first to define design tokens
+   ---------------------------------------- */
+@import url('variables.css');
+
+/* ----------------------------------------
+   2. BASE STYLES
+   Reset, base elements, typography, animations
+   ---------------------------------------- */
+@import url('base.css');
+
+/* ----------------------------------------
+   3. LAYOUT STYLES
+   Site intro, headers, footers, containers
+   ---------------------------------------- */
+@import url('layout.css');
+
+/* ----------------------------------------
+   4. COMPONENTS
+   Modular UI components
+   ---------------------------------------- */
+
+/* Gallery selector cards and grid */
+@import url('components/gallery-selector.css');
+
+/* Gallery view, canvas, masonry */
+@import url('components/gallery-content.css');
+
+/* Image modal, navigation, like button */
+@import url('components/modal.css');
+
+/* Cookie banner and settings */
+@import url('components/cookie-banner.css');
+
+/* Audio toggle button */
+@import url('components/audio-toggle.css');
+
+/* Presence indicator */
+@import url('components/presence.css');
+
+/* Error toast */
+@import url('components/error.css');
+
+/* ----------------------------------------
+   5. UTILITIES
+   Helper classes and state utilities
+   ---------------------------------------- */
+@import url('utilities.css');
+
+/* ----------------------------------------
+   6. RESPONSIVE STYLES
+   Media queries - must be last to override
+   ---------------------------------------- */
+@import url('responsive.css');
