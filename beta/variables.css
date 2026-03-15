@@ -1,0 +1,120 @@
+/* ============================================
+   DESIGN TOKENS - variables.css
+   All design tokens centralized
+   ============================================ */
+
+:root {
+    /* === COLORS === */
+    /* Primary palette */
+    --color-primary: #f28c28;
+    --color-secondary: #6b5cff;
+    --color-primary-rgb: 242, 140, 40;
+    --color-secondary-rgb: 107, 92, 255;
+
+    /* Background colors */
+    --bg-primary: #0a0a14;
+    --bg-secondary: rgba(10, 10, 20, 0.98);
+    --bg-elevated: rgba(255, 255, 255, 0.03);
+    --bg-overlay: rgba(0, 0, 0, 0.95);
+    --bg-glass: rgba(255, 255, 255, 0.1);
+    --bg-glass-hover: rgba(255, 255, 255, 0.2);
+
+    /* Text colors */
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.8);
+    --text-muted: rgba(255, 255, 255, 0.6);
+    --text-subtle: rgba(255, 255, 255, 0.4);
+
+    /* Semantic colors */
+    --color-success: #4ade80;
+    --color-error: #ff4757;
+    --color-like: #ff4757;
+
+    /* === TYPOGRAPHY === */
+    --font-family-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-family-serif: Georgia, "Times New Roman", Times, serif;
+
+    --font-size-xs: 0.75rem;      /* 12px */
+    --font-size-sm: 0.875rem;     /* 14px */
+    --font-size-base: 1rem;       /* 16px */
+    --font-size-lg: 1.125rem;     /* 18px */
+    --font-size-xl: 1.25rem;      /* 20px */
+    --font-size-2xl: 1.5rem;      /* 24px */
+    --font-size-3xl: 2rem;        /* 32px */
+    --font-size-4xl: 2.5rem;      /* 40px */
+    --font-size-5xl: 3rem;        /* 48px */
+
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+    --font-weight-extrabold: 800;
+
+    --line-height-tight: 1.4;
+    --line-height-normal: 1.6;
+    --line-height-relaxed: 1.8;
+
+    --letter-spacing-tight: 0.02em;
+    --letter-spacing-normal: 0.05em;
+    --letter-spacing-wide: 0.2em;
+
+    /* === SPACING === */
+    --space-1: 0.25rem;   /* 4px */
+    --space-2: 0.5rem;    /* 8px */
+    --space-3: 0.75rem;   /* 12px */
+    --space-4: 1rem;      /* 16px */
+    --space-5: 1.25rem;   /* 20px */
+    --space-6: 1.5rem;    /* 24px */
+    --space-8: 2rem;      /* 32px */
+    --space-10: 2.5rem;   /* 40px */
+    --space-12: 3rem;     /* 48px */
+    --space-16: 4rem;     /* 64px */
+    --space-20: 5rem;     /* 80px */
+
+    /* === BORDERS === */
+    --border-radius-sm: 8px;
+    --border-radius-md: 12px;
+    --border-radius-lg: 16px;
+    --border-radius-xl: 24px;
+    --border-radius-full: 999px;
+    --border-radius-circle: 50%;
+
+    --border-width-thin: 1px;
+    --border-color: rgba(255, 255, 255, 0.1);
+    --border-color-hover: rgba(255, 255, 255, 0.2);
+
+    /* === SHADOWS === */
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.4);
+    --shadow-xl: 0 30px 60px rgba(0, 0, 0, 0.6);
+
+    /* === TRANSITIONS === */
+    --transition-fast: 0.2s ease;
+    --transition-base: 0.3s ease;
+    --transition-slow: 0.5s ease;
+    --transition-slower: 0.8s ease;
+
+    /* === Z-INDEX SCALE === */
+    --z-base: 1;
+    --z-dropdown: 100;
+    --z-sticky: 200;
+    --z-modal: 300;
+    --z-modal-overlay: 310;
+    --z-popover: 350;
+    --z-tooltip: 400;
+    --z-toast: 500;
+    --z-loading: 1000;
+
+    /* === GRADIENTS === */
+    --gradient-primary: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+    --gradient-text: linear-gradient(120deg, var(--color-primary), var(--color-secondary));
+    --gradient-overlay: linear-gradient(to bottom, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.8));
+    --gradient-overlay-reverse: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+
+    /* === BREAKPOINTS === */
+    --breakpoint-sm: 480px;
+    --breakpoint-md: 768px;
+    --breakpoint-lg: 1024px;
+    --breakpoint-xl: 1400px;
+}

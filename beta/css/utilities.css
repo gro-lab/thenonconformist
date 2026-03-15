@@ -1,0 +1,110 @@
+/* ============================================
+   UTILITY CLASSES
+   ============================================
+   Reusable utility classes for common
+   styling patterns and state management.
+   ============================================ */
+
+/* ----------------------------------------
+   DISPLAY UTILITIES
+   ---------------------------------------- */
+.hidden {
+  display: none !important;
+}
+
+/* ----------------------------------------
+   VISIBILITY UTILITIES
+   ---------------------------------------- */
+.invisible {
+  visibility: hidden;
+}
+
+.visible {
+  visibility: visible;
+}
+
+/* ----------------------------------------
+   OPACITY UTILITIES
+   ---------------------------------------- */
+.opacity-0 {
+  opacity: 0;
+}
+
+.opacity-50 {
+  opacity: 0.5;
+}
+
+.opacity-100 {
+  opacity: 1;
+}
+
+/* ----------------------------------------
+   POINTER EVENTS UTILITIES
+   ---------------------------------------- */
+.pointer-events-none {
+  pointer-events: none;
+}
+
+.pointer-events-all {
+  pointer-events: all;
+}
+
+/* ----------------------------------------
+   TEXT UTILITIES
+   ---------------------------------------- */
+.text-center {
+  text-align: center;
+}
+
+.text-left {
+  text-align: left;
+}
+
+.text-right {
+  text-align: right;
+}
+
+/* ----------------------------------------
+   TEXT TRANSFORM UTILITIES
+   ---------------------------------------- */
+.uppercase {
+  text-transform: uppercase;
+}
+
+.lowercase {
+  text-transform: lowercase;
+}
+
+.capitalize {
+  text-transform: capitalize;
+}
+
+/* ----------------------------------------
+   POSITION UTILITIES
+   ---------------------------------------- */
+.relative {
+  position: relative;
+}
+
+.absolute {
+  position: absolute;
+}
+
+.fixed {
+  position: fixed;
+}
+
+/* ----------------------------------------
+   OVERFLOW UTILITIES
+   ---------------------------------------- */
+.overflow-hidden {
+  overflow: hidden;
+}
+
+.overflow-auto {
+  overflow: auto;
+}
+
+.overflow-visible {
+  overflow: visible;
+}

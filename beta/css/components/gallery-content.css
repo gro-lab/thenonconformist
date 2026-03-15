@@ -1,0 +1,210 @@
+/* ============================================
+   GALLERY CONTENT COMPONENT
+   ============================================
+   Gallery view, infinite canvas, masonry grid,
+   and navigation elements.
+   ============================================ */
+
+/* ----------------------------------------
+   GALLERY CONTENT CONTAINER
+   ---------------------------------------- */
+.gallery-content {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-slowest) var(--ease-default);
+  z-index: var(--z-gallery-content);
+  overflow: hidden;
+  background: var(--color-bg-primary);
+}
+
+.gallery-content.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* ----------------------------------------
+   BACK BUTTON
+   ---------------------------------------- */
+.back-button {
+  position: fixed;
+  top: var(--space-7);
+  left: var(--space-7);
+  background: var(--color-bg-secondary);
+  backdrop-filter: var(--backdrop-blur-md);
+  -webkit-backdrop-filter: var(--backdrop-blur-md);
+  border: 1px solid var(--color-border-medium);
+  color: var(--color-text-primary);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  z-index: var(--z-back-button);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.back-button:hover {
+  background: var(--color-bg-tertiary);
+}
+
+/* ----------------------------------------
+   GALLERY HEADER
+   ---------------------------------------- */
+.gallery-header {
+  position: absolute;
+  top: var(--space-7);
+  right: var(--space-7);
+  text-align: right;
+  z-index: var(--z-gallery-header);
+  pointer-events: none;
+  mix-blend-mode: difference;
+}
+
+.gallery-header h2 {
+  font-size: var(--font-size-8xl);
+  font-weight: var(--font-weight-extrabold);
+  background: linear-gradient(90deg, var(--color-accent-orange), var(--color-accent-purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+}
+
+.gallery-header p {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-dim);
+  margin: var(--space-1) 0 0 0;
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+}
+
+/* ----------------------------------------
+   INFINITE CANVAS
+   ---------------------------------------- */
+.infinite-canvas {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  padding: var(--space-canvas-padding-y) var(--space-canvas-padding-x) var(--space-canvas-padding-bottom);
+  cursor: grab;
+  overflow: hidden;
+  background: transparent;
+}
+
+.infinite-canvas:active {
+  cursor: grabbing;
+}
+
+.canvas-transform-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  will-change: transform;
+  transition: transform var(--duration-fast) var(--ease-default);
+}
+
+/* ----------------------------------------
+   MASONRY GRID
+   ---------------------------------------- */
+.masonry-grid {
+  display: grid;
+  grid-template-columns: var(--grid-columns-masonry);
+  gap: var(--space-gallery-gap);
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+}
+
+/* ----------------------------------------
+   MASONRY ITEM
+   ---------------------------------------- */
+.masonry-item {
+  position: relative;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  cursor: pointer;
+  opacity: 0;
+  animation: fadeInItem var(--duration-slower) var(--ease-default) forwards;
+  border: none;
+  margin: var(--space-masonry-margin);
+}
+
+/* Masonry item aspect ratio variants */
+.masonry-item.horizontal {
+  grid-column: span 3;
+  aspect-ratio: var(--aspect-horizontal);
+}
+
+.masonry-item.vertical {
+  aspect-ratio: var(--aspect-vertical);
+}
+
+.masonry-item.square {
+  aspect-ratio: var(--aspect-square);
+}
+
+.masonry-item:hover {
+  z-index: 10;
+  box-shadow: 0 0 20px var(--color-shadow-glow);
+}
+
+/* ----------------------------------------
+   ITEM OVERLAY
+   ---------------------------------------- */
+.item-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: var(--space-5);
+  background: var(--gradient-item-overlay);
+  color: var(--color-text-primary);
+  transition: var(--transition-opacity);
+}
+
+.item-category {
+  font-size: var(--font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.8;
+}
+
+.item-title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+}
+
+.item-likes {
+  font-size: var(--font-size-md);
+  margin-top: var(--space-1);
+}
+
+/* ----------------------------------------
+   NAVIGATION HINT
+   ---------------------------------------- */
+.navigation-hint {
+  position: fixed;
+  bottom: var(--space-7);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-shadow-audio);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-shadow-audio-border);
+  z-index: var(--z-navigation-hint);
+}
+
+.navigation-hint p {
+  font-size: var(--font-size-md);
+  color: var(--color-text-muted);
+  margin: 0;
+}

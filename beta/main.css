@@ -1,0 +1,25 @@
+/* ============================================
+   MAIN STYLES - main.css
+   Import all modular CSS files
+   ============================================ */
+
+/* 1. Design Tokens */
+@import 'variables.css';
+
+/* 2. Base & Reset */
+@import 'base.css';
+
+/* 3. Utilities */
+@import 'utilities.css';
+
+/* 4. Components */
+@import 'components/site-intro.css';
+@import 'components/gallery-selector.css';
+@import 'components/gallery-view.css';
+@import 'components/modal.css';
+@import 'components/cookie-banner.css';
+@import 'components/audio-player.css';
+@import 'components/presence.css';
+
+/* 5. Responsive */
+@import 'responsive.css';
