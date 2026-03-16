@@ -1,6 +1,15 @@
 # The Nonconformist — Photography Portfolio
 # https://thenonconformist.xyz
 
+# Explicitly allow Google Images crawler
+User-agent: Googlebot-Image
+Allow: /images/
+Allow: /images/LoW/
+Allow: /images/SoL/
+Allow: /images/R/
+Allow: /images/SA/
+Allow: /images/thumbnails/
+
 User-agent: *
 Allow: /
 Allow: /images/
