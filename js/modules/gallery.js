@@ -268,24 +268,27 @@ const loadGalleryContent = (galleryId, options = {}) => {
     once: true,
     onIntersect: (entry) => {
       const item = entry.target;
-      const bgUrl = item.dataset.bg;
-      if (!bgUrl) return;
+      const img = item.querySelector('img');
+      const imgUrl = item.dataset.imgUrl;
+      if (!img || !imgUrl) return;
 
       // Use imageCache — synchronous hit avoids any flicker on revisit
-      if (imageCache.has(bgUrl)) {
-        item.style.backgroundImage = `url(${imageCache.get(bgUrl)})`;
+      if (imageCache.has(imgUrl)) {
+        img.src = imageCache.get(imgUrl);
         item.classList.add('lazy-loaded');
-        delete item.dataset.bg;
+        delete item.dataset.imgUrl;
       } else {
-        imageCache.load(bgUrl)
+        imageCache.load(imgUrl)
           .then(blobUrl => {
-            item.style.backgroundImage = `url(${blobUrl})`;
+            img.src = blobUrl;
             item.classList.add('lazy-loaded');
-            delete item.dataset.bg;
+            delete item.dataset.imgUrl;
           })
           .catch(() => {
+            // Fallback to raw URL on error
+            img.src = imgUrl;
             item.classList.add('lazy-error');
-            delete item.dataset.bg;
+            delete item.dataset.imgUrl;
           });
       }
     }
@@ -300,9 +303,23 @@ const loadGalleryContent = (galleryId, options = {}) => {
 
     masonryItem.className = `masonry-item ${orientation}`;
     masonryItem.style.animationDelay = `${index * 0.05}s`;
-    // Set thumbnail as background image
-    masonryItem.dataset.bg = createThumbnailUrl(gallery.dir, image.imageData);
+    // Store image URL for lazy loading
+    masonryItem.dataset.imgUrl = createThumbnailUrl(gallery.dir, image.imageData);
     masonryItem.dataset.imageId = index;
+
+    // Create img element for SEO-friendly image display
+    const imgElement = document.createElement('img');
+    imgElement.className = 'masonry-img';
+    imgElement.alt = `${gallery.title} - Photo ${image.imageData.index}`;
+    imgElement.loading = 'lazy';
+    // Set width/height attributes when available for better CLS performance
+    if (image.imageData.width) {
+      imgElement.width = image.imageData.width;
+    }
+    if (image.imageData.height) {
+      imgElement.height = image.imageData.height;
+    }
+    masonryItem.appendChild(imgElement);
 
     const overlay = document.createElement('div');
     overlay.className = 'item-overlay';

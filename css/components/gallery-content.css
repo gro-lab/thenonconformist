@@ -129,13 +129,16 @@
 .masonry-item {
   position: relative;
   overflow: hidden;
-  background-size: cover;
-  background-position: center;
   cursor: pointer;
   opacity: 0;
   animation: fadeInItem var(--duration-slower) var(--ease-default) forwards;
   border: none;
   margin: var(--space-masonry-margin);
+}
+
+.masonry-item img {
+  width: stretch;
+  height: stretch;
 }
 
 /* Masonry item aspect ratio variants */
@@ -155,6 +158,24 @@
 .masonry-item:hover {
   z-index: 10;
   box-shadow: 0 0 20px var(--color-shadow-glow);
+}
+
+/* ----------------------------------------
+   MASONRY IMAGE
+   ---------------------------------------- */
+.masonry-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-default);
+}
+
+.masonry-item.lazy-loaded .masonry-img,
+.masonry-item.lazy-error .masonry-img {
+  opacity: 1;
 }
 
 /* ----------------------------------------
