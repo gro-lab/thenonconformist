@@ -744,6 +744,7 @@ function toggleAudio() {
 
   isAudioEnabled = !isAudioEnabled;
   store.set('isAudioEnabled', isAudioEnabled);
+  localStorage.setItem('audioEnabled', isAudioEnabled); // persist preference
   updateToggleUI();
 
   if (isAudioEnabled) {
@@ -878,6 +879,10 @@ function bootstrapOnGesture() {
 export function initAudio() {
   console.log('🔊 Initializing audio synesthesia module...');
 
+  // Restore saved preference — essential UI storage, no consent needed
+  const saved = localStorage.getItem('audioEnabled');
+  if (saved !== null) isAudioEnabled = saved === 'true';
+
   // Setup toggle button listener
   const btn = dom.audioToggle;
   if (btn) {
@@ -887,7 +892,7 @@ export function initAudio() {
   updateToggleUI();
   subscribeToEvents();
 
-  // Audio is on by default — wait for first user gesture to bootstrap
+  // If audio is enabled, wait for first user gesture to bootstrap
   if (isAudioEnabled) {
     bootstrapOnGesture();
   }
