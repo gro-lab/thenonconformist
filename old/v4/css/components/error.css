@@ -1,0 +1,29 @@
+/* ============================================
+   ERROR TOAST COMPONENT
+   ============================================
+   Error notification toast with fade-in
+   animation and centered positioning.
+   ============================================ */
+
+/* ----------------------------------------
+   ERROR TOAST
+   ---------------------------------------- */
+.error-toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-shadow-error);
+  color: var(--color-text-primary);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-lg);
+  z-index: var(--z-error-toast);
+  max-width: 90vw;
+  text-align: center;
+  animation: fadeInItem var(--duration-fast) var(--ease-default);
+}
+
+.error-toast[hidden] {
+  display: none;
+}

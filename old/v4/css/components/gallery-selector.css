@@ -1,0 +1,101 @@
+/* ============================================
+   GALLERY SELECTOR COMPONENT
+   ============================================
+   Gallery cover cards and selector grid layout
+   for the main gallery selection page.
+   ============================================ */
+
+/* ----------------------------------------
+   GALLERY SELECTOR GRID
+   ---------------------------------------- */
+.gallery-selector {
+  max-width: var(--max-width-gallery);
+  margin: 0 auto;
+  padding: var(--space-9) var(--space-7) var(--space-5);
+  display: grid;
+  grid-template-columns: var(--grid-columns-selector);
+  gap: var(--space-7);
+}
+
+.gallery-selector.hidden {
+  display: none;
+}
+
+/* ----------------------------------------
+   GALLERY COVER CARD
+   ---------------------------------------- */
+.gallery-cover {
+  position: relative;
+  width: 100%;
+  min-height: 550px;
+  border-radius: var(--radius-lg);
+  overflow: visible;
+  cursor: pointer;
+  transition: var(--transition-slow);
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 20px 40px var(--color-shadow-xl);
+}
+
+.gallery-cover:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 30px 60px var(--color-shadow-2xl);
+}
+
+.gallery-cover::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--gradient-overlay);
+  z-index: 1;
+  border-radius: var(--radius-lg);
+}
+
+/* ----------------------------------------
+   GALLERY COVER CONTENT
+   ---------------------------------------- */
+.gallery-cover-content {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: var(--space-7);
+  z-index: 2;
+  color: var(--color-text-primary);
+}
+
+.gallery-title {
+  font-size: var(--font-size-6xl);
+  font-weight: var(--font-weight-extrabold);
+  margin-bottom: var(--space-4);
+  word-wrap: break-word;
+}
+
+/* Gallery title gradient variants */
+.gallery-title-low,
+.gallery-title-sol,
+.gallery-title-r,
+.gallery-title-sa {
+  background: var(--gradient-title);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gallery-description-text {
+  font-size: var(--font-size-lg);
+  line-height: var(--line-height-tight);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-4);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.gallery-count {
+  font-size: var(--font-size-md);
+  opacity: 0.8;
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+}

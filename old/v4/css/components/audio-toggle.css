@@ -1,0 +1,101 @@
+/* ============================================
+   AUDIO TOGGLE COMPONENT
+   ============================================
+   Audio synesthesia toggle button with
+   animated states and responsive behavior.
+   ============================================ */
+
+/* ----------------------------------------
+   AUDIO TOGGLE BUTTON
+   ---------------------------------------- */
+.audio-toggle {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--color-border-dark);
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-light);
+  backdrop-filter: var(--backdrop-blur-md);
+  -webkit-backdrop-filter: var(--backdrop-blur-md);
+  cursor: pointer;
+  font-family: var(--font-system);
+  font-size: 12px;
+  color: var(--color-text-dark);
+  transition: var(--transition-fast);
+  box-shadow: 0 2px 8px var(--color-shadow-sm);
+}
+
+.audio-toggle:hover {
+  background: var(--color-bg-lighter);
+  box-shadow: 0 2px 12px var(--color-shadow-md);
+  transform: translateY(-1px);
+}
+
+/* ----------------------------------------
+   AUDIO ICON & LABEL
+   ---------------------------------------- */
+.audio-toggle .audio-icon {
+  font-size: 14px;
+  transition: var(--transition-opacity);
+}
+
+.audio-toggle .audio-label {
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+/* ----------------------------------------
+   MUTED STATE
+   ---------------------------------------- */
+.audio-toggle.audio-muted {
+  color: var(--color-text-darker);
+}
+
+.audio-toggle.audio-muted .audio-icon {
+  opacity: 0.4;
+}
+
+/* ----------------------------------------
+   ACTIVE STATE
+   ---------------------------------------- */
+.audio-toggle.audio-active {
+  color: var(--color-text-black);
+  border-color: rgba(0, 0, 0, 0.25);
+}
+
+.audio-toggle.audio-active .audio-icon {
+  opacity: 1;
+  animation: audio-pulse 2s var(--ease-in-out) infinite;
+}
+
+/* ----------------------------------------
+   COOKIE BUTTON OVERLAP FIX
+   ---------------------------------------- */
+.audio-toggle + #cookie-float-btn,
+#cookie-float-btn {
+  bottom: 60px;
+}
+
+/* ----------------------------------------
+   MOBILE ADJUSTMENTS
+   ---------------------------------------- */
+@media (max-width: 700px) {
+  .audio-toggle {
+    bottom: 14px;
+    right: 14px;
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+
+  .audio-toggle .audio-label {
+    display: none;
+  }
+
+  .audio-toggle .audio-icon {
+    font-size: 16px;
+  }
+}

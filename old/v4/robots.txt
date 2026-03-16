@@ -1,0 +1,14 @@
+# The Nonconformist — Photography Portfolio
+# https://thenonconformist.xyz
+
+User-agent: *
+Allow: /
+Allow: /images/
+
+# Block Firebase internal paths (if any)
+Disallow: /cdn-cgi/
+
+# Sitemaps — point every crawler here first
+Sitemap: https://thenonconformist.xyz/sitemap-index.xml
+Sitemap: https://thenonconformist.xyz/sitemap.xml
+Sitemap: https://thenonconformist.xyz/sitemap-images.xml
