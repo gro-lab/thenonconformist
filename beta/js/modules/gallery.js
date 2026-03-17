@@ -171,12 +171,14 @@ const loadGalleryData = (galleryKey) => {
   return images;
 };
 
-// Get most liked image for cover
-const getMostLikedImageUrl = (galleryKey) => {
+// Get the cover image URL using the same ordering logic as the grid:
+// - Cookies disabled or all 0 likes → first image after shuffle (random each load)
+// - Cookies enabled with liked images → the most-liked image
+const getCoverImageUrl = (galleryKey) => {
   const galleryImageData = store.get('galleryImageData') || {};
   const images = galleryImageData[galleryKey];
   if (!images || images.length === 0) return '';
-  const sorted = stableSortByLikes(images);
+  const sorted = sortImagesForDisplay(images);
   const gallery = galleries[galleryKey];
   return createThumbnailUrl(gallery.dir, sorted[0].imageData);
 };
@@ -204,9 +206,9 @@ const refreshGalleryCovers = () => {
   Object.keys(galleries).forEach(key => {
     const cover = document.querySelector(`.gallery-cover[data-gallery="${key}"]`);
     if (cover) {
-      const mostLikedUrl = getMostLikedImageUrl(key);
-      if (mostLikedUrl) {
-        cover.style.backgroundImage = `url(${mostLikedUrl})`;
+      const coverUrl = getCoverImageUrl(key);
+      if (coverUrl) {
+        cover.style.backgroundImage = `url(${coverUrl})`;
         cover.classList.add('lazy-loaded');
         delete cover.dataset.bg;
       }
@@ -244,9 +246,9 @@ const setupGallerySelector = async () => {
   // Set data-bg for each cover
   Object.keys(galleries).forEach(key => {
     const cover = document.querySelector(`.gallery-cover[data-gallery="${key}"]`);
-    const mostLikedUrl = getMostLikedImageUrl(key);
-    if (cover && mostLikedUrl) {
-      cover.dataset.bg = mostLikedUrl;
+    const coverUrl = getCoverImageUrl(key);
+    if (cover && coverUrl) {
+      cover.dataset.bg = coverUrl;
       coverObserver.observe(cover);
     }
   });
