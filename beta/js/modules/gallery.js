@@ -40,6 +40,10 @@ let abortController = null;
 let currentMasonryObserver = null;
 const busUnsubs = [];
 
+// Computed display order per gallery key — populated by computeDisplayOrder.
+// Both the cover image and the grid read from this map so they are always in sync.
+const displayOrderCache = {};
+
 // Fisher-Yates shuffle — returns a new shuffled array, does not mutate input
 const shuffle = (arr) => {
   const a = [...arr];
@@ -58,21 +62,31 @@ const stableSortByLikes = (items) => {
   });
 };
 
-// Sort images for display:
-// - Cookies disabled  → fully randomized
-// - Cookies enabled   → liked images sorted by likes desc (stable),
-//                       zero-like images shuffled and appended after
-const sortImagesForDisplay = (images) => {
-  const functionalEnabled = store.get('functionalCookiesEnabled');
-
-  if (!functionalEnabled) {
-    return shuffle(images);
+// Compute and store the display order for a gallery.
+// Call this whenever the underlying data changes (init, consent, like update).
+// Both getCoverImageUrl and loadGalleryContent read from displayOrderCache
+// so they always show the same ordering.
+const computeDisplayOrder = (galleryKey) => {
+  const galleryImageData = store.get('galleryImageData') || {};
+  const images = galleryImageData[galleryKey];
+  if (!images || images.length === 0) {
+    displayOrderCache[galleryKey] = [];
+    return [];
   }
 
-  const liked   = images.filter(img => img.likes > 0);
-  const unliked = images.filter(img => img.likes === 0);
+  const functionalEnabled = store.get('functionalCookiesEnabled');
+  let sorted;
 
-  return [...stableSortByLikes(liked), ...shuffle(unliked)];
+  if (!functionalEnabled) {
+    sorted = shuffle(images);
+  } else {
+    const liked   = images.filter(img => img.likes > 0);
+    const unliked = images.filter(img => img.likes === 0);
+    sorted = [...stableSortByLikes(liked), ...shuffle(unliked)];
+  }
+
+  displayOrderCache[galleryKey] = sorted;
+  return sorted;
 };
 
 // Create image URLs
@@ -168,17 +182,17 @@ const loadGalleryData = (galleryKey) => {
   const galleryImageData = store.get('galleryImageData') || {};
   galleryImageData[galleryKey] = images;
   store.set('galleryImageData', galleryImageData);
+
+  // Recompute display order so cover and grid stay in sync
+  computeDisplayOrder(galleryKey);
+
   return images;
 };
 
-// Get the cover image URL using the same ordering logic as the grid:
-// - Cookies disabled or all 0 likes → first image after shuffle (random each load)
-// - Cookies enabled with liked images → the most-liked image
+// Get the cover image URL — always index 0 of the cached display order
 const getCoverImageUrl = (galleryKey) => {
-  const galleryImageData = store.get('galleryImageData') || {};
-  const images = galleryImageData[galleryKey];
-  if (!images || images.length === 0) return '';
-  const sorted = sortImagesForDisplay(images);
+  const sorted = displayOrderCache[galleryKey];
+  if (!sorted || sorted.length === 0) return '';
   const gallery = galleries[galleryKey];
   return createThumbnailUrl(gallery.dir, sorted[0].imageData);
 };
@@ -220,7 +234,7 @@ const refreshGalleryCovers = () => {
 const setupGallerySelector = async () => {
   console.log('🔄 Setting up gallery selector...');
 
-  // Load data for all galleries
+  // Load data for all galleries — also computes initial display order per gallery
   await Promise.all(Object.keys(galleries).map(key => loadGalleryData(key)));
 
   // Setup cover images with lazy observer
@@ -243,7 +257,7 @@ const setupGallerySelector = async () => {
     }
   });
 
-  // Set data-bg for each cover
+  // Set data-bg for each cover using the cached display order
   Object.keys(galleries).forEach(key => {
     const cover = document.querySelector(`.gallery-cover[data-gallery="${key}"]`);
     const coverUrl = getCoverImageUrl(key);
@@ -293,7 +307,8 @@ const loadGalleryContent = (galleryId, options = {}) => {
 
   masonryGrid.innerHTML = '';
 
-  const sortedImages = sortImagesForDisplay(images);
+  // Use the cached display order — same order the cover image uses
+  const sortedImages = displayOrderCache[galleryId] || computeDisplayOrder(galleryId);
   store.set('currentGalleryImages', sortedImages);
 
   // Create masonry observer for lazy loading
