@@ -1,3 +1,4 @@
+
 // js/modules/gallery.js
 // Gallery grid, masonry layout, lazy loading, cover images
 import { store } from '../lib/store.js';
@@ -162,7 +163,7 @@ const refreshGalleryCounts = () => {
     if (countElement && galleryImageData[key]) {
       const count = galleryImageData[key].length;
       const totalLikes = galleryImageData[key].reduce((sum, img) => sum + (img.likes || 0), 0);
-      countElement.textContent = `${count} Works ${totalLikes} Likes`;
+      countElement.textContent = `${count} Works & ${totalLikes} Likes`;
     }
   });
 };
