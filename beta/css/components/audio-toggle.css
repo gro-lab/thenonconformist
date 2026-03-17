@@ -91,9 +91,9 @@
     font-size: 11px;
   }
 
-  .audio-toggle .audio-label {
+  /* .audio-toggle .audio-label {
     display: none;
-  }
+  } */
 
   .audio-toggle .audio-icon {
     font-size: 16px;
