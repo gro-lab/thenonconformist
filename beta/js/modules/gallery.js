@@ -40,12 +40,39 @@ let abortController = null;
 let currentMasonryObserver = null;
 const busUnsubs = [];
 
-// Stable sort by likes
+// Fisher-Yates shuffle — returns a new shuffled array, does not mutate input
+const shuffle = (arr) => {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
+
+// Stable sort by likes — equal-likes items keep their original manifest order
 const stableSortByLikes = (items) => {
   return [...items].sort((a, b) => {
     if (b.likes !== a.likes) return b.likes - a.likes;
     return a.originalIndex - b.originalIndex;
   });
+};
+
+// Sort images for display:
+// - Cookies disabled  → fully randomized
+// - Cookies enabled   → liked images sorted by likes desc (stable),
+//                       zero-like images shuffled and appended after
+const sortImagesForDisplay = (images) => {
+  const functionalEnabled = store.get('functionalCookiesEnabled');
+
+  if (!functionalEnabled) {
+    return shuffle(images);
+  }
+
+  const liked   = images.filter(img => img.likes > 0);
+  const unliked = images.filter(img => img.likes === 0);
+
+  return [...stableSortByLikes(liked), ...shuffle(unliked)];
 };
 
 // Create image URLs
@@ -264,7 +291,7 @@ const loadGalleryContent = (galleryId, options = {}) => {
 
   masonryGrid.innerHTML = '';
 
-  const sortedImages = stableSortByLikes(images);
+  const sortedImages = sortImagesForDisplay(images);
   store.set('currentGalleryImages', sortedImages);
 
   // Create masonry observer for lazy loading
@@ -300,6 +327,8 @@ const loadGalleryContent = (galleryId, options = {}) => {
   });
   currentMasonryObserver = masonryObserver;
 
+  const functionalEnabled = store.get('functionalCookiesEnabled');
+
   sortedImages.forEach((image, index) => {
     const masonryItem = document.createElement('div');
     let orientation = 'square';
@@ -333,7 +362,6 @@ const loadGalleryContent = (galleryId, options = {}) => {
     masonryItem.addEventListener('mouseenter', () => { overlay.style.opacity = '1'; });
     masonryItem.addEventListener('mouseleave', () => { overlay.style.opacity = '0'; });
 
-    const functionalEnabled = store.get('functionalCookiesEnabled');
     overlay.innerHTML = `
       <div class="item-category">${gallery.title}</div>
       <div class="item-title">Image ${image.imageData.index}</div>
