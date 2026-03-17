@@ -162,7 +162,7 @@ const refreshGalleryCounts = () => {
     if (countElement && galleryImageData[key]) {
       const count = galleryImageData[key].length;
       const totalLikes = galleryImageData[key].reduce((sum, img) => sum + (img.likes || 0), 0);
-      countElement.textContent = `${count} Works ${totalLikes} Likes`;
+      countElement.textContent = `${count} Works & ${totalLikes} Likes`;
     }
   });
 };
