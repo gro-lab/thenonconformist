@@ -157,12 +157,17 @@ const getMostLikedImageUrl = (galleryKey) => {
 // Update gallery counts in UI
 const refreshGalleryCounts = () => {
   const galleryImageData = store.get('galleryImageData') || {};
+  const functionalEnabled = store.get('functionalCookiesEnabled');
   Object.keys(galleries).forEach(key => {
     const countElement = dom[`${key}Count`];
     if (countElement && galleryImageData[key]) {
       const count = galleryImageData[key].length;
-      const totalLikes = galleryImageData[key].reduce((sum, img) => sum + (img.likes || 0), 0);
-      countElement.textContent = `${count} Works & ${totalLikes} Likes`;
+      if (functionalEnabled) {
+        const totalLikes = galleryImageData[key].reduce((sum, img) => sum + (img.likes || 0), 0);
+        countElement.textContent = `${count} Works & ${totalLikes} Likes`;
+      } else {
+        countElement.textContent = `${count} Works`;
+      }
     }
   });
 };
