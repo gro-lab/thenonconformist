@@ -333,10 +333,11 @@ const loadGalleryContent = (galleryId, options = {}) => {
     masonryItem.addEventListener('mouseenter', () => { overlay.style.opacity = '1'; });
     masonryItem.addEventListener('mouseleave', () => { overlay.style.opacity = '0'; });
 
+    const functionalEnabled = store.get('functionalCookiesEnabled');
     overlay.innerHTML = `
       <div class="item-category">${gallery.title}</div>
       <div class="item-title">Image ${image.imageData.index}</div>
-      <div class="item-likes">♥ ${image.likes}</div>
+      ${functionalEnabled && image.likes > 0 ? `<div class="item-likes">♥ ${image.likes}</div>` : ''}
     `;
 
     masonryItem.addEventListener('click', () => {
