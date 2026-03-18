@@ -12,7 +12,7 @@
 *::before,
 *::after {
   margin: 0;
-  padding: 0;
+  padding: 0; 
   box-sizing: border-box;
 }
 
@@ -43,6 +43,32 @@ body {
   color: var(--color-text-primary);
 }
 
+/* Focus states — Accessibility */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.masonry-item:focus-visible {
+  box-shadow: 0 0 0 3px rgba(242, 140, 40, 0.4);
+  z-index: 20;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    html {
+        scroll-behavior: auto;
+    }
+}
 /* ----------------------------------------
    ANIMATIONS - Keyframes
    ---------------------------------------- */
