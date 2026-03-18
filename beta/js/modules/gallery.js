@@ -143,31 +143,15 @@ const loadManifest = withErrorHandling(async () => {
   return manifest;
 }, { module: 'gallery' });
 
-// Fallback manifest generator (same as original)
+// Fallback manifest — returns empty galleries rather than phantom image URLs
+// that would 404 silently and leave broken invisible slots in the grid.
+// The gallery will render nothing and log an error, which is honest behaviour
+// when we genuinely don't know what images exist.
 const generateFallbackManifest = () => {
   const manifest = {};
-  const defaultExtensions = {
-    LoW: 'JPEG',
-    SoL: 'JPEG',
-    R: 'JPEG',
-    SA: 'JPEG'
-  };
   Object.keys(galleries).forEach(key => {
     const dir = galleries[key].dir;
-    const ext = defaultExtensions[dir] || 'JPEG';
     manifest[dir] = [];
-    for (let i = 1; i <= 50; i++) {
-      manifest[dir].push({
-        index: i,
-        ext: ext,
-        originalName: `${dir}-${i}.${ext}`,
-        width: 1920,
-        height: 1080,
-        aspectRatio: '16:9',
-        orientation: 'horizontal',
-        aspectDecimal: 16/9
-      });
-    }
   });
   store.set('imageManifest', manifest);
   return manifest;
@@ -377,7 +361,8 @@ const loadGalleryContent = (galleryId, options = {}) => {
     else if (image.aspectRatio < 0.8) orientation = 'vertical';
 
     masonryItem.className = `masonry-item ${orientation}`;
-    masonryItem.style.animationDelay = `${index * 0.05}s`;
+    // Cap animation delay so images deep in the grid don't wait unreasonably long
+    masonryItem.style.animationDelay = `${Math.min(index * 0.05, 1.5)}s`;
     // Store image URL for lazy loading
     masonryItem.dataset.imgUrl = createThumbnailUrl(gallery.dir, image.imageData);
     masonryItem.dataset.imageId = index;
@@ -423,7 +408,7 @@ const loadGalleryContent = (galleryId, options = {}) => {
   if (dom.currentGallerySubtitle) dom.currentGallerySubtitle.textContent = gallery.subtitle;
 
   if (!preserveScroll) {
-    // Only reset when there's no saved position to restore
+    // Reset scroll only if not preserving
     store.set('scrollX', 0);
     store.set('scrollY', 0);
   }
@@ -472,16 +457,11 @@ export const initGallery = async () => {
       document.querySelector('.site-intro')?.classList.add('hidden');
       document.querySelector('.terms-footer')?.classList.add('hidden');
 
-      // If a saved scroll position exists for this gallery, preserve the
-      // current scroll values so navigation.js can restore them after load.
-      // Otherwise reset to 0,0 for a fresh entry.
-      const hasSavedScroll = !!(store.get('galleryScrollPositions') || {})[galleryId];
-
       // Double rAF to ensure spinner shows
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           setTimeout(() => {
-            loadGalleryContent(galleryId, { preserveScroll: hasSavedScroll, showLoading: true });
+            loadGalleryContent(galleryId, { preserveScroll: false, showLoading: true });
             if (dom.loadingIndicator) dom.loadingIndicator.classList.remove('active');
             if (dom.galleryContent) dom.galleryContent.classList.add('active');
           }, TRANSITION_MS);
