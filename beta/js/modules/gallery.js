@@ -423,7 +423,7 @@ const loadGalleryContent = (galleryId, options = {}) => {
   if (dom.currentGallerySubtitle) dom.currentGallerySubtitle.textContent = gallery.subtitle;
 
   if (!preserveScroll) {
-    // Reset scroll only if not preserving
+    // Only reset when there's no saved position to restore
     store.set('scrollX', 0);
     store.set('scrollY', 0);
   }
@@ -472,11 +472,16 @@ export const initGallery = async () => {
       document.querySelector('.site-intro')?.classList.add('hidden');
       document.querySelector('.terms-footer')?.classList.add('hidden');
 
+      // If a saved scroll position exists for this gallery, preserve the
+      // current scroll values so navigation.js can restore them after load.
+      // Otherwise reset to 0,0 for a fresh entry.
+      const hasSavedScroll = !!(store.get('galleryScrollPositions') || {})[galleryId];
+
       // Double rAF to ensure spinner shows
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           setTimeout(() => {
-            loadGalleryContent(galleryId, { preserveScroll: false, showLoading: true });
+            loadGalleryContent(galleryId, { preserveScroll: hasSavedScroll, showLoading: true });
             if (dom.loadingIndicator) dom.loadingIndicator.classList.remove('active');
             if (dom.galleryContent) dom.galleryContent.classList.add('active');
           }, TRANSITION_MS);
