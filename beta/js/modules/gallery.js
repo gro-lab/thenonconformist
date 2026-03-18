@@ -44,6 +44,12 @@ const busUnsubs = [];
 // Both the cover image and the grid read from this map so they are always in sync.
 const displayOrderCache = {};
 
+// Session shuffle order — computed ONCE per session per gallery on first load.
+// Subsequent calls to computeDisplayOrder reuse this base order so that:
+//   - images don't jump positions when consent changes mid-session
+//   - liked images rise to the top while 0-like images stay in their original places
+const sessionShuffleCache = {};
+
 // Fisher-Yates shuffle — returns a new shuffled array, does not mutate input
 const shuffle = (arr) => {
   const a = [...arr];
@@ -63,9 +69,9 @@ const stableSortByLikes = (items) => {
 };
 
 // Compute and store the display order for a gallery.
-// Call this whenever the underlying data changes (init, consent, like update).
-// Both getCoverImageUrl and loadGalleryContent read from displayOrderCache
-// so they always show the same ordering.
+// The session shuffle is established once on first call and never changes.
+// Subsequent calls (e.g. after consent or a like update) update likes data
+// but preserve the base shuffle order so nothing jumps unexpectedly.
 const computeDisplayOrder = (galleryKey) => {
   const galleryImageData = store.get('galleryImageData') || {};
   const images = galleryImageData[galleryKey];
@@ -74,19 +80,35 @@ const computeDisplayOrder = (galleryKey) => {
     return [];
   }
 
-  const functionalEnabled = store.get('functionalCookiesEnabled');
-  let sorted;
-
-  if (!functionalEnabled) {
-    sorted = shuffle(images);
-  } else {
-    const liked   = images.filter(img => img.likes > 0);
-    const unliked = images.filter(img => img.likes === 0);
-    sorted = [...stableSortByLikes(liked), ...shuffle(unliked)];
+  // Establish the session shuffle once — reuse on every subsequent call
+  if (!sessionShuffleCache[galleryKey]) {
+    sessionShuffleCache[galleryKey] = shuffle(images);
   }
 
-  displayOrderCache[galleryKey] = sorted;
-  return sorted;
+  const functionalEnabled = store.get('functionalCookiesEnabled');
+
+  if (!functionalEnabled) {
+    // Cookies off: return the stable session shuffle, updated with fresh image refs
+    const imageByUrl = new Map(images.map(img => [img.url, img]));
+    displayOrderCache[galleryKey] = sessionShuffleCache[galleryKey]
+      .map(img => imageByUrl.get(img.url))
+      .filter(Boolean);
+  } else {
+    // Cookies on: liked images sorted to front, 0-like images in session shuffle order
+    const imageByUrl = new Map(images.map(img => [img.url, img]));
+
+    // Rebuild session order with fresh data (likes may have changed)
+    const stableOrder = sessionShuffleCache[galleryKey]
+      .map(img => imageByUrl.get(img.url))
+      .filter(Boolean);
+
+    const liked   = stableSortByLikes(stableOrder.filter(img => img.likes > 0));
+    const unliked = stableOrder.filter(img => img.likes === 0);
+
+    displayOrderCache[galleryKey] = [...liked, ...unliked];
+  }
+
+  return displayOrderCache[galleryKey];
 };
 
 // Create image URLs
@@ -207,7 +229,9 @@ const refreshGalleryCounts = () => {
       const count = galleryImageData[key].length;
       if (functionalEnabled) {
         const totalLikes = galleryImageData[key].reduce((sum, img) => sum + (img.likes || 0), 0);
-        countElement.textContent = `${count} Works & ${totalLikes} Likes`;
+        countElement.textContent = totalLikes > 0
+          ? `${count} Works & ${totalLikes} Likes`
+          : `${count} Works`;
       } else {
         countElement.textContent = `${count} Works`;
       }
@@ -463,7 +487,7 @@ export const initGallery = async () => {
 
   busUnsubs.push(
     bus.on('consent:applied', () => {
-      // Refresh gallery data (likes may have changed)
+      // Refresh gallery data (likes may have changed) — session shuffle is preserved
       Object.keys(galleries).forEach(key => loadGalleryData(key));
       refreshGalleryCounts();
       refreshGalleryCovers();
