@@ -151,13 +151,23 @@ const navigateModal = (direction) => {
   applyImageFromCache(nextImage.url);
   prefetchNeighbours(newIndex);
 
+  // Update URL hash for deep-linking
+  const newUrl = `${window.location.pathname}#/${store.get('currentGallery')}/${newIndex + 1}`;
+  history.replaceState({ page: 'modal', gallery: store.get('currentGallery'), index: newIndex }, '', newUrl);
+
+  // Update document title
+  const galleryId = store.get('currentGallery');
+  const galleryTitle = galleryTitles[galleryId] || 'Gallery';
+  document.title = `The Nonconformist | ${galleryTitle}`;
+
   updateLikeButton();
 };
 
 // Open modal
 const openModal = ({ url, galleryId, index }) => {
-  // Push history state so that back closes the modal
-  history.pushState({ page: 'modal', gallery: galleryId }, '', window.location.href);
+  // Push history state with hash fragment for deep-linking
+  const hash = `#/${galleryId}/${index + 1}`;
+  history.pushState({ page: 'modal', gallery: galleryId, index }, '', window.location.href.split('#')[0] + hash);
 
   store.set('currentPhoto', url);
   store.set('currentPhotoIndex', index);
@@ -212,6 +222,11 @@ const toggleLike = async () => {
   const isCurrentlyLiked = localStorage.getItem(likedKey) === 'true';
   const increment = isCurrentlyLiked ? -1 : 1;
   const galleryId = store.get('currentGallery');
+
+  // Mobile haptic feedback on like
+  if (navigator.vibrate && !isCurrentlyLiked) {
+    navigator.vibrate(50); // 50ms pulse
+  }
 
   // Emit event for firebase module to handle, including galleryId
   bus.emit('like:toggle', { url: currentPhoto, increment, galleryId });
@@ -271,21 +286,26 @@ const setupEventListeners = () => {
   dom.modalPrev?.addEventListener('click', () => navigateModal('prev'), { signal });
   dom.modalNext?.addEventListener('click', () => navigateModal('next'), { signal });
 
-  // Keyboard navigation — Escape calls history.back()
+  // Keyboard navigation — Escape also closes cookie prompt if open
   document.addEventListener('keydown', (e) => {
-    if (!store.get('isModalOpen')) return;
-    if (e.key === 'Escape') history.back();
-    else if (e.key === 'ArrowLeft') navigateModal('prev');
-    else if (e.key === 'ArrowRight') navigateModal('next');
+    if (e.key === 'Escape') {
+      // Check for cookie prompt modal first
+      const cookiePrompt = document.getElementById('cookie-prompt-modal');
+      if (cookiePrompt && !cookiePrompt.hidden) {
+        closeCookiePrompt();
+        return;
+      }
+      if (!store.get('isModalOpen')) return;
+      history.back();
+    }
+    else if (e.key === 'ArrowLeft' && store.get('isModalOpen')) navigateModal('prev');
+    else if (e.key === 'ArrowRight' && store.get('isModalOpen')) navigateModal('next');
   }, { signal });
 
   // Swipe gestures — attached to the modal overlay so the whole surface is
   // a hit target, not just the image element itself.
   dom.modal?.addEventListener('touchstart', onTouchStart, { passive: true, signal });
   dom.modal?.addEventListener('touchend', onTouchEnd, { passive: true, signal });
-
-  // Handle history back — popstate is handled in navigation module,
-  // which emits 'modal:close'. We subscribe to that below.
 };
 
 // Subscribe to events
