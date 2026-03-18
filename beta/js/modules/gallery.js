@@ -145,8 +145,6 @@ const loadManifest = withErrorHandling(async () => {
 
 // Fallback manifest — returns empty galleries rather than phantom image URLs
 // that would 404 silently and leave broken invisible slots in the grid.
-// The gallery will render nothing and log an error, which is honest behaviour
-// when we genuinely don't know what images exist.
 const generateFallbackManifest = () => {
   const manifest = {};
   Object.keys(galleries).forEach(key => {
@@ -203,11 +201,15 @@ const getCoverImageUrl = (galleryKey) => {
   return createThumbnailUrl(gallery.dir, sorted[0].imageData);
 };
 
-// Update gallery counts in UI
-const refreshGalleryCounts = () => {
+// Update gallery counts in UI.
+// Pass a specific galleryId to only refresh that gallery's count element —
+// avoids touching all four on every like update when only one changed.
+const refreshGalleryCounts = (galleryId = null) => {
   const galleryImageData = store.get('galleryImageData') || {};
   const functionalEnabled = store.get('functionalCookiesEnabled');
-  Object.keys(galleries).forEach(key => {
+  const keys = galleryId ? [galleryId] : Object.keys(galleries);
+
+  keys.forEach(key => {
     const countElement = dom[`${key}Count`];
     if (countElement && galleryImageData[key]) {
       const count = galleryImageData[key].length;
@@ -385,13 +387,29 @@ const loadGalleryContent = (galleryId, options = {}) => {
     overlay.className = 'item-overlay';
     overlay.style.opacity = '0';
 
-    masonryItem.addEventListener('mouseenter', () => { overlay.style.opacity = '1'; });
+    // On mouseenter, read likes from live cache so the count is always current
+    // even if someone liked the image after the grid was last rendered.
+    masonryItem.addEventListener('mouseenter', () => {
+      const likesEl = overlay.querySelector('.item-likes');
+      if (likesEl && store.get('functionalCookiesEnabled')) {
+        const docId = getDocIdFromUrl(image.url);
+        const liveCount = (store.get('likesCache') || {})[docId] || 0;
+        if (liveCount > 0) {
+          likesEl.textContent = `♥ ${liveCount}`;
+          likesEl.style.display = '';
+        } else {
+          likesEl.style.display = 'none';
+        }
+      }
+      overlay.style.opacity = '1';
+    });
     masonryItem.addEventListener('mouseleave', () => { overlay.style.opacity = '0'; });
 
+    // Build overlay with initial like count — mouseenter keeps it fresh thereafter
     overlay.innerHTML = `
       <div class="item-category">${gallery.title}</div>
       <div class="item-title">Image ${image.imageData.index}</div>
-      ${functionalEnabled && image.likes > 0 ? `<div class="item-likes">♥ ${image.likes}</div>` : ''}
+      <div class="item-likes" style="${functionalEnabled && image.likes > 0 ? '' : 'display:none'}">♥ ${image.likes}</div>
     `;
 
     masonryItem.addEventListener('click', () => {
@@ -427,7 +445,8 @@ const loadGalleryContent = (galleryId, options = {}) => {
 // Public function to re-fetch gallery data and refresh UI
 const updateGalleryData = (galleryId) => {
   loadGalleryData(galleryId);
-  refreshGalleryCounts();
+  // Only refresh the count for the gallery that changed
+  refreshGalleryCounts(galleryId);
   refreshGalleryCovers();
 };
 
@@ -472,7 +491,7 @@ export const initGallery = async () => {
 
   busUnsubs.push(
     bus.on('consent:applied', () => {
-      // Refresh gallery data (likes may have changed) — session shuffle is preserved
+      // Refresh all gallery data (likes may have changed) — session shuffle is preserved
       Object.keys(galleries).forEach(key => loadGalleryData(key));
       refreshGalleryCounts();
       refreshGalleryCovers();
