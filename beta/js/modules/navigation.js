@@ -9,6 +9,14 @@ import { debounce, TRANSITION_MS } from '../lib/utils.js';
 let abortController = null;
 let isPopstateHandling = false; // to avoid recursion
 
+// Gallery name mapping for back button label
+const galleryNames = {
+  low: 'Language of Windows',
+  sol: 'Snapshots of Life',
+  r: 'Reflections',
+  sa: 'Street Art'
+};
+
 // Push a "trap" state on the homepage so browser back cannot leave the site
 const pushHomepageTrap = () => {
   history.replaceState({ page: 'home' }, '', window.location.href);
@@ -153,6 +161,12 @@ const openGallery = (galleryId) => {
   store.set('currentGallery', galleryId);
   store.set('isGalleryOpen', true);
 
+  // Update back button label to reflect the current gallery
+  if (dom.backButton) {
+    const galleryName = galleryNames[galleryId] || 'Galleries';
+    dom.backButton.innerHTML = `<span>←</span> ${galleryName}`;
+  }
+
   // Push history state
   history.pushState({ page: 'gallery', gallery: galleryId }, '', window.location.href);
 };
@@ -168,38 +182,38 @@ const closeGallery = () => {
 
 const performCloseGallery = () => {	
 	
-	  bus.emit('gallery:close');
+	  bus.emit('gallery:close');
 	
-	  // Instantly hide gallery (no fade-out)
-	  if (dom.galleryContent) {
-	    dom.galleryContent.style.transition = 'none';
-	    dom.galleryContent.classList.remove('active');
-	  }
+	  // Instantly hide gallery (no fade-out)
+	  if (dom.galleryContent) {
+	    dom.galleryContent.style.transition = 'none';
+	    dom.galleryContent.classList.remove('active');
+	  }
 	
-	  // Show homepage elements immediately
-	  dom.gallerySelector?.classList.remove('hidden');
-	  document.querySelector('.site-intro')?.classList.remove('hidden');
-	  document.querySelector('.terms-footer')?.classList.remove('hidden');
-	  store.set('isGalleryOpen', false);
-	
-	
-	  const savedScrollY = store.get('homepageScrollY');
-	  console.log('📌 Restoring homepage scrollY:', savedScrollY);
+	  // Show homepage elements immediately
+	  dom.gallerySelector?.classList.remove('hidden');
+	  document.querySelector('.site-intro')?.classList.remove('hidden');
+	  document.querySelector('.terms-footer')?.classList.remove('hidden');
+	  store.set('isGalleryOpen', false);
 	
 	
+	  const savedScrollY = store.get('homepageScrollY');
+	  console.log('📌 Restoring homepage scrollY:', savedScrollY);
 	
 	
 	
-	  requestAnimationFrame(() => {
-	    window.scrollTo({ top: savedScrollY, behavior: 'instant' });
-	    // Restore transition for the next gallery open (fade-in still works)
-	    if (dom.galleryContent) {
-	      dom.galleryContent.style.transition = '';
-	    }
-	  });
 	
-	  if (dom.loadingIndicator) dom.loadingIndicator.classList.remove('active');
-	  pushHomepageTrap();
+	
+	  requestAnimationFrame(() => {
+	    window.scrollTo({ top: savedScrollY, behavior: 'instant' });
+	    // Restore transition for the next gallery open (fade-in still works)
+	    if (dom.galleryContent) {
+	      dom.galleryContent.style.transition = '';
+	    }
+	  });
+	
+	  if (dom.loadingIndicator) dom.loadingIndicator.classList.remove('active');
+	  pushHomepageTrap();
 	};
 
 
