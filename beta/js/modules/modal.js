@@ -9,10 +9,64 @@ import { imageCache } from '../lib/image-cache.js';
 
 let currentAbortController = null;
 
+// ==================== Document Title ====================
+const originalTitle = document.title;
+
+const galleryTitles = {
+  low: 'Language of Windows',
+  sol: 'Snapshots of Life',
+  r: 'Reflections',
+  sa: 'Street Art'
+};
+
 // ==================== Swipe State ====================
 let swipeTouchStartX = 0;
 let swipeTouchStartY = 0;
 const SWIPE_THRESHOLD = 50; // px — minimum horizontal distance to trigger navigation
+
+// ==================== Cookie Prompt Modal ====================
+const createCookiePromptModal = () => {
+  if (document.getElementById('cookie-prompt-modal')) return;
+
+  const modal = document.createElement('div');
+  modal.id = 'cookie-prompt-modal';
+  modal.className = 'modal';
+  modal.setAttribute('hidden', '');
+  modal.style.cssText = 'z-index: 500;';
+  modal.innerHTML = `
+    <button class="modal-close" id="cookie-prompt-close">×</button>
+    <div class="modal-content" style="text-align: center; max-width: 400px;">
+      <div style="font-size: 2.5rem; margin-bottom: 1.25rem; opacity: 0.6;">♡</div>
+      <h2 style="margin-bottom: 0.75rem; font-size: 1.25rem; font-weight: 500;">Likes require your consent</h2>
+      <p style="color: var(--color-text-muted); margin-bottom: 2rem; line-height: 1.7; font-size: 0.9rem;">
+        To like images, functional cookies must be enabled. This allows the site to remember your likes and connect to Firebase.
+      </p>
+      <button id="cookie-prompt-enable" class="cookie-btn cookie-btn-primary" style="width: 100%; padding: 0.75rem 1.25rem; font-size: 0.9rem;">
+        Enable functional cookies
+      </button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  modal.querySelector('#cookie-prompt-close').addEventListener('click', closeCookiePrompt);
+  modal.querySelector('#cookie-prompt-enable').addEventListener('click', () => {
+    closeCookiePrompt();
+    // Open the cookie settings modal via the floating button
+    document.getElementById('cookie-float-btn')?.click();
+  });
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeCookiePrompt();
+  });
+};
+
+const showCookiePrompt = () => {
+  createCookiePromptModal();
+  document.getElementById('cookie-prompt-modal')?.removeAttribute('hidden');
+};
+
+const closeCookiePrompt = () => {
+  document.getElementById('cookie-prompt-modal')?.setAttribute('hidden', '');
+};
 
 // Update like button UI based on current photo
 const updateLikeButton = () => {
@@ -41,6 +95,11 @@ const updateLikeButton = () => {
     } else {
       dom.likeBtn?.classList.remove('liked');
     }
+  }
+
+  // Show/hide like button based on cookie consent
+  if (dom.likeBtn) {
+    dom.likeBtn.hidden = !store.get('functionalCookiesEnabled');
   }
 };
 
@@ -110,6 +169,10 @@ const openModal = ({ url, galleryId, index }) => {
   dom.modal?.removeAttribute('hidden');
   document.body.style.overflow = 'hidden';
 
+  // Update document title
+  const galleryTitle = galleryTitles[galleryId] || 'Gallery';
+  document.title = `The Nonconformist | ${galleryTitle}`;
+
   updateLikeButton();
 
   // Show/hide navigation buttons based on image count
@@ -130,6 +193,9 @@ const closeModal = () => {
   store.set('currentPhotoIndex', -1);
   dom.modal?.setAttribute('hidden', '');
   document.body.style.overflow = 'auto';
+
+  // Restore document title
+  document.title = originalTitle;
 };
 
 // Toggle like
@@ -137,7 +203,7 @@ const toggleLike = async () => {
   const currentPhoto = store.get('currentPhoto');
   if (!currentPhoto) return;
   if (!store.get('functionalCookiesEnabled')) {
-    alert('Please accept functional cookies to use the like feature.');
+    showCookiePrompt();
     return;
   }
 
@@ -238,6 +304,13 @@ const subscribeToEvents = () => {
   // Listen for modal close event from navigation (popstate)
   bus.on('modal:close', () => {
     closeModal();
+  });
+
+  // When consent changes, refresh like button visibility
+  bus.on('consent:applied', () => {
+    if (store.get('isModalOpen')) {
+      updateLikeButton();
+    }
   });
 };
 
