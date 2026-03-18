@@ -82,6 +82,10 @@ const initialState = {
   scrollX: 0,
   scrollY: 0,
   scrollLimits: { minX: 0, maxX: 0, minY: 0, maxY: 0 },
+
+  // Per-gallery scroll positions — persisted across gallery switches within a session
+  // Structure: { low: { x: 0, y: -320 }, sol: { x: -100, y: -80 }, ... }
+  galleryScrollPositions: {},
   
   // Firebase (lazy)
   firebaseApp: null,
