@@ -39,7 +39,7 @@ const createCookiePromptModal = () => {
       <div style="font-size: 2.5rem; margin-bottom: 1.25rem; opacity: 0.6;">♡</div>
       <h2 style="margin-bottom: 0.75rem; font-size: 1.25rem; font-weight: 500;">Likes require your consent</h2>
       <p style="color: var(--color-text-muted); margin-bottom: 2rem; line-height: 1.7; font-size: 0.9rem;">
-        To like images, functional cookies must be enabled. This allows the site to remember your likes and connect to Firebase.
+        To like images, functional cookies must be enabled. This allows the site to remember your likes.
       </p>
       <button id="cookie-prompt-enable" class="cookie-btn cookie-btn-primary" style="width: 100%; padding: 0.75rem 1.25rem; font-size: 0.9rem;">
         Enable functional cookies
