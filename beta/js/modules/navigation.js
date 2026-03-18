@@ -23,6 +23,34 @@ const pushHomepageTrap = () => {
   history.pushState({ page: 'home-trap' }, '', window.location.href);
 };
 
+// ==================== Per-gallery scroll persistence ====================
+
+// Save the current scrollX/Y under the given gallery key
+const saveGalleryScroll = (galleryId) => {
+  if (!galleryId) return;
+  const positions = store.get('galleryScrollPositions') || {};
+  positions[galleryId] = {
+    x: store.get('scrollX'),
+    y: store.get('scrollY')
+  };
+  store.set('galleryScrollPositions', positions);
+};
+
+// Restore saved scroll for the given gallery, clamped to current scroll limits
+const restoreGalleryScroll = (galleryId) => {
+  const positions = store.get('galleryScrollPositions') || {};
+  const saved = positions[galleryId];
+  if (!saved) return;
+
+  const limits = store.get('scrollLimits');
+  const clampedX = Math.max(limits.minX, Math.min(limits.maxX, saved.x));
+  const clampedY = Math.max(limits.minY, Math.min(limits.maxY, saved.y));
+
+  store.set('scrollX', clampedX);
+  store.set('scrollY', clampedY);
+  updateCanvasTransform();
+};
+
 // Calculate scroll limits based on grid size
 const calculateScrollLimits = () => {
   const grid = dom.masonryGrid;
@@ -157,7 +185,12 @@ const openGallery = (galleryId) => {
   const currentScrollY = window.scrollY;
   console.log('📌 Storing homepage scrollY:', currentScrollY);
   store.set('homepageScrollY', currentScrollY);
-  
+
+  // Save scroll of whichever gallery is currently open before switching
+  if (store.get('isGalleryOpen')) {
+    saveGalleryScroll(store.get('currentGallery'));
+  }
+
   store.set('currentGallery', galleryId);
   store.set('isGalleryOpen', true);
 
@@ -180,41 +213,39 @@ const closeGallery = () => {
   history.back();
 };
 
-const performCloseGallery = () => {	
-	
-	  bus.emit('gallery:close');
-	
-	  // Instantly hide gallery (no fade-out)
-	  if (dom.galleryContent) {
-	    dom.galleryContent.style.transition = 'none';
-	    dom.galleryContent.classList.remove('active');
-	  }
-	
-	  // Show homepage elements immediately
-	  dom.gallerySelector?.classList.remove('hidden');
-	  document.querySelector('.site-intro')?.classList.remove('hidden');
-	  document.querySelector('.terms-footer')?.classList.remove('hidden');
-	  store.set('isGalleryOpen', false);
-	
-	
-	  const savedScrollY = store.get('homepageScrollY');
-	  console.log('📌 Restoring homepage scrollY:', savedScrollY);
-	
-	
-	
-	
-	
-	  requestAnimationFrame(() => {
-	    window.scrollTo({ top: savedScrollY, behavior: 'instant' });
-	    // Restore transition for the next gallery open (fade-in still works)
-	    if (dom.galleryContent) {
-	      dom.galleryContent.style.transition = '';
-	    }
-	  });
-	
-	  if (dom.loadingIndicator) dom.loadingIndicator.classList.remove('active');
-	  pushHomepageTrap();
-	};
+const performCloseGallery = () => {
+
+  // Save scroll position before closing so re-opening restores it
+  saveGalleryScroll(store.get('currentGallery'));
+
+  bus.emit('gallery:close');
+
+  // Instantly hide gallery (no fade-out)
+  if (dom.galleryContent) {
+    dom.galleryContent.style.transition = 'none';
+    dom.galleryContent.classList.remove('active');
+  }
+
+  // Show homepage elements immediately
+  dom.gallerySelector?.classList.remove('hidden');
+  document.querySelector('.site-intro')?.classList.remove('hidden');
+  document.querySelector('.terms-footer')?.classList.remove('hidden');
+  store.set('isGalleryOpen', false);
+
+  const savedScrollY = store.get('homepageScrollY');
+  console.log('📌 Restoring homepage scrollY:', savedScrollY);
+
+  requestAnimationFrame(() => {
+    window.scrollTo({ top: savedScrollY, behavior: 'instant' });
+    // Restore transition for the next gallery open (fade-in still works)
+    if (dom.galleryContent) {
+      dom.galleryContent.style.transition = '';
+    }
+  });
+
+  if (dom.loadingIndicator) dom.loadingIndicator.classList.remove('active');
+  pushHomepageTrap();
+};
 
 
 // ==================== Terms Modal ====================
@@ -319,11 +350,12 @@ const setupCanvasNavigation = () => {
     }
   }, { signal: abortController.signal });
 
-  // When gallery content loaded, recalc limits
-  bus.on('gallery:contentLoaded', () => {
+  // When gallery content loaded: recalc limits, then restore saved scroll position
+  bus.on('gallery:contentLoaded', (galleryId) => {
     setTimeout(() => {
       calculateScrollLimits();
-      updateCanvasTransform();
+      // Restore saved scroll for this gallery — clamped to fresh limits
+      restoreGalleryScroll(galleryId);
     }, 100);
     setTimeout(calculateScrollLimits, 500);
   });
