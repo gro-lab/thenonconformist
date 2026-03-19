@@ -212,7 +212,7 @@ const openGallery = (galleryId) => {
   // Update back button label to reflect the current gallery
   if (dom.backButton) {
     const galleryName = galleryNames[galleryId] || 'Galleries';
-    dom.backButton.innerHTML = `<span>←</span> ${galleryName}`;
+    dom.backButton.innerHTML = `<span>←</span> Back to Galleries`;
   }
 
   // Push history state
