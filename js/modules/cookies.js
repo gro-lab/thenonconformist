@@ -108,6 +108,15 @@ function applyPreferences(prefs) {
   store.set('consentExpired', false);
 }
 
+// FIX: Dim the floating cookie button once consent has been given.
+// The button stays accessible but shrinks back to a quiet indicator —
+// it's done its job and shouldn't compete for attention with the photos.
+const dimFloatButton = () => {
+  if (dom.cookieFloatBtn) {
+    dom.cookieFloatBtn.classList.add('cookie-consent-given');
+  }
+};
+
 // Save preferences to localStorage and apply
 const savePreferences = withErrorHandling(async (prefs) => {
   if (!prefs) return;
@@ -121,6 +130,9 @@ const savePreferences = withErrorHandling(async (prefs) => {
   // Hide relevant UI
   if (dom.cookieBanner) dom.cookieBanner.hidden = true;
   closeCookieModal();
+
+  // FIX: Dim the float button — the user has made their choice
+  dimFloatButton();
   
   // Notify firebase (which will init/teardown, then emit consent:applied)
   bus.emit('consent:updated', record);
@@ -208,6 +220,9 @@ export async function initCookieConsent() {
   
   if (saved) {
     applyPreferences(saved);
+    // FIX: Re-apply the dimmed state on page load — the user already gave
+    // consent in a previous session so the button should start quiet.
+    dimFloatButton();
     // Banner remains hidden (already hidden by CSS default)
   } else {
     // Show banner — check if this is a renewal

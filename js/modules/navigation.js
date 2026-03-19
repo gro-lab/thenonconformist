@@ -191,6 +191,21 @@ const openGallery = (galleryId) => {
     saveGalleryScroll(store.get('currentGallery'));
   }
 
+  // FIX: Pre-apply the saved scroll position for this gallery NOW — before
+  // loadGalleryContent runs and the gallery becomes visible. The gallery-content
+  // div is still opacity:0 at this point so there is no visible jump at 0,0.
+  // Limits aren't computed yet so clamping is skipped here; restoreGalleryScroll
+  // will clamp properly after gallery:contentLoaded fires.
+  const savedPositions = store.get('galleryScrollPositions') || {};
+  const savedPos = savedPositions[galleryId];
+  if (savedPos) {
+    store.set('scrollX', savedPos.x);
+    store.set('scrollY', savedPos.y);
+  } else {
+    store.set('scrollX', 0);
+    store.set('scrollY', 0);
+  }
+
   store.set('currentGallery', galleryId);
   store.set('isGalleryOpen', true);
 
@@ -293,15 +308,16 @@ const handlePopState = (e) => {
     return;
   }
 
-  // If cookie modal is open, close it
+  // FIX: If cookie modal is open, close it.
+  // Use .finally() to guarantee isPopstateHandling is reset even if the
+  // dynamic import throws — without this it stays true forever and silently
+  // swallows every subsequent back press for the rest of the session.
   if (store.get('isCookieModalOpen')) {
-    import('./cookies.js').then(module => {
-      module.closeCookieModal?.();
-    }).catch(err => {
-      console.error('Failed to load cookies module:', err);
-    });
-    isPopstateHandling = false;
-    return;
+    import('./cookies.js')
+      .then(module => { module.closeCookieModal?.(); })
+      .catch(err => { console.error('Failed to load cookies module:', err); })
+      .finally(() => { isPopstateHandling = false; });
+    return; // flag reset is handled by finally — do NOT reset it here
   }
 
   // If gallery is open, close it
@@ -327,6 +343,9 @@ const setupCanvasNavigation = () => {
   document.addEventListener('touchmove', onDragTouch, { passive: false, signal: abortController.signal });
   document.addEventListener('mouseup', stopDrag, { signal: abortController.signal });
   document.addEventListener('touchend', stopDrag, { signal: abortController.signal });
+
+  // FIX: Wire up keyboard navigation — handleKeyDown was defined but never attached
+  document.addEventListener('keydown', handleKeyDown, { signal: abortController.signal });
 
   // Wheel navigation
   canvas.addEventListener('wheel', (e) => {
