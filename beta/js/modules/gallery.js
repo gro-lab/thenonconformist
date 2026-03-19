@@ -50,6 +50,11 @@ const displayOrderCache = {};
 //   - liked images rise to the top while 0-like images stay in their original places
 const sessionShuffleCache = {};
 
+// FIX: Track which image URLs have already been animated this session.
+// On re-entry to a gallery, images in this set skip the fade-in delay entirely
+// so the grid appears instantly rather than re-staging the full entrance animation.
+const seenImageUrls = new Set();
+
 // Fisher-Yates shuffle — returns a new shuffled array, does not mutate input
 const shuffle = (arr) => {
   const a = [...arr];
@@ -363,10 +368,16 @@ const loadGalleryContent = (galleryId, options = {}) => {
     else if (image.aspectRatio < 0.8) orientation = 'vertical';
 
     masonryItem.className = `masonry-item ${orientation}`;
-    // Cap animation delay so images deep in the grid don't wait unreasonably long
-    masonryItem.style.animationDelay = `${Math.min(index * 0.05, 1.5)}s`;
-    // Store image URL for lazy loading
-    masonryItem.dataset.imgUrl = createThumbnailUrl(gallery.dir, image.imageData);
+
+    // FIX: Skip the entrance animation for images already seen this session.
+    // On first visit they animate in normally; on re-entry the grid appears
+    // instantly rather than replaying the full staggered fade sequence.
+    const alreadySeen = seenImageUrls.has(image.url);
+    if (!alreadySeen) seenImageUrls.add(image.url);
+    masonryItem.style.animationDelay = alreadySeen ? '0s' : `${Math.min(index * 0.05, 1.5)}s`;
+
+    const thumbUrl = createThumbnailUrl(gallery.dir, image.imageData);
+    masonryItem.dataset.imgUrl = thumbUrl;
     masonryItem.dataset.imageId = index;
 
     // Create img element for SEO-friendly image display
@@ -418,7 +429,18 @@ const loadGalleryContent = (galleryId, options = {}) => {
 
     masonryItem.appendChild(overlay);
     masonryGrid.appendChild(masonryItem);
-    masonryObserver.observe(masonryItem);
+
+    // FIX: Skip re-observing images already in the blob cache — they will be
+    // applied synchronously via the imageCache.has() branch above without
+    // needing IntersectionObserver. This avoids unnecessary observer entries
+    // on every like-triggered re-render for images already loaded this session.
+    if (imageCache.has(thumbUrl)) {
+      imgElement.src = imageCache.get(thumbUrl);
+      masonryItem.classList.add('lazy-loaded');
+      delete masonryItem.dataset.imgUrl;
+    } else {
+      masonryObserver.observe(masonryItem);
+    }
   });
 
   // Update header
@@ -480,7 +502,12 @@ export const initGallery = async () => {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           setTimeout(() => {
-            loadGalleryContent(galleryId, { preserveScroll: false, showLoading: true });
+            // FIX: Check for a saved scroll position — pass preserveScroll: true
+            // if one exists so the grid re-opens where the user left it rather
+            // than always resetting to 0,0. Previously this was hardcoded false.
+            const savedPositions = store.get('galleryScrollPositions') || {};
+            const hasSavedPosition = !!savedPositions[galleryId];
+            loadGalleryContent(galleryId, { preserveScroll: hasSavedPosition, showLoading: true });
             if (dom.loadingIndicator) dom.loadingIndicator.classList.remove('active');
             if (dom.galleryContent) dom.galleryContent.classList.add('active');
           }, TRANSITION_MS);
