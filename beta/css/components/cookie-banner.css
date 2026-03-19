@@ -242,3 +242,14 @@
   padding: 0;
   text-underline-offset: 2px;
 }
+
+.cookie-float-btn.cookie-consent-given {
+  opacity: 0.4;
+  width: 36px;
+  height: 36px;
+  font-size: 1rem;
+  transition: opacity 0.3s ease, width 0.3s ease, height 0.3s ease;
+}
+.cookie-float-btn.cookie-consent-given:hover {
+  opacity: 0.8;
+}
