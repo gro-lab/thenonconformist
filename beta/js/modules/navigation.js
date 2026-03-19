@@ -191,13 +191,11 @@ const openGallery = (galleryId) => {
     saveGalleryScroll(store.get('currentGallery'));
   }
 
-  // Pre-apply the saved scroll position for this gallery NOW — before
-  // loadGalleryContent runs and the gallery fades in. The gallery-content
-  // div is still opacity:0 at this point, so there is no visible jump.
-  // This eliminates the 100ms flash at 0,0 that would otherwise occur
-  // between the gallery becoming visible and restoreGalleryScroll firing.
-  // Limits aren't computed yet so we skip clamping here; restoreGalleryScroll
-  // will clamp properly after gallery:contentLoaded.
+  // FIX: Pre-apply the saved scroll position for this gallery NOW — before
+  // loadGalleryContent runs and the gallery becomes visible. The gallery-content
+  // div is still opacity:0 at this point so there is no visible jump at 0,0.
+  // Limits aren't computed yet so clamping is skipped here; restoreGalleryScroll
+  // will clamp properly after gallery:contentLoaded fires.
   const savedPositions = store.get('galleryScrollPositions') || {};
   const savedPos = savedPositions[galleryId];
   if (savedPos) {
@@ -310,15 +308,16 @@ const handlePopState = (e) => {
     return;
   }
 
-  // If cookie modal is open, close it.
-  // The dynamic import is async — use .finally() to guarantee the flag
-  // is always reset even if the import or the close call throws.
+  // FIX: If cookie modal is open, close it.
+  // Use .finally() to guarantee isPopstateHandling is reset even if the
+  // dynamic import throws — without this it stays true forever and silently
+  // swallows every subsequent back press for the rest of the session.
   if (store.get('isCookieModalOpen')) {
     import('./cookies.js')
       .then(module => { module.closeCookieModal?.(); })
       .catch(err => { console.error('Failed to load cookies module:', err); })
       .finally(() => { isPopstateHandling = false; });
-    return;
+    return; // flag reset is handled by finally — do NOT reset it here
   }
 
   // If gallery is open, close it
@@ -345,7 +344,7 @@ const setupCanvasNavigation = () => {
   document.addEventListener('mouseup', stopDrag, { signal: abortController.signal });
   document.addEventListener('touchend', stopDrag, { signal: abortController.signal });
 
-  // Keyboard navigation — wire up the handler that was defined but never attached
+  // FIX: Wire up keyboard navigation — handleKeyDown was defined but never attached
   document.addEventListener('keydown', handleKeyDown, { signal: abortController.signal });
 
   // Wheel navigation
@@ -370,11 +369,11 @@ const setupCanvasNavigation = () => {
     }
   }, { signal: abortController.signal });
 
-  // When gallery content loaded: recalc limits, then clamp the pre-applied scroll
+  // When gallery content loaded: recalc limits, then restore saved scroll position
   bus.on('gallery:contentLoaded', (galleryId) => {
     setTimeout(() => {
       calculateScrollLimits();
-      // Clamp the pre-applied position to the now-known scroll limits
+      // Restore saved scroll for this gallery — clamped to fresh limits
       restoreGalleryScroll(galleryId);
     }, 100);
     setTimeout(calculateScrollLimits, 500);
