@@ -151,6 +151,12 @@ const navigateModal = (direction) => {
   applyImageFromCache(nextImage.url);
   prefetchNeighbours(newIndex);
 
+  // FIX: Update document title on every navigation — previously froze at the
+  // title set when the modal first opened.
+  const galleryId = store.get('currentGallery');
+  const galleryTitle = galleryTitles[galleryId] || 'Gallery';
+  document.title = `The Nonconformist | ${galleryTitle}`;
+
   updateLikeButton();
 };
 
@@ -191,11 +197,22 @@ const closeModal = () => {
   store.set('isModalOpen', false);
   store.set('currentPhoto', null);
   store.set('currentPhotoIndex', -1);
-  dom.modal?.setAttribute('hidden', '');
   document.body.style.overflow = 'auto';
 
   // Restore document title
   document.title = originalTitle;
+
+  // FIX: Fade out before hiding — previously snapped in one frame.
+  // A 150ms opacity transition makes the dismissal feel deliberate.
+  if (dom.modal) {
+    dom.modal.style.transition = 'opacity 0.15s ease';
+    dom.modal.style.opacity = '0';
+    setTimeout(() => {
+      dom.modal?.setAttribute('hidden', '');
+      dom.modal.style.opacity = '';
+      dom.modal.style.transition = '';
+    }, 150);
+  }
 };
 
 // Toggle like
