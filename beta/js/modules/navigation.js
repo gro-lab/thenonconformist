@@ -191,6 +191,23 @@ const openGallery = (galleryId) => {
     saveGalleryScroll(store.get('currentGallery'));
   }
 
+  // Pre-apply the saved scroll position for this gallery NOW — before
+  // loadGalleryContent runs and the gallery fades in. The gallery-content
+  // div is still opacity:0 at this point, so there is no visible jump.
+  // This eliminates the 100ms flash at 0,0 that would otherwise occur
+  // between the gallery becoming visible and restoreGalleryScroll firing.
+  // Limits aren't computed yet so we skip clamping here; restoreGalleryScroll
+  // will clamp properly after gallery:contentLoaded.
+  const savedPositions = store.get('galleryScrollPositions') || {};
+  const savedPos = savedPositions[galleryId];
+  if (savedPos) {
+    store.set('scrollX', savedPos.x);
+    store.set('scrollY', savedPos.y);
+  } else {
+    store.set('scrollX', 0);
+    store.set('scrollY', 0);
+  }
+
   store.set('currentGallery', galleryId);
   store.set('isGalleryOpen', true);
 
@@ -293,14 +310,14 @@ const handlePopState = (e) => {
     return;
   }
 
-  // If cookie modal is open, close it
+  // If cookie modal is open, close it.
+  // The dynamic import is async — use .finally() to guarantee the flag
+  // is always reset even if the import or the close call throws.
   if (store.get('isCookieModalOpen')) {
-    import('./cookies.js').then(module => {
-      module.closeCookieModal?.();
-    }).catch(err => {
-      console.error('Failed to load cookies module:', err);
-    });
-    isPopstateHandling = false;
+    import('./cookies.js')
+      .then(module => { module.closeCookieModal?.(); })
+      .catch(err => { console.error('Failed to load cookies module:', err); })
+      .finally(() => { isPopstateHandling = false; });
     return;
   }
 
@@ -328,6 +345,9 @@ const setupCanvasNavigation = () => {
   document.addEventListener('mouseup', stopDrag, { signal: abortController.signal });
   document.addEventListener('touchend', stopDrag, { signal: abortController.signal });
 
+  // Keyboard navigation — wire up the handler that was defined but never attached
+  document.addEventListener('keydown', handleKeyDown, { signal: abortController.signal });
+
   // Wheel navigation
   canvas.addEventListener('wheel', (e) => {
     if (!store.get('isGalleryOpen')) return;
@@ -350,11 +370,11 @@ const setupCanvasNavigation = () => {
     }
   }, { signal: abortController.signal });
 
-  // When gallery content loaded: recalc limits, then restore saved scroll position
+  // When gallery content loaded: recalc limits, then clamp the pre-applied scroll
   bus.on('gallery:contentLoaded', (galleryId) => {
     setTimeout(() => {
       calculateScrollLimits();
-      // Restore saved scroll for this gallery — clamped to fresh limits
+      // Clamp the pre-applied position to the now-known scroll limits
       restoreGalleryScroll(galleryId);
     }, 100);
     setTimeout(calculateScrollLimits, 500);
