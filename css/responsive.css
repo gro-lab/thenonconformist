@@ -9,10 +9,6 @@
    TABLET AND BELOW (max-width: 1024px)
    ---------------------------------------- */
 @media (max-width: 1024px) {
-  /* Hide back button on tablet */
-  #back-button {
-    display: none;
-  }
 
   /* Hide modal navigation buttons */
   .modal-nav-btn {
