@@ -64,6 +64,7 @@ const initialState = {
   isGalleryOpen: false,
   isTermsModalOpen: false,
   isCookieModalOpen: false, // added for cookie settings modal
+  isCourseFormOpen: false,  // added for course sign-up form
   
   // Like/counts
   likesCache: {},
