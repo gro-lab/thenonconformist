@@ -51,6 +51,9 @@
 /* Error toast */
 @import url('components/error.css');
 
+/* Course sign-up form */
+@import url('components/course-form.css');
+
 /* ----------------------------------------
    5. UTILITIES
    Helper classes and state utilities
