@@ -308,6 +308,15 @@ const handlePopState = (e) => {
     return;
   }
 
+  // If course form is open, close it
+  if (store.get('isCourseFormOpen')) {
+    import('./course-form.js')
+      .then(module => { module.closeCourseForm?.(); })
+      .catch(err => { console.error('Failed to load course-form module:', err); })
+      .finally(() => { isPopstateHandling = false; });
+    return; // flag reset handled by finally
+  }
+
   // FIX: If cookie modal is open, close it.
   // Use .finally() to guarantee isPopstateHandling is reset even if the
   // dynamic import throws — without this it stays true forever and silently

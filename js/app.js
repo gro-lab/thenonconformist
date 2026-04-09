@@ -9,6 +9,7 @@ import { initGallery } from './modules/gallery.js';
 import { initModal } from './modules/modal.js';
 import { initAudio } from './modules/audio.js';
 import { initPresenceModule } from './modules/presence.js';
+import { initCourseForm } from './modules/course-form.js';
 
 async function init() {
   try {
@@ -42,6 +43,9 @@ async function init() {
     
     // 9. Initialize presence (active viewers) — event-driven, lazy-connects
     initPresenceModule();
+
+    // 10. Initialize course sign-up form
+    initCourseForm();
     
     console.log('✅ All modules initialized');
   } catch (error) {

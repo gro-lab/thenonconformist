@@ -565,7 +565,9 @@
              aria-label="Tip the artist via Revolut (opens external app)">
             <span>Tip the artist</span>
           </a>
-          if you feel like it.</p> 
+          if you feel like it.</p>
+        <!-- Photography course sign-up -->
+        <p class="site-description"><a id="course-signup-link" href="#" class="social-link" aria-label="Sign up for a photography workshop and walk through Timișoara"><span>Sign up</span></a> for a photography workshop and walk through Timișoara.</p>
     </div>
     
     <!-- Gallery Selector View -->
@@ -863,12 +865,14 @@
                 <p>This data is <strong>fully ephemeral</strong>: it is automatically deleted when you close the browser tab, navigate away from the gallery, or withdraw consent. A safety cleanup also removes any stale entries within 60 seconds. No historical viewing data is retained.</p>
                 <p><strong>✅ This feature is strictly opt-in (requires functional cookies) and stores no persistent personal data.</strong></p>
 
-                <h4>3.4. Third-Party Payment Links</h4>
+                <h4>3.4. Workshop Sign-Up Form</h4>
+                <p>When you submit the photography workshop sign-up form, your data (name, email, phone number, and any message you provide) is transmitted directly to Formspree Inc. (United States), which acts as the form processor. Formspree forwards your submission to the site owner by email. No form data is stored on this website or in Firebase. By submitting the form you consent to Formspree processing your data under their <a href="https://formspree.io/legal/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>. Legal basis: Article 6(1)(a) GDPR – Consent.</p>
+
+                <h4>3.5. Third-Party Payment Links</h4>
                 <p>The website may contain links to Revolut Ltd ("Revolut") for voluntary financial contributions. When you click a Revolut link:</p>
                 <ul>
                     <li>You are redirected to Revolut's platform (revolut.com) and leave this website</li>
                     <li>Revolut processes your payment data (card details, identity verification) under their own Privacy Policy and Terms of Service</li>
-                    <li>We do not collect, store, or process any financial or payment data on this website</li>
                     <li>We do not collect, store, or process any financial or payment data on this website</li>
                     <li>No financial transaction data is shared back to our Firebase or local storage</li>
                     <li>Legal basis: This website acts solely as a referrer; Revolut is the independent Data Controller for payment processing under GDPR Article 6(1)(b) (contract) and Article 6(1)(f) (legitimate interest for fraud prevention).</li>
@@ -879,7 +883,7 @@
                 <p>❌ This website does not collect:</p>
                 <ul>
                     <li>names</li>
-                    <li>email addresses (except if you contact us voluntarily)</li>
+                    <li>email addresses (except if you contact us voluntarily or submit the course form)</li>
                     <li>user accounts</li>
                     <li>authentication data</li>
                     <li>behavioral tracking across sites</li>
@@ -896,7 +900,7 @@
                 <ul>
                   <li>
                     <strong>Article 6(1)(a) GDPR – Consent</strong>, for optional functional
-                    features such as image likes enabled via Firebase.
+                    features such as image likes enabled via Firebase, and for course sign-up form submissions.
                   </li>
                   <li>
                     <strong>Article 6(1)(f) GDPR – Legitimate interest</strong>, for the
@@ -919,12 +923,13 @@
                   required to load images hosted on external platforms.
                 </p>
                 <h3>7. International data transfers</h3>
-                <p>Firebase is a service provided by Google LLC (United States). Google relies on Standard Contractual Clauses (SCCs) approved by the European Commission for international data transfers.</p>
+                <p>Firebase is a service provided by Google LLC (United States). Google relies on Standard Contractual Clauses (SCCs) approved by the European Commission for international data transfers. Formspree Inc. is also based in the United States and relies on SCCs for EU data transfers.</p>
                 <h3>8. Data retention</h3>
                 <ul>
                     <li>Local preferences remain stored until you clear them from your browser</li>
                     <li>Like-related data is stored indefinitely or until the project is discontinued</li>
                     <li>Realtime viewing activity is ephemeral and deleted automatically on disconnect (within seconds)</li>
+                    <li>Course sign-up submissions are retained by Formspree per their data retention policy and forwarded to the site owner by email</li>
                 </ul>
                 <h3>9. Your rights</h3>
                 <p>Under the GDPR, you have the right to:</p>
@@ -1039,6 +1044,93 @@
     <button id="cookie-float-btn" class="cookie-float-btn" aria-label="Cookie Settings">
         🍪
     </button>
+
+    <!-- ============================================ -->
+    <!-- COURSE SIGN-UP FORM MODAL -->
+    <!-- ============================================ -->
+    <div id="course-form-modal" class="modal course-form-modal" hidden>
+        <button class="modal-close" id="cf-close">×</button>
+        <div class="cf-card">
+
+            <!-- Step: Form -->
+            <div id="cf-step-form">
+                <div class="cf-header">
+                    <p class="cf-eyebrow">Photography Workshop &amp; City Walk</p>
+                    <h2 class="cf-title">See Timișoara<br>Through a Lens</h2>
+                    <p class="cf-subtitle">Join a small-group walk through the streets and hidden corners of Timișoara. Learn to see — and shoot — the city the way a nonconformist does.</p>
+                    <p class="cf-subtitle">Find beauty in everything you see!</p>
+                    <p class="cf-subtitle">Even a dead rat, death on the sidewalk.</p>
+                </div>
+
+                <form id="cf-form" novalidate>
+                    <div class="cf-fields">
+                        <div class="cf-row">
+                            <div class="cf-field">
+                                <label class="cf-label" for="cf-name">Full name</label>
+                                <input id="cf-name" class="cf-input" type="text" name="name"
+                                       placeholder="Your name" required autocomplete="name">
+                            </div>
+                            <div class="cf-field">
+                                <label class="cf-label" for="cf-email">Email</label>
+                                <input id="cf-email" class="cf-input" type="email" name="email"
+                                       placeholder="you@example.com" required autocomplete="email">
+                            </div>
+                        </div>
+
+                        <div class="cf-row">
+                            <div class="cf-field">
+                                <label class="cf-label" for="cf-phone">Phone <span class="cf-optional">(optional)</span></label>
+                                <input id="cf-phone" class="cf-input" type="tel" name="phone"
+                                       placeholder="+40 7xx xxx xxx" autocomplete="tel">
+                            </div>
+                            <div class="cf-field">
+                                <label class="cf-label" for="cf-participants">Group size <span class="cf-optional">(optional)</span></label>
+                                <div class="cf-select-wrapper">
+                                    <select id="cf-participants" class="cf-select cf-input" name="participants">
+                                        <option value="">Just me</option>
+                                        <option value="2">2 people</option>
+                                        <option value="3">3 people</option>
+                                        <option value="4">4 people</option>
+                                        <option value="5+">5 or more</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="cf-field">
+                            <label class="cf-label" for="cf-message">Anything you'd like to say <span class="cf-optional">(optional)</span></label>
+                            <textarea id="cf-message" class="cf-textarea" name="message"
+                                      placeholder="Preferred dates, experience level, questions…"></textarea>
+                        </div>
+                    </div>
+
+                    <button id="cf-submit-btn" class="cf-submit-btn" type="submit">
+                        <span id="cf-spinner" class="cf-spinner" hidden></span>
+                        <span class="cf-btn-label">Sign Me Up</span>
+                    </button>
+                </form>
+
+                <p class="cf-privacy">Your details are sent securely via Formspree and used only to respond to your enquiry. See our <button class="cookie-inline-link" id="cf-privacy-link">Privacy Policy</button> for details.</p>
+            </div>
+
+            <!-- Step: Success -->
+            <div id="cf-step-success" class="cf-step" hidden>
+                <span class="cf-step-icon">📸</span>
+                <h3 class="cf-step-title">You're in!</h3>
+                <p class="cf-step-body">Thanks for signing up. I'll be in touch soon with details about the next available walk. Keep your eyes open — beauty is everywhere.</p>
+            </div>
+
+            <!-- Step: Error -->
+            <div id="cf-step-error" class="cf-step" hidden>
+                <span class="cf-step-icon">✦</span>
+                <h3 class="cf-step-title">Something went wrong</h3>
+                <p class="cf-step-body">The form couldn't be submitted right now. Please try again, or reach out directly at <a href="mailto:then-onconformist@outlook.com" style="color:var(--color-accent-orange)">then-onconformist@outlook.com</a>.</p>
+                <button id="cf-try-again" class="cf-ghost-btn">Try again</button>
+            </div>
+
+        </div>
+    </div>
+
     <!-- ============================================ -->
     <!-- JAVASCRIPT - ES6 MODULE ENTRY POINT -->
     <!-- ============================================ -->
